@@ -9,23 +9,20 @@ Replace the contents of this file with the completed assignments, as described i
 
 
 
-## 1. App Map
+# 1. App Map
 
 The app map shows the hierarchy and navigation flow of the Habita MVP.  
 Users start from the Login screen and can access the Home Dashboard after signing in.  
-From the Home Dashboard, they can navigate to Tasks, Bills, Inventory, Chat, and Profile using the bottom navigation bar.
+From the Home Dashboard, they can navigate to Tasks, Bills, and Profile using the bottom navigation bar.
 
 ---
 
-## 2. Wireframes
+# 2. Wireframes
+
+## Minimum Viable Product
 
 ### Login Screen
 Purpose: Allows users to log in with email and password. Includes a link to Register.
-
----
-
-### Register Screen
-Purpose: Lets new users create an account and optionally join a roommate group using a join code.
 
 ---
 
@@ -54,7 +51,14 @@ Purpose: Allows users to add new expenses. Each item in a bill can be assigned t
 
 ---
 
-### Bill Summary
+## More Features
+### Profile
+Purpose: Shows user information, group details, and options to edit profile or log out.
+
+---
+
+### Edit Profile
+Purpose: Allows users to update their name, group info, or notification settings.### Bill Summary
 Purpose: Shows the total amount, payer, and a clear breakdown of each person’s share.  
 Users can confirm payments or request settlements.
 
@@ -70,14 +74,13 @@ Purpose: Messaging interface for roommates to communicate about daily tasks, bil
 
 ---
 
-### Profile
-Purpose: Shows user information, group details, and options to edit profile or log out.
+### Register Screen
+Purpose: Lets new users create an account and optionally join a roommate group using a join code.
 
 ---
 
-### Edit Profile
-Purpose: Allows users to update their name, group info, or notification settings.
-
 ## 3. Prototype
 [Prototype Link](https://www.figma.com/proto/9lgAQPMoD53RPM8WSDJSyH/Untitled?node-id=2-2&t=MxP2SuC24KWE6Rpg-1&scaling=scale-down&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=2%3A2)
+
+---
 
