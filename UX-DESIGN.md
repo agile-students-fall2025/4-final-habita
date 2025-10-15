@@ -18,6 +18,8 @@ The app map shows the hierarchy and navigation flow of the Habita MVP.
 Users start from the Login screen and can access the Home Dashboard after signing in.  
 From the Home Dashboard, they can navigate to Tasks, Bills, Shopping List, Mood & Noise, and Profile using the bottom navigation bar.
 
+![App Map](ux-design/app_map.png)
+
 ---
 
 ## 2. Wireframes
