@@ -78,3 +78,6 @@ Purpose: Shows user information, group details, and options to edit profile or l
 ### Edit Profile
 Purpose: Allows users to update their name, group info, or notification settings.
 
+## 3. Prototype
+[Prototype Link](https://www.figma.com/proto/9lgAQPMoD53RPM8WSDJSyH/Untitled?node-id=2-2&t=MxP2SuC24KWE6Rpg-1&scaling=scale-down&content-scaling=fixed&page-id=0%3A1&starting-point-node-id=2%3A2)
+
