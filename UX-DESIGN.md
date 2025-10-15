@@ -51,11 +51,11 @@ Purpose: Allows users to add new expenses. Each item in a bill can be assigned t
 
 ---
 
-## More Features
 ### Profile
 Purpose: Shows user information, group details, and options to edit profile or log out.
 
 ---
+## More Features
 
 ### Edit Profile
 Purpose: Allows users to update their name, group info, or notification settings.### Bill Summary
