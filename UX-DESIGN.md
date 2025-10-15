@@ -1,91 +1,97 @@
 # User Experience Design
 
 ## 0. Prototype
+
 You can view the interactive Figma prototype for the Habita MVP here:  
-👉 [View Habita Prototype](https://www.figma.com/design/9lgAQPMoD53RPM8WSDJSyH/Habita?node-id=0-1&p=f&t=2bmqEnaVm2sJvvdJ-0)
+👉 [View Habita Prototype](https://www.figma.com/design/9lgAQPMoD53RPM8WSDJSyH/Habita?node-id=0-1&t=2bmqEnaVm2sJvvdJ-1)
 
 The prototype demonstrates the core user flow:
 - Registration and group joining with a Habita code  
 - Home Dashboard overview of shared living activities  
+- Daily Mood Check-in integrated directly in the dashboard  
 - Task management (add, view, complete)  
-- Bill splitting  
-- Profile page for viewing or inviting roommates  
+- Bill splitting and summary  
+- Profile page with roommate invite overlay  
 
 ---
 
 ## 1. App Map
+
 The app map shows the hierarchy and navigation flow of the Habita MVP.  
 Users start from the Login screen and can access the Home Dashboard after signing in.  
-From the Home Dashboard, they can navigate to Tasks, Bills, Shopping List, Mood & Noise, and Profile using the bottom navigation bar.
+From the Home Dashboard, they can view tasks, bills, and daily mood stats, then navigate to Profile through the bottom navigation bar.
 
-![App Map](ux-design/app_map.png)
+<p align="center">
+  <img src="ux-design/app_map.png" width="600"/>
+</p>
 
 ---
 
 ## 2. Wireframes
 
 ### Login Screen
-Purpose: Allows users to log in with email and password. Includes a link to Register.
-
----
-
-### Register Screen
-Purpose: Lets new users create an account and optionally join a roommate group using a join code.
+<p align="center"><img src="ux-design/wireframes/login.png" width="300"/></p>
+Allows users to log in using email and password. Includes a link to Register.
 
 ---
 
 ### Home Dashboard
-Purpose: Central hub showing key summaries such as upcoming tasks and unpaid bills.
+<p align="center"><img src="ux-design/wireframes/home.png" width="300"/></p>
+Central hub displaying summaries of shared living activities — including upcoming tasks, unpaid bills, and a lightweight Mood & Noise Tracker section.
+
+#### Mood & Noise Tracker (inline)
+<p align="center"><img src="ux-design/wireframes/home_mood.png" width="300"/></p>
+Users tap one emoji to record their daily mood and optionally note noise level.  
+After submission, the tracker disappears and shows the group’s weekly average.
 
 ---
 
 ### Tasks
-![Tasks](ux-design/wireframes/Tasks.png)  
-Purpose: Displays all tasks shared among roommates. Each task has a checkbox for completion.
+<p align="center"><img src="ux-design/wireframes/add_task.png" width="300"/></p>
+Displays all shared tasks with completion checkboxes.
 
----
-
-### Add Task Overlay
-Purpose: Overlay for adding a new task with title, due date, and assignee fields.
+#### Add Task Overlay
+<p align="center"><img src="ux-design/wireframes/add_task.png" width="300"/></p>
+Overlay for adding new tasks with title, due date, and assignee fields.
 
 ---
 
 ### Bills
-![Bills](ux-design/wireframes/Bills.png) 
-Purpose: Lists all shared expenses with payer, amount, and payment status.
+<p align="center"><img src="ux-design/wireframes/bills.png" width="300"/></p>
+Lists shared expenses, showing payer, amount, and payment status.
 
----
+#### Add Bill Overlay
+<p align="center"><img src="ux-design/wireframes/add_bill.png" width="300"/></p>
+Allows users to log new shared expenses and split costs between roommates.
 
-### Add Bill Overlay
-Purpose: Allows users to add new expenses.
-
----
-
-### Bill Summary
-Purpose: Shows the total amount, payer, and a clear breakdown of each person’s share.  
-Users can confirm payments or request settlements.
+#### Bill Summary
+<p align="center"><img src="ux-design/wireframes/home_mood.png" width="300"/></p>
+Displays total owed and balance overview for each roommate.
 
 ---
 
 ### Profile
-Purpose: Shows user information, group details, and options to edit profile or log out.  
-Includes a button to “Invite Roommates,” which opens an overlay displaying the group’s Habita Code and share options.
+<p align="center"><img src="ux-design/wireframes/edit_profiles.png" width="300"/></p>
+Shows user info, group details, and access to roommate management options.
+
+#### Invite Roommate Overlay
+<p align="center"><img src="ux-design/wireframes/invite_roommates.png" width="300"/></p>
+Displays a unique Habita Code that can be copied or shared for inviting new roommates.
 
 ---
 
-### Invite Roommate Overlay
-Purpose: Overlay for sharing the roommate group’s unique Habita Code.  
-Users can copy or share the code so that new roommates can join the group easily.
+## 3. Design Notes
 
----
-
-### Edit Profile
-Purpose: Allows users to update their name, group info, or notification settings.
-
----
-
-## 3. Notes
-- All wireframes follow a mobile-first layout.  
-- Only grayscale elements are used (no colors, icons, or real images).  
+- All wireframes follow a **mobile-first layout**.  
+- Only grayscale elements are used (no color or real images).  
 - Navigation bar remains consistent across all screens.  
-- Overlays appear above the base screen and are closed with a cancel or save action.
+- Overlays appear centered and can be closed with “Cancel” or by tapping outside.  
+- The **Mood & Noise Tracker** is embedded in the Home Dashboard, disappearing after daily submission to reveal summary data.
+
+---
+
+## 4. Summary
+
+The Habita MVP simplifies shared living through one centralized mobile dashboard.  
+It unites roommates around tasks, bills, and communication — enhanced by a subtle well-being tracker.  
+The design emphasizes clarity, quick interaction, and seamless collaboration.
