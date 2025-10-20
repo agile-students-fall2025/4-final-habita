@@ -52,14 +52,14 @@ We use the **Feature Branch Workflow**:
    ```bash
    git pull origin main
    ```
-2. Create a feature branch:
+2. Create a new local branch:
    ```bash
-   git checkout -b feature/<short-description>
+   git checkout -b <branch-name>
    ```
 3. Make and commit your changes:
    ```bash
    git add .
-   git commit -m "feat: short description of change"
+   git commit -m "short description of change"
    ```
 4. Push the branch and open a Pull Request (PR):
    ```bash
@@ -67,10 +67,20 @@ We use the **Feature Branch Workflow**:
    ```
 5. Another teammate reviews the PR and merges it once approved.
 
-Branches should be named clearly, e.g.:
-- `feature/add-task-list`
-- `fix/update-readme`
-- `docs/setup-instructions`
+### Create a New Local Branch
+
+With the latest code downloaded, create a new branch and “check it out”.  
+The name of the branch should refer to the **User Story**, **Task**, or **Spike** associated with the changes that will be made.
+
+Example for a Task with identification number 9 belonging to a User Story with identification number 13:
+```bash
+git checkout -b user-story/13/task/9/implement-user-login
+```
+
+Example for Spike with identification number 6:
+```bash
+git checkout -b spike/6/install-mongo-db-locally
+```
 
 ---
 
