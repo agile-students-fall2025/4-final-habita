@@ -24,6 +24,7 @@ The **Minimum Viable Product (MVP)** focuses on three core goals:
 | [Teammate 2 Name] | Scrum Master | [@teammate2](https://github.com/teammate2) |  |
 | [Teammate 3 Name] | Developer | [@teammate3](https://github.com/teammate3) |  |
 | [Teammate 4 Name] | Developer | [@teammate4](https://github.com/teammate4) |  |
+| [Teammate 5 Name] | Developer | [@teammate5](https://github.com/teammate5) |  |
 
 ---
 
