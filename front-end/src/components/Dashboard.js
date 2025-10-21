@@ -1,5 +1,5 @@
 import Navbar from "./Navbar";
-import { Outlet } from "react-router-dom";
+import { Outlet, Link } from "react-router-dom";
 import { useState } from "react";
 
 function Dashboard({ children }) {
@@ -15,11 +15,43 @@ function Dashboard({ children }) {
         backgroundColor: "#fafafa",
       }}
     >
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          backgroundColor: "white",
+          padding: "1rem 1.5rem",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          zIndex: 1,
+        }}
+      >
+        <h2 style={{ margin: 0, fontWeight: 600, color: "#333" }}>
+          <Link
+            to="/home"
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            Habita
+          </Link>
+        </h2>
+        <button
+          style={{
+            border: "none",
+            background: "#fff",
+            borderRadius: "50%",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+            padding: "0.5rem 0.6rem",
+            cursor: "pointer",
+          }}
+        >
+          🔔
+        </button>
+      </header>
       <div
         style={{
           backgroundColor: "white",
           padding: "10px 20px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          borderBottom: "1px solid #f0f0f0",
           fontWeight: "bold",
         }}
       >

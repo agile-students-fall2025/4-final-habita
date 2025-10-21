@@ -7,29 +7,6 @@ export default function Home() {
         minHeight: "100vh",
       }}
     >
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "1.5rem",
-        }}
-      >
-        <h2 style={{ margin: 0, fontWeight: "600", color: "#333" }}>Habita</h2>
-        <button
-          style={{
-            border: "none",
-            background: "#fff",
-            borderRadius: "50%",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-            padding: "0.5rem 0.6rem",
-            cursor: "pointer",
-          }}
-        >
-          🔔
-        </button>
-      </header>
-
       <div
         style={{
           display: "flex",
