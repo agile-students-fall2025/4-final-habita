@@ -5,20 +5,25 @@ import Tasks from "./pages/Tasks";
 import Bills from "./pages/Bills";
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 function App() {
   return (
     <Router>
-      <Dashboard>
-        <Routes>
-          <Route path="/" element={<Navigate to="/home" replace />} />
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        <Route element={<Dashboard />}>
           <Route path="/home" element={<Home />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/bills" element={<Bills />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/profile" element={<Profile />} />
-        </Routes>
-      </Dashboard>
+        </Route>
+      </Routes>
     </Router>
   );
 }
