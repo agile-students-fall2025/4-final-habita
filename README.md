@@ -23,7 +23,7 @@ The **Minimum Viable Product (MVP)** focuses on three core goals:
 | Mavis Liu | Product Owner | [@meiivis](https://github.com/meiivis) | [LinkedIn](https://www.linkedin.com/in/mavisliuisme/) |
 | Steven Oluwabusi | Scrum Master | [@St12t](https://github.com/St12t) |  |
 | Bilbo Lam | Developer | [@bilbo](https://github.com/BilboLam) |  |
-| Tawhid Zaman | Developer | [@teammate4](https://github.com/TawhidZGit) |  |
+| Tawhid Zaman | Developer | [@TawhidZGit](https://github.com/TawhidZGit) |  |
 | [Teammate 5 Name] | Developer | [@teammate5](https://github.com/teammate5) |  |
 
 ---
