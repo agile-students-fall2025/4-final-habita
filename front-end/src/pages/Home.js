@@ -1,3 +1,5 @@
+import MoodTracker from "../components/MoodTracker";
+
 export default function Home() {
   return (
     <div
@@ -7,19 +9,16 @@ export default function Home() {
         minHeight: "100vh",
       }}
     >
+      <MoodTracker />
       <div
         style={{
           display: "flex",
           flexDirection: "column",
           gap: "1rem",
+          marginTop: "1.5rem",
           marginBottom: "2rem",
         }}
       >
-        <div style={cardStyle}>
-          <h3 style={titleStyle}>😊 Mood Summary</h3>
-          <p style={textStyle}>You’re feeling great today!</p>
-        </div>
-
         <div style={cardStyle}>
           <h3 style={titleStyle}>📋 Task Summary</h3>
           <p style={textStyle}>2 pending tasks remaining.</p>
