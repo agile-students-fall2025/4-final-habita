@@ -1,10 +1,17 @@
 import Navbar from "./Navbar";
 import { Outlet, Link } from "react-router-dom";
-import { useState } from "react";
+import { useTasks } from "../context/TasksContext";
 
 function Dashboard({ children }) {
-  const [pendingTasks] = useState(2);
-  const [unpaidBills] = useState(3);
+  const { tasks } = useTasks();
+  const unpaidBills = 3;
+
+  const myTasks = tasks.filter((task) =>
+    Array.isArray(task.assignees)
+      ? task.assignees.includes("You")
+      : task.assignees === "You"
+  );
+  const openForMe = myTasks.filter((task) => task.status !== "completed").length;
 
   return (
     <div
@@ -12,7 +19,7 @@ function Dashboard({ children }) {
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-        backgroundColor: "#fafafa",
+        backgroundColor: "var(--habita-bg)",
       }}
     >
       <header
@@ -20,13 +27,13 @@ function Dashboard({ children }) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          backgroundColor: "white",
+          backgroundColor: "var(--habita-card)",
           padding: "1rem 1.5rem",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          boxShadow: "var(--habita-shadow)",
           zIndex: 1,
         }}
       >
-        <h2 style={{ margin: 0, fontWeight: 600, color: "#333" }}>
+        <h2 style={{ margin: 0, fontWeight: 600, color: "var(--habita-text)" }}>
           <Link
             to="/home"
             style={{ color: "inherit", textDecoration: "none" }}
@@ -37,11 +44,12 @@ function Dashboard({ children }) {
         <button
           style={{
             border: "none",
-            background: "#fff",
+            background: "var(--habita-card)",
             borderRadius: "50%",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+            boxShadow: "var(--habita-shadow)",
             padding: "0.5rem 0.6rem",
             cursor: "pointer",
+            color: "var(--habita-text)",
           }}
         >
           🔔
@@ -49,13 +57,14 @@ function Dashboard({ children }) {
       </header>
       <div
         style={{
-          backgroundColor: "white",
+          backgroundColor: "var(--habita-card)",
           padding: "10px 20px",
-          borderBottom: "1px solid #f0f0f0",
-          fontWeight: "bold",
+          borderBottom: "1px solid var(--habita-border)",
+          fontWeight: 600,
+          color: "var(--habita-text)",
         }}
       >
-        🧹 {pendingTasks} pending tasks ・ 💰 {unpaidBills} unpaid bills
+        🧹 {openForMe} of your tasks open ・ 💰 {unpaidBills} unpaid bills
       </div>
       <div style={{ flex: 1, overflowY: "auto" }}>{children || <Outlet />}</div>
       <Navbar />
