@@ -7,6 +7,9 @@ import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import EditProfile from "./pages/EditProfile";
+import { TasksProvider } from "./context/TasksContext";
+import { UserProvider } from "./context/UserContext";
 
 function App() {
   return (
@@ -16,12 +19,21 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        <Route element={<Dashboard />}>
+        <Route
+          element={
+            <UserProvider>
+              <TasksProvider>
+                <Dashboard />
+              </TasksProvider>
+            </UserProvider>
+          }
+        >
           <Route path="/home" element={<Home />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/bills" element={<Bills />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/edit" element={<EditProfile />} />
         </Route>
       </Routes>
     </Router>
