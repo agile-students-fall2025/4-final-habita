@@ -2,10 +2,12 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import MoodTracker from "../components/MoodTracker";
 import { useTasks } from "../context/TasksContext";
+import { useBills } from "../context/BillsContext";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { tasks, stats } = useTasks();
+  const { tasks, stats: taskStats } = useTasks();
+  const { bills, stats: billStats } = useBills();
 
   const upcomingTasks = useMemo(() => {
     const compareValue = (task) => {
@@ -18,8 +20,8 @@ export default function Home() {
       .slice(0, 3);
   }, [tasks]);
 
-  const completionPercent = stats.total
-    ? Math.round((stats.completed / stats.total) * 100)
+  const completionPercent = taskStats.total
+    ? Math.round((taskStats.completed / taskStats.total) * 100)
     : 0;
 
   return (
@@ -34,7 +36,7 @@ export default function Home() {
       <section style={summaryGridStyle}>
         <div style={cardStyle}>
           <h3 style={titleStyle}>📋 Task Summary</h3>
-          <p style={textStyle}>{stats.pending} tasks still open.</p>
+          <p style={textStyle}>{taskStats.pending} tasks still open.</p>
           <div style={progressTrackStyle}>
             <div
               style={{
@@ -44,7 +46,7 @@ export default function Home() {
             />
           </div>
           <span style={progressLabelStyle}>
-            {completionPercent}% complete ({stats.completed}/{stats.total})
+            {completionPercent}% complete ({taskStats.completed}/{taskStats.total})
           </span>
         </div>
 
@@ -66,8 +68,19 @@ export default function Home() {
 
         <div style={cardStyle}>
           <h3 style={titleStyle}>💰 Bill Summary</h3>
-          <p style={textStyle}>1 unpaid bill: Internet $45 (Alex).</p>
-          <p style={textStyle}>Groceries settled yesterday.</p>
+          {billStats.unpaid > 0 ? (
+            bills
+              .filter(bill => bill.status === "unpaid")
+              .slice(0, 2)
+              .map((bill, index) => (
+                <p key={bill.id} style={textStyle}>
+                  {bill.title}: ${(bill.amount / bill.splitBetween.length).toFixed(2)} (your share)
+                  {index === 0 && billStats.unpaid > 2 && ` + ${billStats.unpaid - 2} more`}
+                </p>
+              ))
+          ) : (
+            <p style={textStyle}>All bills are settled! 🎉</p>
+          )}
         </div>
       </section>
 

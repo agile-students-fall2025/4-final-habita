@@ -1,10 +1,11 @@
 import Navbar from "./Navbar";
 import { Outlet, Link } from "react-router-dom";
 import { useTasks } from "../context/TasksContext";
+import { useBills } from "../context/BillsContext";
 
 function Dashboard({ children }) {
   const { tasks } = useTasks();
-  const unpaidBills = 3;
+  const { stats } = useBills();
 
   const myTasks = tasks.filter((task) =>
     Array.isArray(task.assignees)
@@ -64,7 +65,7 @@ function Dashboard({ children }) {
           color: "var(--habita-text)",
         }}
       >
-        🧹 {openForMe} of your tasks open ・ 💰 {unpaidBills} unpaid bills
+        🧹 {openForMe} of your tasks open ・ 💰 {stats.unpaid} unpaid bills
       </div>
       <div style={{ flex: 1, overflowY: "auto" }}>{children || <Outlet />}</div>
       <Navbar />
