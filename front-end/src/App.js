@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
 import { TasksProvider } from "./context/TasksContext";
 import { UserProvider } from "./context/UserContext";
+import { BillsProvider } from "./context/BillsContext";
 
 function App() {
   return (
@@ -23,7 +24,9 @@ function App() {
           element={
             <UserProvider>
               <TasksProvider>
-                <Dashboard />
+                <BillsProvider>
+                  <Dashboard />
+                </BillsProvider>
               </TasksProvider>
             </UserProvider>
           }

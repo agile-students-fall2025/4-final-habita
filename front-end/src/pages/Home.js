@@ -2,10 +2,12 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import MoodTracker from "../components/MoodTracker";
 import { useTasks } from "../context/TasksContext";
+import { useBills } from "../context/BillsContext";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { tasks, stats } = useTasks();
+  const { tasks, stats: taskStats } = useTasks();
+  const { bills, stats: billStats } = useBills();
 
   const upcomingTasks = useMemo(() => {
     const compareValue = (task) => {
@@ -18,8 +20,15 @@ export default function Home() {
       .slice(0, 3);
   }, [tasks]);
 
-  const completionPercent = stats.total
-    ? Math.round((stats.completed / stats.total) * 100)
+  const unpaidBills = useMemo(
+    () => bills.filter((bill) => bill.status === "unpaid"),
+    [bills]
+  );
+
+  const topUnpaidBills = unpaidBills.slice(0, 2);
+
+  const completionPercent = taskStats.total
+    ? Math.round((taskStats.completed / taskStats.total) * 100)
     : 0;
 
   return (
@@ -28,8 +37,8 @@ export default function Home() {
         <header style={heroStyle}>
           <h2 style={heroTitleStyle}>Today at a Glance</h2>
           <p style={heroSubtitleStyle}>
-            {stats.pending} tasks open • {stats.mine} for you •{" "}
-            {upcomingTasks.length} due soon
+            {taskStats.pending} tasks open • {taskStats.mine} assigned to you •{" "}
+            {billStats.unpaid} bills unpaid
           </p>
         </header>
 
@@ -37,7 +46,9 @@ export default function Home() {
           <div style={{ ...cardStyle, gap: "0.75rem" }}>
             <div>
               <h3 style={titleStyle}>📋 Tasks Overview</h3>
-              <p style={textStyle}>{stats.pending} tasks still open.</p>
+              <p style={textStyle}>
+                {taskStats.pending} in progress • {taskStats.completed} done
+              </p>
               <div style={progressTrackStyle}>
                 <div
                   style={{
@@ -47,7 +58,8 @@ export default function Home() {
                 />
               </div>
               <span style={progressLabelStyle}>
-                {completionPercent}% complete ({stats.completed}/{stats.total})
+                {completionPercent}% complete ({taskStats.completed}/
+                {taskStats.total})
               </span>
             </div>
             <div style={cardDividerStyle} />
@@ -71,9 +83,38 @@ export default function Home() {
           </div>
 
           <div style={cardStyle}>
-            <h3 style={titleStyle}>💰 Bill Summary</h3>
-            <p style={textStyle}>1 unpaid bill: Internet $45 (Alex).</p>
-            <p style={textStyle}>Groceries settled yesterday.</p>
+            <h3 style={titleStyle}>💰 Bills Overview</h3>
+            {billStats.unpaid > 0 ? (
+              <>
+                <p style={textStyle}>
+                  {billStats.unpaid} unpaid • {billStats.paid} paid
+                </p>
+                <div style={cardDividerStyle} />
+                <p style={cardSubheadingStyle}>Next up</p>
+                <ul style={billListStyle}>
+                  {topUnpaidBills.map((bill) => {
+                    const share = bill.splitBetween?.length
+                      ? bill.amount / bill.splitBetween.length
+                      : bill.amount;
+                    return (
+                      <li key={bill.id} style={billListItemStyle}>
+                        <span>{bill.title}</span>
+                        <span style={billMetaStyle}>
+                          {formatDueLabel(bill.dueDate)} • ${share.toFixed(2)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {billStats.unpaid > topUnpaidBills.length && (
+                  <span style={billMetaStyle}>
+                    + {billStats.unpaid - topUnpaidBills.length} more waiting
+                  </span>
+                )}
+              </>
+            ) : (
+              <p style={textStyle}>All bills are settled! 🎉</p>
+            )}
           </div>
         </section>
 
@@ -216,6 +257,27 @@ const taskListItemStyle = {
 };
 
 const taskListMetaStyle = {
+  fontSize: "0.75rem",
+  color: "var(--habita-muted)",
+};
+
+const billListStyle = {
+  listStyle: "none",
+  padding: 0,
+  margin: "0.4rem 0 0",
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.35rem",
+};
+
+const billListItemStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  fontSize: "0.85rem",
+  color: "var(--habita-text)",
+};
+
+const billMetaStyle = {
   fontSize: "0.75rem",
   color: "var(--habita-muted)",
 };
