@@ -23,75 +23,80 @@ export default function Home() {
     : 0;
 
   return (
-    <div
-      style={{
-        padding: "1.5rem",
-        backgroundColor: "var(--habita-bg)",
-        minHeight: "100vh",
-      }}
-    >
-      <MoodTracker />
-      <section style={summaryGridStyle}>
-        <div style={cardStyle}>
-          <h3 style={titleStyle}>📋 Task Summary</h3>
-          <p style={textStyle}>{stats.pending} tasks still open.</p>
-          <div style={progressTrackStyle}>
-            <div
-              style={{
-                ...progressFillStyle,
-                width: `${completionPercent}%`,
-              }}
-            />
+    <div style={pageStyle}>
+      <div style={contentStyle}>
+        <header style={heroStyle}>
+          <h2 style={heroTitleStyle}>Today at a Glance</h2>
+          <p style={heroSubtitleStyle}>
+            {stats.pending} tasks open • {stats.mine} for you •{" "}
+            {upcomingTasks.length} due soon
+          </p>
+        </header>
+
+        <section style={summaryGridStyle}>
+          <div style={{ ...cardStyle, gap: "0.75rem" }}>
+            <div>
+              <h3 style={titleStyle}>📋 Tasks Overview</h3>
+              <p style={textStyle}>{stats.pending} tasks still open.</p>
+              <div style={progressTrackStyle}>
+                <div
+                  style={{
+                    ...progressFillStyle,
+                    width: `${completionPercent}%`,
+                  }}
+                />
+              </div>
+              <span style={progressLabelStyle}>
+                {completionPercent}% complete ({stats.completed}/{stats.total})
+              </span>
+            </div>
+            <div style={cardDividerStyle} />
+            <div>
+              <p style={cardSubheadingStyle}>🗓️ Upcoming</p>
+              {upcomingTasks.length === 0 ? (
+                <p style={textStyle}>Everything is wrapped up. 🎉</p>
+              ) : (
+                <ul style={taskListStyle}>
+                  {upcomingTasks.map((task) => (
+                    <li key={task.id} style={taskListItemStyle}>
+                      <span>{task.title}</span>
+                      <span style={taskListMetaStyle}>
+                        {formatDueLabel(task.due)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
-          <span style={progressLabelStyle}>
-            {completionPercent}% complete ({stats.completed}/{stats.total})
-          </span>
-        </div>
 
-        <div style={cardStyle}>
-          <h3 style={titleStyle}>🗓️ Upcoming Tasks</h3>
-          {upcomingTasks.length === 0 ? (
-            <p style={textStyle}>Everything is wrapped up. 🎉</p>
-          ) : (
-            <ul style={taskListStyle}>
-              {upcomingTasks.map((task) => (
-                <li key={task.id} style={taskListItemStyle}>
-                  <span>{task.title}</span>
-                  <span style={taskListMetaStyle}>{formatDueLabel(task.due)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+          <div style={cardStyle}>
+            <h3 style={titleStyle}>💰 Bill Summary</h3>
+            <p style={textStyle}>1 unpaid bill: Internet $45 (Alex).</p>
+            <p style={textStyle}>Groceries settled yesterday.</p>
+          </div>
+        </section>
 
-        <div style={cardStyle}>
-          <h3 style={titleStyle}>💰 Bill Summary</h3>
-          <p style={textStyle}>1 unpaid bill: Internet $45 (Alex).</p>
-          <p style={textStyle}>Groceries settled yesterday.</p>
-        </div>
-      </section>
-
-      <h4 style={{ color: "var(--habita-muted)", marginBottom: "1rem" }}>Quick Actions</h4>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "1rem",
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          style={buttonStyle}
-          onClick={() => navigate("/tasks", { state: { openForm: true } })}
-        >
-          + Add Task
-        </button>
-        <button
-          style={buttonStyle}
-          onClick={() => navigate("/bills")}
-        >
-          + Add Bill
-        </button>
+        <section style={secondaryGridStyle}>
+          <MoodTracker variant="compact" />
+          <div style={{ ...cardStyle, ...quickActionsCardStyle }}>
+            <h3 style={titleStyle}>⚡ Quick Actions</h3>
+            <div style={quickActionButtonsStyle}>
+              <button
+                style={buttonStyle}
+                onClick={() => navigate("/tasks", { state: { openForm: true } })}
+              >
+                + Add Task
+              </button>
+              <button
+                style={buttonStyle}
+                onClick={() => navigate("/bills")}
+              >
+                + Add Bill
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -103,14 +108,65 @@ const cardStyle = {
   boxShadow: "var(--habita-shadow)",
   padding: "1rem 1.2rem",
   textAlign: "left",
-}; 
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.4rem",
+};
+
+const cardDividerStyle = {
+  width: "100%",
+  height: "1px",
+  backgroundColor: "var(--habita-border)",
+};
+
+const pageStyle = {
+  padding: "1.25rem",
+  backgroundColor: "var(--habita-bg)",
+  minHeight: "100vh",
+};
+
+const contentStyle = {
+  maxWidth: "720px",
+  margin: "0 auto",
+  display: "flex",
+  flexDirection: "column",
+  gap: "1.5rem",
+};
+
+const heroStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.35rem",
+  color: "var(--habita-text)",
+};
+
+const heroTitleStyle = {
+  margin: 0,
+  fontSize: "1.35rem",
+  fontWeight: 600,
+};
+
+const heroSubtitleStyle = {
+  margin: 0,
+  fontSize: "0.9rem",
+  color: "var(--habita-muted)",
+};
 
 const summaryGridStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
   gap: "1rem",
-  marginTop: "1.5rem",
-  marginBottom: "2rem",
+};
+
+const secondaryGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "1rem",
+};
+
+const quickActionsCardStyle = {
+  justifyContent: "space-between",
+  gap: "0.75rem",
 };
 
 const titleStyle = {
@@ -123,6 +179,13 @@ const textStyle = {
   margin: 0,
   fontSize: "0.9rem",
   color: "var(--habita-muted)",
+};
+
+const cardSubheadingStyle = {
+  margin: "0 0 0.35rem 0",
+  fontSize: "0.85rem",
+  fontWeight: 600,
+  color: "var(--habita-text)",
 };
 
 const formatDueLabel = (value) => {
@@ -180,6 +243,12 @@ const progressLabelStyle = {
   fontWeight: 600,
 };
 
+const quickActionButtonsStyle = {
+  display: "flex",
+  gap: "0.6rem",
+  flexWrap: "wrap",
+};
+
 const buttonStyle = {
   backgroundColor: "var(--habita-accent)",
   color: "var(--habita-button-text)",
@@ -189,4 +258,5 @@ const buttonStyle = {
   cursor: "pointer",
   fontWeight: "500",
   boxShadow: "var(--habita-shadow)",
+  flex: "1 1 140px",
 };
