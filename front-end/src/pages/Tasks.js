@@ -13,16 +13,20 @@ const filterOptions = [
 ];
 
 const statusDisplay = {
-  pending: { label: "Pending", fg: "#1f75d0", bg: "rgba(74,144,226,0.12)" },
+  pending: {
+    label: "Pending",
+    fg: "#2563eb",
+    bg: "rgba(37, 99, 235, 0.16)",
+  },
   "in-progress": {
     label: "In Progress",
-    fg: "#b07900",
-    bg: "rgba(255,169,0,0.15)",
+    fg: "#3f9da5",
+    bg: "rgba(63, 157, 165, 0.18)",
   },
   completed: {
     label: "Completed",
-    fg: "#389e0d",
-    bg: "rgba(88,204,2,0.18)",
+    fg: "#1e3a8a",
+    bg: "rgba(30, 58, 138, 0.16)",
   },
 };
 
@@ -62,19 +66,28 @@ export default function Tasks() {
   }, [location.state, navigate]);
 
   const filteredTasks = useMemo(() => {
-    let base =
+    const byFilter =
       filter === "all"
         ? tasks
         : tasks.filter((task) => task.status === filter);
-    if (showMineOnly) {
-      base = base.filter(
-        (task) =>
-          (Array.isArray(task.assignees) &&
-            task.assignees.some((person) => person === "You")) ||
-          task.assignees === "You"
-      );
-    }
-    return base;
+
+    const mineOnly = showMineOnly
+      ? byFilter.filter(
+          (task) =>
+            (Array.isArray(task.assignees) &&
+              task.assignees.some((person) => person === "You")) ||
+            task.assignees === "You"
+        )
+      : byFilter;
+
+    const dueValue = (value) => {
+      const parsed = Date.parse(value);
+      return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
+    };
+
+    return [...mineOnly].sort(
+      (a, b) => dueValue(a.due) - dueValue(b.due)
+    );
   }, [tasks, filter, showMineOnly]);
 
   const helperText =

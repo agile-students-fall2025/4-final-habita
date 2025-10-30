@@ -43,12 +43,22 @@ export default function Home() {
         </header>
 
         <section style={summaryGridStyle}>
-          <div style={{ ...cardStyle, gap: "0.75rem" }}>
-            <div>
+          <div style={{ ...cardStyle, gap: "1rem" }}>
+            <div style={cardHeaderRowStyle}>
               <h3 style={titleStyle}>📋 Tasks Overview</h3>
-              <p style={textStyle}>
-                {taskStats.pending} in progress • {taskStats.completed} done
-              </p>
+              <span style={cardBadgeStyle}>{taskStats.total} total</span>
+            </div>
+            <div style={cardMetricsRowStyle}>
+              <span style={cardMetricStyle}>
+                <strong>{taskStats.pending}</strong>
+                <span>in progress</span>
+              </span>
+              <span style={cardMetricStyle}>
+                <strong>{taskStats.completed}</strong>
+                <span>completed</span>
+              </span>
+            </div>
+            <div>
               <div style={progressTrackStyle}>
                 <div
                   style={{
@@ -82,35 +92,47 @@ export default function Home() {
             </div>
           </div>
 
-          <div style={cardStyle}>
-            <h3 style={titleStyle}>💰 Bills Overview</h3>
+          <div style={{ ...cardStyle, gap: "1rem" }}>
+            <div style={cardHeaderRowStyle}>
+              <h3 style={titleStyle}>💰 Bills Overview</h3>
+              <span style={cardBadgeStyle}>{billStats.total} total</span>
+            </div>
+            <div style={cardMetricsRowStyle}>
+              <span style={cardMetricStyle}>
+                <strong>{billStats.unpaid}</strong>
+                <span>unpaid</span>
+              </span>
+              <span style={cardMetricStyle}>
+                <strong>{billStats.paid}</strong>
+                <span>paid</span>
+              </span>
+            </div>
             {billStats.unpaid > 0 ? (
               <>
-                <p style={textStyle}>
-                  {billStats.unpaid} unpaid • {billStats.paid} paid
-                </p>
                 <div style={cardDividerStyle} />
-                <p style={cardSubheadingStyle}>Next up</p>
-                <ul style={billListStyle}>
-                  {topUnpaidBills.map((bill) => {
-                    const share = bill.splitBetween?.length
-                      ? bill.amount / bill.splitBetween.length
-                      : bill.amount;
-                    return (
-                      <li key={bill.id} style={billListItemStyle}>
-                        <span>{bill.title}</span>
-                        <span style={billMetaStyle}>
-                          {formatDueLabel(bill.dueDate)} • ${share.toFixed(2)}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-                {billStats.unpaid > topUnpaidBills.length && (
-                  <span style={billMetaStyle}>
-                    + {billStats.unpaid - topUnpaidBills.length} more waiting
-                  </span>
-                )}
+                <div>
+                  <p style={cardSubheadingStyle}>📆 Coming due</p>
+                  <ul style={billListStyle}>
+                    {topUnpaidBills.map((bill) => {
+                      const share = bill.splitBetween?.length
+                        ? bill.amount / bill.splitBetween.length
+                        : bill.amount;
+                      return (
+                        <li key={bill.id} style={billListItemStyle}>
+                          <span>{bill.title}</span>
+                          <span style={billMetaStyle}>
+                            {formatDueLabel(bill.dueDate)} • ${share.toFixed(2)}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {billStats.unpaid > topUnpaidBills.length && (
+                    <span style={billMetaStyle}>
+                      + {billStats.unpaid - topUnpaidBills.length} more waiting
+                    </span>
+                  )}
+                </div>
               </>
             ) : (
               <p style={textStyle}>All bills are settled! 🎉</p>
@@ -152,6 +174,22 @@ const cardStyle = {
   display: "flex",
   flexDirection: "column",
   gap: "0.4rem",
+};
+
+const cardHeaderRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "0.5rem",
+};
+
+const cardBadgeStyle = {
+  padding: "0.15rem 0.6rem",
+  borderRadius: "999px",
+  backgroundColor: "var(--habita-chip)",
+  color: "var(--habita-muted)",
+  fontSize: "0.75rem",
+  fontWeight: 600,
 };
 
 const cardDividerStyle = {
@@ -227,6 +265,24 @@ const cardSubheadingStyle = {
   fontSize: "0.85rem",
   fontWeight: 600,
   color: "var(--habita-text)",
+};
+
+const cardMetricsRowStyle = {
+  display: "flex",
+  gap: "0.6rem",
+  flexWrap: "wrap",
+};
+
+const cardMetricStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.1rem",
+  backgroundColor: "var(--habita-chip)",
+  borderRadius: "8px",
+  padding: "0.4rem 0.6rem",
+  color: "var(--habita-text)",
+  fontSize: "0.75rem",
+  minWidth: "96px",
 };
 
 const formatDueLabel = (value) => {
