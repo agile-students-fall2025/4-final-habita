@@ -42,7 +42,8 @@ function Dashboard({ children }) {
             Habita
           </Link>
         </h2>
-        <button
+        <Link
+          to="/notifications"
           style={{
             border: "none",
             background: "var(--habita-card)",
@@ -51,10 +52,13 @@ function Dashboard({ children }) {
             padding: "0.5rem 0.6rem",
             cursor: "pointer",
             color: "var(--habita-text)",
+            textDecoration: "none",
+            display: "inline-block",
           }}
+          aria-label="Open notifications"
         >
           🔔
-        </button>
+        </Link>
       </header>
       <div
         style={{

@@ -8,6 +8,7 @@ import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
+import Notifications from "./pages/Notifications";
 import { TasksProvider } from "./context/TasksContext";
 import { UserProvider } from "./context/UserContext";
 import { BillsProvider } from "./context/BillsContext";
@@ -37,6 +38,7 @@ function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/edit" element={<EditProfile />} />
+          <Route path="/notifications" element={<Notifications />} />
         </Route>
       </Routes>
     </Router>
