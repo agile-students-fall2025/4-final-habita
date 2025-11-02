@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTasks } from "../context/TasksContext";
 
@@ -48,22 +48,48 @@ export default function Tasks() {
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({
-    title: "",
-    due: todayISO,
-    assignees: ["You"],
-  });
+  const createDefaultForm = useCallback(
+    () => ({
+      title: "",
+      due: todayISO,
+      assignees: ["You"],
+    }),
+    [todayISO]
+  );
+  const [form, setForm] = useState(() => createDefaultForm());
   const [editDraft, setEditDraft] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
   const listTopRef = useRef(null);
 
   useEffect(() => {
-    if (location.state?.openForm) {
+    if (!location.state) {
+      return;
+    }
+    const { openForm, filter: targetFilter, mineOnly } = location.state;
+    let shouldReplace = false;
+
+    if (openForm) {
       setShowForm(true);
+      setEditingId(null);
+      setForm(createDefaultForm());
+      shouldReplace = true;
+    }
+
+    if (targetFilter) {
+      setFilter(targetFilter);
+      shouldReplace = true;
+    }
+
+    if (typeof mineOnly === "boolean") {
+      setShowMineOnly(mineOnly);
+      shouldReplace = true;
+    }
+
+    if (shouldReplace) {
       navigate("/tasks", { replace: true });
     }
-  }, [location.state, navigate]);
+  }, [location.state, navigate, createDefaultForm]);
 
   const filteredTasks = useMemo(() => {
     const byFilter =
@@ -110,7 +136,7 @@ export default function Tasks() {
     } else {
       addTask({ id: Date.now(), status: "pending", ...payload });
     }
-    setForm({ title: "", due: todayISO, assignees: ["You"] });
+    setForm(createDefaultForm());
     setEditingId(null);
     setEditDraft(null);
     setShowForm(false);
@@ -173,7 +199,7 @@ export default function Tasks() {
           onClick={() => {
             setShowForm(true);
             setEditingId(null);
-            setForm({ title: "", due: todayISO, assignees: ["You"] });
+            setForm(createDefaultForm());
           }}
         >
           +
@@ -192,7 +218,7 @@ export default function Tasks() {
               onClick={() => {
                 setShowForm(false);
                 setEditingId(null);
-                setForm({ title: "", due: todayISO, assignees: ["You"] });
+                setForm(createDefaultForm());
               }}
             >
               Cancel

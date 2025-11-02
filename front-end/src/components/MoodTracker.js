@@ -43,7 +43,7 @@ const moodAccentStyles = {
   Sad: { bg: "rgba(245,166,35,0.25)", fg: "#a87012" },
   Frustrated: { bg: "rgba(208,2,27,0.22)", fg: "#a30012" },
 };
-export default function MoodTracker({ variant = "default" }) {
+export default function MoodTracker({ variant = "default", onMoodChange }) {
   const isCompact = variant === "compact";
   const [mood, setMood] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
@@ -100,8 +100,15 @@ export default function MoodTracker({ variant = "default" }) {
     }
   }, [todayKey]);
 
+  useEffect(() => {
+    if (typeof onMoodChange === "function") {
+      onMoodChange(mood);
+    }
+  }, [mood, onMoodChange]);
+
   const handleSelectMood = (selectedMood) => {
     setMood(selectedMood);
+    setIsLocked(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         STORAGE_KEY,
@@ -115,6 +122,9 @@ export default function MoodTracker({ variant = "default" }) {
     setMood(null);
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
+    }
+    if (typeof onMoodChange === "function") {
+      onMoodChange(null);
     }
   };
 
@@ -225,7 +235,16 @@ export default function MoodTracker({ variant = "default" }) {
             </div>
           </div>
           {isLocked && (
-            <p style={editHint}>Double-click to change your mood selection.</p>
+            <button
+              type="button"
+              style={{
+                ...changeMoodButtonStyle,
+                marginTop: isCompact ? "0.45rem" : changeMoodButtonStyle.marginTop,
+              }}
+              onClick={handleUnlock}
+            >
+              Change mood
+            </button>
           )}
         </div>
       )}
@@ -362,11 +381,16 @@ const encouragementText = {
   color: "var(--habita-muted)",
 };
 
-const editHint = {
-  margin: "0.5rem 0 0",
-  fontSize: "0.72rem",
-  color: "var(--habita-muted)",
-  fontStyle: "italic",
+const changeMoodButtonStyle = {
+  marginTop: "0.6rem",
+  background: "transparent",
+  border: "none",
+  color: "var(--habita-accent)",
+  fontSize: "0.8rem",
+  fontWeight: 600,
+  cursor: "pointer",
+  textDecoration: "underline",
+  alignSelf: "flex-start",
 };
 
 const statsWrapper = {
