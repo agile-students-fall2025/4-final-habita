@@ -1,0 +1,20 @@
+{
+  "name": "4-final-habita",
+  "version": "1.0.0",
+  "description": "**Habita** is an AI-assisted roommate management app designed to make shared living simpler, more organized, and more connected.   It helps roommates manage **tasks**, **bills**, and **communication** all in one place, reducing daily friction and improving collaboration at home.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agile-students-fall2025/4-final-habita.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/agile-students-fall2025/4-final-habita/issues"
+  },
+  "homepage": "https://github.com/agile-students-fall2025/4-final-habita#readme"
+}
