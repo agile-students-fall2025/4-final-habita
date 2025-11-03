@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useBills } from "../context/BillsContext";
+import ChatThread from "../components/ChatThread";
+
 
 const filterOptions = [
   { id: "all", label: "All" },
@@ -34,6 +36,7 @@ export default function Bills() {
   const location = useLocation();
   const navigate = useNavigate();
   const { bills, addBill, updateBillStatus, togglePayment, updateBill, stats } = useBills();
+  const [chatOpen, setChatOpen] = useState(null);
   const [editingBill, setEditingBill] = useState(null);
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
@@ -557,6 +560,17 @@ export default function Bills() {
                     >
                       {statusDisplay[bill.status].label}
                     </button>
+                    <button
+                      onClick={() => setChatOpen(bill.id)}
+                      style={{
+                        ...editButtonStyle,
+                        background: "var(--habita-chip)",
+                        color: "var(--habita-accent)",
+                      }}
+                    >
+                      Chat 💬
+                    </button>
+
                   </div>
                 </div>
                 
@@ -663,6 +677,42 @@ export default function Bills() {
           })
         )}
       </div>
+
+      {chatOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.4)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 999,
+        }}>
+          <div style={{
+            background: "var(--habita-bg)",
+            borderRadius: "16px",
+            padding: "1rem",
+            width: "90%",
+            maxWidth: "480px",
+            height: "70%",
+            display: "flex",
+            flexDirection: "column",
+          }}>
+            <button
+              onClick={() => setChatOpen(null)}
+              style={{ alignSelf: "flex-end", border: "none", background: "transparent", fontSize: "1.5rem", cursor: "pointer" }}
+            >
+              ✕
+            </button>
+            <ChatThread
+              contextType="bill"
+              contextId={chatOpen}
+              title={`Bill Chat: ${bills.find((b) => b.id === chatOpen)?.title}`}
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

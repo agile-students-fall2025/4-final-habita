@@ -12,6 +12,8 @@ import Notifications from "./pages/Notifications";
 import { TasksProvider } from "./context/TasksContext";
 import { UserProvider } from "./context/UserContext";
 import { BillsProvider } from "./context/BillsContext";
+import { ChatProvider } from "./context/ChatContext";
+
 
 function App() {
   return (
@@ -24,11 +26,13 @@ function App() {
         <Route
           element={
             <UserProvider>
-              <TasksProvider>
-                <BillsProvider>
-                  <Dashboard />
-                </BillsProvider>
-              </TasksProvider>
+              <ChatProvider>
+                <TasksProvider>
+                  <BillsProvider>
+                    <Dashboard />
+                  </BillsProvider>
+                </TasksProvider>
+              </ChatProvider>
             </UserProvider>
           }
         >
