@@ -7,6 +7,19 @@ const roommateProfiles = {
   Jordan: { role: "Cleaning", fun: "Loves a spotless kitchen playlist." },
 };
 
+const mentionables = ["Alex", "Sam", "Jordan", "You"];
+
+function normalizeMentions(text) {
+  // replace @alex -> @Alex, @sam -> @Sam, etc. (case-insensitive)
+  return text.replace(/@(\w+)/g, (_match, raw) => {
+    const target = mentionables.find(
+      (n) => n.toLowerCase() === String(raw).toLowerCase()
+    );
+    return target ? `@${target}` : `@${raw}`;
+  });
+}
+
+
 const initialThreads = {
   house: {
     id: "house",
@@ -130,6 +143,9 @@ export default function Chat() {
   const [draft, setDraft] = useState("");
   const scrollRef = useRef(null);
   const [hoveredProfile, setHoveredProfile] = useState(null);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+
   const activeRoommates = useMemo(
     () =>
       activeThread.type === "group"
@@ -155,14 +171,15 @@ export default function Chat() {
 
   const sendMessage = (text) => {
     const trimmed = text.trim();
-    if (!trimmed) {
-      return;
-    }
+    if (!trimmed) return;
+
+    const normalized = normalizeMentions(trimmed); // ✅ normalize before storing
+
     const now = new Date();
     const userMessage = {
       id: Date.now(),
       sender: "You",
-      text: trimmed,
+      text: normalized,
       timestamp: formatTimestamp(now),
       isSelf: true,
     };
@@ -279,7 +296,35 @@ export default function Chat() {
               {!msg.isSelf && (
                 <span style={senderStyle}>{msg.sender}</span>
               )}
-              <p style={messageTextStyle}>{msg.text}</p>
+              <p style={messageTextStyle}>
+                {msg.text.split(/(@\w+)/g).map((part, i) => {
+                  if (part.startsWith("@")) {
+                    const raw = part.slice(1);
+                    const match = mentionables.find(
+                      (n) => n.toLowerCase() === raw.toLowerCase()
+                    );
+                    if (match) {
+                      return (
+                        <span
+                          key={i}
+                          style={{
+                            color: "var(--habita-accent)",
+                            fontWeight: 600,
+                            background: "rgba(74,144,226,0.15)",
+                            borderRadius: 6,
+                            padding: "0 3px",
+                          }}
+                        >
+                          @{match}
+                        </span>
+                      );
+                    }
+                  }
+                  return <span key={i}>{part}</span>;
+                })}
+              </p>
+
+
               <span
                 style={{
                   ...timestampStyle,
@@ -309,16 +354,70 @@ export default function Chat() {
           ))}
         </div>
         <form onSubmit={handleSubmit} style={formStyle}>
-          <input
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="Type a message..."
-            style={inputStyle}
-          />
+          <div style={{ position: "relative", flex: 1 }}>
+            <input
+              value={draft}
+              onChange={(event) => {
+                const value = event.target.value;
+                setDraft(value);
+
+                const match = value.match(/@(\w*)$/);
+                if (match) {
+                  setShowMentions(true);
+                  setMentionQuery(match[1].toLowerCase());
+                } else {
+                  setShowMentions(false);
+                }
+              }}
+              placeholder="Type a message..."
+              style={inputStyle}
+            />
+
+            {showMentions && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "110%",
+                  left: 0,
+                  right: 0,
+                  background: "var(--habita-card)",
+                  border: "1px solid var(--habita-border)",
+                  borderRadius: 8,
+                  boxShadow: "var(--habita-shadow)",
+                  padding: "0.3rem 0",
+                  zIndex: 10,
+                }}
+              >
+                {["Alex", "Sam", "Jordan"]
+                  .filter((name) =>
+                    name.toLowerCase().startsWith(mentionQuery || "")
+                  )
+                  .map((name) => (
+                    <div
+                      key={name}
+                      onClick={() => {
+                        setDraft((prev) =>
+                          prev.replace(/@\w*$/, `@${name} `)
+                        );
+                        setShowMentions(false);
+                      }}
+                      style={{
+                        padding: "0.4rem 0.6rem",
+                        cursor: "pointer",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      @{name}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
           <button type="submit" style={sendButtonStyle} disabled={!draft.trim()}>
             Send
           </button>
         </form>
+
       </div>
     </div>
   );
@@ -515,12 +614,26 @@ const inputStyle = {
   flex: 1,
   borderRadius: "999px",
   border: "1px solid var(--habita-border)",
-  padding: "0.5rem 0.9rem",
+  padding: "0.6rem 1.2rem",   
   fontSize: "0.9rem",
   outline: "none",
   background: "var(--habita-input)",
   color: "var(--habita-text)",
+  minWidth: "0",              
 };
+
+<style>
+  {`
+    input::placeholder {
+      color: var(--habita-muted);
+      opacity: 1;
+      font-size: 0.9rem;
+      white-space: normal;
+    }
+  `}
+</style>
+
+
 
 const sendButtonStyle = {
   backgroundColor: "var(--habita-accent)",

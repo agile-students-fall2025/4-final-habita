@@ -606,8 +606,10 @@ export default function Tasks() {
             <ChatThread
               contextType="task"
               contextId={chatOpen}
-              title={`Task Chat: ${tasks.find((t) => t.id === chatOpen)?.title}`}
+              title={`Task Chat: ${tasks.find(t => t.id === chatOpen)?.title}`}
+              participants={["Alex", "Sam", "Jordan", "You"]}
             />
+
           </div>
         </div>
       )}

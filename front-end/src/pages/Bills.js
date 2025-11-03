@@ -61,7 +61,7 @@ export default function Bills() {
       shouldReplace = true;
     }
 
-    if (shouldReplace) {
+    if (shouldReplace) { 
       navigate("/bills", { replace: true });
     }
   }, [location.state, navigate]);
@@ -707,7 +707,8 @@ export default function Bills() {
             <ChatThread
               contextType="bill"
               contextId={chatOpen}
-              title={`Bill Chat: ${bills.find((b) => b.id === chatOpen)?.title}`}
+              title={`Bill Chat: ${bills.find(b => b.id === chatOpen)?.title}`}
+              participants={["Alex", "Sam", "Jordan", "You"]}
             />
           </div>
         </div>
