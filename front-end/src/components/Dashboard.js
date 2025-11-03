@@ -30,7 +30,7 @@ function Dashboard({ children }) {
           alignItems: "center",
           backgroundColor: "var(--habita-card)",
           padding: "1rem 1.5rem",
-          boxShadow: "var(--habita-shadow)",
+          borderBottom: "1px solid var(--habita-border)",
           zIndex: 1,
         }}
       >
@@ -45,10 +45,9 @@ function Dashboard({ children }) {
         <Link
           to="/notifications"
           style={{
-            border: "none",
             background: "var(--habita-card)",
             borderRadius: "50%",
-            boxShadow: "var(--habita-shadow)",
+            border: "1px solid rgba(74,144,226,0.25)",
             padding: "0.5rem 0.6rem",
             cursor: "pointer",
             color: "var(--habita-text)",
@@ -69,7 +68,7 @@ function Dashboard({ children }) {
           color: "var(--habita-text)",
         }}
       >
-        🧹 {openForMe} tasks open ・ 💰 {stats.unpaid} unpaid bills
+        Tasks open: {openForMe} ・ Unpaid bills: {stats.unpaid}
       </div>
       <div style={{ flex: 1, overflowY: "auto" }}>{children || <Outlet />}</div>
       <Navbar />

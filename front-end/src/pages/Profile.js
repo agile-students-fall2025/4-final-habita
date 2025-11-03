@@ -254,11 +254,11 @@ const pageStyle = {
 const profileCardStyle = {
   background: "var(--habita-card)",
   borderRadius: "12px",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",
   display: "flex",
   flexDirection: "column",
   gap: "0.9rem",
-  boxShadow: "var(--habita-shadow)",
 };
 
 const profileHeaderStyle = {
@@ -300,21 +300,20 @@ const profileActionsStyle = {
 };
 
 const secondaryButtonStyle = {
-  border: "1px solid var(--habita-border)",
+  border: "1px solid rgba(74,144,226,0.3)",
   background: "var(--habita-card)",
   borderRadius: "8px",
   padding: "0.45rem 0.9rem",
   fontSize: "0.85rem",
   color: "var(--habita-text)",
   cursor: "pointer",
-  boxShadow: "var(--habita-shadow)",
 };
 
 const groupCardStyle = {
   background: "var(--habita-card)",
   borderRadius: "12px",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",
-  boxShadow: "var(--habita-shadow)",
   display: "flex",
   flexDirection: "column",
   gap: "0.8rem",
@@ -400,7 +399,7 @@ const tooltipStyle = {
   width: "180px",
   background: "var(--habita-card)",
   borderRadius: "10px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "0.6rem",
   display: "flex",
   flexDirection: "column",
@@ -426,8 +425,8 @@ const tooltipFunStyle = {
 const inviteCardStyle = {
   background: "var(--habita-card)",
   borderRadius: "12px",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",
-  boxShadow: "var(--habita-shadow)",
   display: "flex",
   flexDirection: "column",
   gap: "0.7rem",
@@ -458,8 +457,8 @@ const codeBadgeStyle = {
 const settingsCardStyle = {
   background: "var(--habita-card)",
   borderRadius: "12px",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",
-  boxShadow: "var(--habita-shadow)",
   display: "flex",
   flexDirection: "column",
   gap: "0.8rem",
@@ -520,7 +519,6 @@ const toggleKnobStyle = {
   borderRadius: "50%",
   background: "var(--habita-card)",
   transition: "transform 0.2s ease",
-  boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
 };
 
 const selectStyle = {
@@ -543,5 +541,4 @@ const logoutButtonStyle = {
   fontWeight: 600,
   cursor: "pointer",
   marginTop: "0.5rem",
-  boxShadow: "var(--habita-shadow)",
 };

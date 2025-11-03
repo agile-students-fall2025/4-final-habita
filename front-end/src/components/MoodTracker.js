@@ -70,12 +70,6 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
     0
   );
   const orderedMoods = [...moods].reverse();
-  const emojiSequence = orderedMoods.flatMap((m) =>
-    Array.from({ length: moodCounts[m.label] }, (_, index) => ({
-      emoji: m.emoji,
-      key: `${m.label}-${index}`,
-    }))
-  );
   const encouragement = mood ? encouragements[mood.label] : null;
 
   useEffect(() => {
@@ -268,18 +262,6 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
               }}
             >
               <p style={statsTitle}>Household mood snapshot</p>
-              {emojiSequence.length > 0 && (
-                <div style={emojiBarWrapper}>
-                  <div style={emojiBarRow}>
-                    {emojiSequence.map((item) => (
-                      <span key={item.key} style={emojiIcon}>
-                        {item.emoji}
-                      </span>
-                    ))}
-                  </div>
-                  <p style={emojiBarHint}>One emoji per person today.</p>
-                </div>
-              )}
               {orderedMoods.map((m) => {
                 const count = moodCounts[m.label];
                 const percent = totalCount
@@ -323,7 +305,7 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
 const cardStyle = {
   backgroundColor: "var(--habita-card)",
   borderRadius: "12px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "0.85rem 1rem",
   textAlign: "center",
 };
@@ -424,28 +406,6 @@ const toggleStatsButtonStyle = {
   cursor: "pointer",
   padding: 0,
   textAlign: "left",
-};
-
-const emojiBarWrapper = {
-  marginBottom: "0.7rem",
-};
-
-const emojiBarRow = {
-  display: "flex",
-  gap: "0.35rem",
-  flexWrap: "wrap",
-  justifyContent: "center",
-};
-
-const emojiIcon = {
-  fontSize: "1.2rem",
-};
-
-const emojiBarHint = {
-  marginTop: "0.3rem",
-  fontSize: "0.7rem",
-  color: "var(--habita-muted)",
-  textAlign: "center",
 };
 
 const barRow = {

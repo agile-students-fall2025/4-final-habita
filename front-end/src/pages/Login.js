@@ -13,71 +13,146 @@ export default function Login() {
   );
 
   return (
-    <div style={container}>
-      <h2 style={title}>Welcome Back 👋</h2>
-      <p style={subtitle}>Sign in to continue to Habita</p>
+    <div style={pageStyle}>
+      <div style={cardStyle}>
+        <div style={headerBlockStyle}>
+          <span style={eyebrowStyle}>Welcome back</span>
+          <h2 style={titleStyle}>Sign in to Habita</h2>
+          <p style={subtitleStyle}>
+            Keep up with shared tasks, bills, and roommate chats in one spot.
+          </p>
+        </div>
 
-      <form style={form} onSubmit={handleSubmit}>
-        <input style={input} type="email" placeholder="Email" required />
-        <input style={input} type="password" placeholder="Password" required />
-        <button style={button} type="submit">
-          Login
-        </button>
-      </form>
+        <form style={formStyle} onSubmit={handleSubmit}>
+          <label style={fieldStyle}>
+            <span style={labelStyle}>Email</span>
+            <input style={inputStyle} type="email" placeholder="you@example.com" required />
+          </label>
+          <label style={fieldStyle}>
+            <span style={labelStyle}>Password</span>
+            <input style={inputStyle} type="password" placeholder="••••••••" required />
+          </label>
+          <button style={submitButtonStyle} type="submit">
+            Log In
+          </button>
+        </form>
 
-      <p style={footerText}>
-        Don’t have an account?{" "}
-        <Link to="/register" style={link}>
-          Register
-        </Link>
-      </p>
+        <div style={footerRowStyle}>
+          <span style={footerTextStyle}>New to Habita?</span>
+          <Link to="/register" style={footerLinkStyle}>
+            Create an account
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
 
-const container = {
-  maxWidth: "360px",
-  margin: "5rem auto",
-  textAlign: "center",
-  background: "var(--habita-card)",
+const pageStyle = {
+  minHeight: "100vh",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
   padding: "2rem",
-  borderRadius: "16px",
-  boxShadow: "var(--habita-shadow)",
+  background: "var(--habita-bg)",
+};
+
+const cardStyle = {
+  width: "100%",
+  maxWidth: "420px",
+  background: "var(--habita-card)",
+  borderRadius: "18px",
+  border: "1px solid rgba(74,144,226,0.25)",
+  padding: "2.5rem",
+  color: "var(--habita-text)",
+  display: "flex",
+  flexDirection: "column",
+  gap: "1.75rem",
+  boxSizing: "border-box",
+};
+
+const headerBlockStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.5rem",
+};
+
+const eyebrowStyle = {
+  fontSize: "0.75rem",
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "var(--habita-accent)",
+};
+
+const titleStyle = {
+  margin: 0,
+  fontSize: "1.8rem",
+  fontWeight: 600,
   color: "var(--habita-text)",
 };
 
-const title = { marginBottom: "0.3rem", color: "var(--habita-text)" };
-const subtitle = {
-  marginBottom: "1.5rem",
+const subtitleStyle = {
+  margin: 0,
+  fontSize: "0.95rem",
   color: "var(--habita-muted)",
-  fontSize: "0.9rem",
+  lineHeight: 1.5,
 };
-const form = { display: "flex", flexDirection: "column", gap: "1rem" };
-const input = {
-  padding: "0.8rem",
-  borderRadius: "8px",
+
+const formStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "1.1rem",
+};
+
+const fieldStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.4rem",
+  textAlign: "left",
+};
+
+const labelStyle = {
+  fontSize: "0.8rem",
+  fontWeight: 600,
+  color: "var(--habita-muted)",
+};
+
+const inputStyle = {
+  padding: "0.85rem 1rem",
+  borderRadius: "10px",
   border: "1px solid var(--habita-border)",
-  fontSize: "1rem",
+  fontSize: "0.95rem",
   background: "var(--habita-input)",
   color: "var(--habita-text)",
+  outline: "none",
 };
-const button = {
+
+const submitButtonStyle = {
+  marginTop: "0.2rem",
   backgroundColor: "var(--habita-accent)",
   color: "var(--habita-button-text)",
   border: "none",
-  borderRadius: "8px",
-  padding: "0.8rem",
+  borderRadius: "999px",
+  padding: "0.85rem 1.2rem",
+  fontSize: "0.95rem",
+  fontWeight: 600,
   cursor: "pointer",
-  fontWeight: "500",
-  boxShadow: "var(--habita-shadow)",
 };
-const footerText = {
-  marginTop: "1rem",
-  fontSize: "0.85rem",
+
+const footerRowStyle = {
+  display: "flex",
+  justifyContent: "center",
+  gap: "0.35rem",
+  fontSize: "0.9rem",
+};
+
+const footerTextStyle = {
   color: "var(--habita-muted)",
 };
-const link = {
+
+const footerLinkStyle = {
   color: "var(--habita-accent)",
+  fontWeight: 600,
   textDecoration: "none",
-  fontWeight: "500",
 };

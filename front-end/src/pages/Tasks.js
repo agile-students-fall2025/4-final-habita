@@ -51,6 +51,7 @@ export default function Tasks() {
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [dueFilter, setDueFilter] = useState(null);
   const [chatOpen, setChatOpen] = useState(null);
   const createDefaultForm = useCallback(
     () => ({
@@ -70,7 +71,13 @@ export default function Tasks() {
     if (!location.state) {
       return;
     }
-    const { openForm, filter: targetFilter, mineOnly } = location.state;
+    const {
+      openForm,
+      filter: targetFilter,
+      mineOnly,
+      dueFilter: targetDueFilter,
+      date: targetDate,
+    } = location.state;
     let shouldReplace = false;
 
     if (openForm) {
@@ -90,6 +97,17 @@ export default function Tasks() {
       shouldReplace = true;
     }
 
+    if (targetDueFilter || targetDate) {
+      if (targetDueFilter === "date" && targetDate) {
+        setDueFilter({ type: "date", value: targetDate.slice(0, 10) });
+      } else if (targetDueFilter) {
+        setDueFilter(targetDueFilter);
+      } else if (targetDate) {
+        setDueFilter({ type: "date", value: targetDate.slice(0, 10) });
+      }
+      shouldReplace = true;
+    }
+
     if (shouldReplace) {
       navigate("/tasks", { replace: true });
     }
@@ -101,7 +119,7 @@ export default function Tasks() {
         ? tasks
         : tasks.filter((task) => task.status === filter);
 
-    const mineOnly = showMineOnly
+    const mineOnlyList = showMineOnly
       ? byFilter.filter(
           (task) =>
             (Array.isArray(task.assignees) &&
@@ -110,15 +128,43 @@ export default function Tasks() {
         )
       : byFilter;
 
+    const applyDueFilter = (list) => {
+      if (!dueFilter) {
+        return list;
+      }
+      if (typeof dueFilter === "object" && dueFilter.type === "date") {
+        const target = dueFilter.value.slice(0, 10);
+        return list.filter((task) =>
+          typeof task?.due === "string" && task.due.slice(0, 10) === target
+        );
+      }
+      if (dueFilter === "due-today") {
+        return list.filter(
+          (task) =>
+            typeof task?.due === "string" && task.due.slice(0, 10) === todayISO
+        );
+      }
+      if (dueFilter === "overdue") {
+        const todayValue = Date.parse(todayISO);
+        return list.filter((task) => {
+          const parsed = Date.parse(task.due);
+          return !Number.isNaN(parsed) && parsed < todayValue;
+        });
+      }
+      return list;
+    };
+
+    const withDueApplied = applyDueFilter(mineOnlyList);
+
     const dueValue = (value) => {
       const parsed = Date.parse(value);
       return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
     };
 
-    return [...mineOnly].sort(
+    return [...withDueApplied].sort(
       (a, b) => dueValue(a.due) - dueValue(b.due)
     );
-  }, [tasks, filter, showMineOnly]);
+  }, [tasks, filter, showMineOnly, dueFilter, todayISO]);
 
   const helperText =
     "✨ Tap the status dot to move a task from pending → in progress → completed.";
@@ -134,17 +180,20 @@ export default function Tasks() {
       due: form.due || todayISO,
       assignees: form.assignees.length ? form.assignees : ["Unassigned"],
     };
+    const createdTaskId = Date.now();
     const isEditing = Boolean(editingId);
     if (isEditing) {
       updateTask(editingId, payload);
     } else {
-      addTask({ id: Date.now(), status: "pending", ...payload });
+      addTask({ id: createdTaskId, status: "pending", ...payload });
+      addTaskChatThread(createdTaskId, payload.title);
     }
     setForm(createDefaultForm());
     setEditingId(null);
     setEditDraft(null);
     setShowForm(false);
     setFilter("all");
+    setDueFilter(null);
     if (!isEditing) {
       const scrollToTop = () => {
         if (listTopRef.current?.scrollIntoView) {
@@ -165,6 +214,15 @@ export default function Tasks() {
         scrollToTop();
       }
     }
+  };
+
+  const addTaskChatThread = (taskId, title) => {
+    if (!title) return;
+    window.dispatchEvent(
+      new CustomEvent("habita:new-task-thread", {
+        detail: { taskId, title },
+      })
+    );
   };
 
   const toggleAssignee = (name) => {
@@ -192,10 +250,12 @@ export default function Tasks() {
 
   return (
     <div style={pageStyle}>
-      <header style={headerStyle}>
-        <div>
-          <h2 style={titleStyle}>Task List</h2>
-          <span style={summaryBadgeStyle}>{stats.pending} open ✨</span>
+      <section style={headerStyle}>
+        <div style={headerTextStyle}>
+          <h2 style={titleStyle}>Tasks</h2>
+          <p style={headerSubtitleStyle}>
+            {stats.pending} active ・ {stats.completed} completed
+          </p>
         </div>
         <button
           type="button"
@@ -208,7 +268,7 @@ export default function Tasks() {
         >
           +
         </button>
-      </header>
+      </section>
 
       {showForm && (
         <section style={{ ...formSectionStyle, marginTop: "0.5rem" }}>
@@ -285,19 +345,33 @@ export default function Tasks() {
 
       <section style={filtersSectionStyle}>
         <div style={filterChipRowStyle}>
-          {filterOptions.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => setFilter(option.id)}
-              style={{
-                ...filterChipStyle,
-                ...(filter === option.id ? filterChipActiveStyle : {}),
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
+          {filterOptions.map((option) => {
+            const isActive = filter === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={(event) => {
+                  setFilter(option.id);
+                  setDueFilter(null);
+                  event.currentTarget.blur();
+                }}
+                style={{
+                  ...filterChipStyle,
+                  backgroundColor: isActive
+                    ? "rgba(74,144,226,0.18)"
+                    : "var(--habita-chip)",
+                  color: isActive ? "var(--habita-accent)" : "var(--habita-muted)",
+                  borderColor: isActive
+                    ? "var(--habita-accent)"
+                    : "var(--habita-border)",
+                  fontWeight: isActive ? 700 : 600,
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
         <label style={mineToggleStyle}>
           <input
@@ -630,37 +704,46 @@ const pageStyle = {
 
 const headerStyle = {
   display: "flex",
-  alignItems: "center",
   justifyContent: "space-between",
+  alignItems: "center",
+  background: "var(--habita-card)",
+  padding: "1rem 1.25rem",
+  borderRadius: "16px",
+  border: "1px solid rgba(74,144,226,0.25)",
+};
+
+const headerTextStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.2rem",
 };
 
 const titleStyle = {
   margin: 0,
-  fontSize: "1.2rem",
+  fontSize: "1.25rem",
+  fontWeight: 600,
   color: "var(--habita-text)",
 };
 
-const summaryBadgeStyle = {
-  display: "inline-block",
-  marginTop: "0.4rem",
-  backgroundColor: "var(--habita-accent)",
-  color: "var(--habita-button-text)",
-  borderRadius: "999px",
-  padding: "0.3rem 0.7rem",
-  fontSize: "0.75rem",
-  fontWeight: 600,
+const headerSubtitleStyle = {
+  margin: 0,
+  fontSize: "0.8rem",
+  color: "var(--habita-muted)",
 };
 
 const headerAddButtonStyle = {
   border: "none",
-  borderRadius: "999px",
   backgroundColor: "var(--habita-accent)",
   color: "var(--habita-button-text)",
-  width: "38px",
-  height: "38px",
-  fontSize: "1.4rem",
+  width: "42px",
+  height: "42px",
+  borderRadius: "50%",
+  fontSize: "1.5rem",
   cursor: "pointer",
-  boxShadow: "var(--habita-shadow)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  transition: "transform 0.2s ease",
 };
 
 const filtersSectionStyle = {
@@ -685,13 +768,8 @@ const filterChipStyle = {
   padding: "0.35rem 0.9rem",
   cursor: "pointer",
   color: "var(--habita-muted)",
-};
-
-const filterChipActiveStyle = {
-  backgroundColor: "var(--habita-accent)",
-  color: "var(--habita-button-text)",
-  borderColor: "var(--habita-accent)",
-  boxShadow: "0 2px 10px rgba(74,144,226,0.35)",
+  fontWeight: 600,
+  transition: "all 0.2s ease",
 };
 
 const mineToggleStyle = {
@@ -728,7 +806,6 @@ const mineToggleKnobStyle = {
   height: "16px",
   borderRadius: "50%",
   background: "var(--habita-card)",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
   transition: "transform 0.2s ease",
 };
 
@@ -750,23 +827,20 @@ const helperTextStyle = {
 };
 
 const emptyStateStyle = {
-  margin: 0,
-  padding: "1.5rem",
+  margin: "0",
+  padding: "1.2rem 0",
   textAlign: "center",
-  fontSize: "0.9rem",
+  fontSize: "0.85rem",
   color: "var(--habita-muted)",
-  backgroundColor: "var(--habita-card)",
-  borderRadius: "12px",
-  boxShadow: "var(--habita-shadow)",
 };
 
 const taskCardStyle = {
   background: "var(--habita-card)",
   borderRadius: "12px",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "0.9rem 1rem",
   display: "flex",
   flexDirection: "column",
-  boxShadow: "var(--habita-shadow)",
 };
 
 const taskCardRowStyle = {
@@ -776,13 +850,14 @@ const taskCardRowStyle = {
 };
 
 const statusToggleStyle = {
-  width: "26px",
-  height: "26px",
+  width: "22px",
+  height: "22px",
   borderRadius: "50%",
   border: "1.5px solid var(--habita-accent)",
   background: "var(--habita-card)",
-  color: "white",
-  fontWeight: 700,
+  color: "var(--habita-accent)",
+  fontWeight: 600,
+  fontSize: "0.75rem",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -792,6 +867,8 @@ const statusToggleStyle = {
 const statusToggleCompletedStyle = {
   background: "var(--habita-accent)",
   color: "var(--habita-button-text)",
+  borderColor: "var(--habita-accent)",
+  fontSize: "0.8rem",
 };
 
 const taskContentStyle = {
@@ -834,11 +911,11 @@ const editButtonStyle = {
 const formSectionStyle = {
   background: "var(--habita-card)",
   borderRadius: "12px",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",
   display: "flex",
   flexDirection: "column",
   gap: "0.9rem",
-  boxShadow: "var(--habita-shadow)",
 };
 
 const formHeaderStyle = {
@@ -907,7 +984,6 @@ const assigneeChipActiveStyle = {
   background: "var(--habita-accent)",
   color: "var(--habita-button-text)",
   borderColor: "var(--habita-accent)",
-  boxShadow: "0 2px 8px rgba(74,144,226,0.3)",
 };
 
 const submitButtonStyle = {

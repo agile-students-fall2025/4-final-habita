@@ -9,7 +9,7 @@ export default function MiniCalendar({ monthDate = new Date(), eventsByISO = {},
         <h4 style={titleStyle}>{monthLabel}</h4>
         <div style={actionsRowStyle}>
           <button type="button" style={linkButtonStyle} onClick={() => onExportICS?.("apple")}>Export .ics</button>
-          <span style={{ color: "var(--habita-muted)" }}>·</span>
+          <span style={headerSeparatorStyle} />
           <button type="button" style={linkButtonStyle} onClick={() => onExportICS?.("google")}>Add to Google</button>
         </div>
       </div>
@@ -22,6 +22,7 @@ export default function MiniCalendar({ monthDate = new Date(), eventsByISO = {},
           const iso = cell.iso;
           const count = eventsByISO[iso]?.length || 0;
           const isToday = iso === new Date().toISOString().slice(0, 10);
+          const hasEvents = count > 0;
           return (
             <button
               key={iso}
@@ -32,10 +33,14 @@ export default function MiniCalendar({ monthDate = new Date(), eventsByISO = {},
                 ...(cell.inMonth ? {} : outOfMonthStyle),
                 ...(isToday ? todayStyle : {}),
               }}
-              aria-label={`${iso}${count > 0 ? `, ${count} items` : ""}`}
+              aria-label={`${iso}${hasEvents ? `, ${count} items` : ""}`}
             >
-              <span>{cell.day}</span>
-              {count > 0 && <span style={badgeStyle}>{count}</span>}
+              <span style={dayNumberStyle}>{cell.day}</span>
+              {hasEvents ? (
+                <span style={countBadgeStyle}>{count}</span>
+              ) : (
+                <span style={eventPlaceholderStyle} />
+              )}
             </button>
           );
         })}
@@ -82,7 +87,7 @@ function toISO(d) {
 const containerStyle = {
   backgroundColor: "var(--habita-card)",
   borderRadius: "12px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem 1.2rem",
   textAlign: "left",
   display: "flex",
@@ -106,7 +111,7 @@ const titleStyle = {
 const actionsRowStyle = {
   display: "flex",
   alignItems: "center",
-  gap: "0.4rem",
+  gap: "0.6rem",
 };
 
 const linkButtonStyle = {
@@ -119,56 +124,76 @@ const linkButtonStyle = {
   cursor: "pointer",
 };
 
+const headerSeparatorStyle = {
+  width: "1px",
+  height: "14px",
+  backgroundColor: "var(--habita-border)",
+};
+
 const monthGridStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(7, 1fr)",
-  gridAutoRows: "28px",
-  gap: "0.25rem",
+  gridAutoRows: "42px",
+  gap: "0.3rem",
   alignItems: "center",
 };
 
 const weekdayHeaderCellStyle = {
   fontSize: "0.68rem",
   color: "var(--habita-muted)",
-  lineHeight: "28px",
   textAlign: "center",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
 };
 
 const dayCellStyle = {
   position: "relative",
-  background: "var(--habita-card)",
-  border: "1px solid var(--habita-border)",
-  borderRadius: "999px",
-  width: "28px",
-  height: "28px",
+  background: "transparent",
+  border: "none",
+  borderRadius: "10px",
+  width: "100%",
+  height: "100%",
   display: "flex",
+  flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
+  gap: "0.2rem",
   color: "var(--habita-text)",
   fontSize: "0.8rem",
-  gap: "0.25rem",
   cursor: "pointer",
+  transition: "background-color 0.2s ease, color 0.2s ease",
 };
 
 const outOfMonthStyle = {
-  background: "var(--habita-chip)",
   color: "var(--habita-muted)",
+  opacity: 0.6,
 };
 
 const todayStyle = {
-  outline: "none",
-  borderColor: "var(--habita-accent)",
-  boxShadow: "0 0 0 1.5px var(--habita-accent) inset",
+  backgroundColor: "rgba(74, 144, 226, 0.14)",
+  color: "var(--habita-accent)",
 };
 
-const badgeStyle = {
-  position: "absolute",
-  bottom: "2px",
-  right: "4px",
-  fontSize: "0.65rem",
-  background: "var(--habita-accent)",
-  color: "white",
+const dayNumberStyle = {
+  lineHeight: 1,
+  fontWeight: 600,
+};
+
+const eventPlaceholderStyle = {
+  width: "5px",
+  height: "5px",
+};
+
+const countBadgeStyle = {
+  minWidth: "14px",
+  padding: "0 4px",
+  height: "14px",
   borderRadius: "999px",
-  padding: "0.05rem 0.3rem",
+  background: "var(--habita-accent)",
+  color: "var(--habita-button-text)",
+  fontSize: "0.65rem",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   lineHeight: 1,
 };

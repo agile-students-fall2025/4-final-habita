@@ -54,6 +54,19 @@ export default function ChatThread({
     const normalized = normalizeMentions(draft.trim(), names); // ✅ Add this
 
     sendMessage(contextType, contextId, "You", normalized);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("habita:thread-message", {
+          detail: {
+            contextType,
+            contextId,
+            sender: "You",
+            text: normalized,
+            timestamp: new Date().toISOString(),
+          },
+        })
+      );
+    }
     setDraft("");
     setShowMentions(false);
   };
@@ -63,19 +76,22 @@ export default function ChatThread({
     return text.split(/(@\w+)/g).map((part, i) => {
       if (part.startsWith("@")) {
         const name = part.slice(1);
-        if (mentionable.includes(name)) {
+        const match = mentionable.find(
+          (candidate) => candidate.toLowerCase() === name.toLowerCase()
+        );
+        if (match) {
           return (
             <span
               key={i}
               style={{
                 color: "var(--habita-accent)",
                 fontWeight: 600,
-                background: "rgba(74,144,226,0.15)",
+                background: "rgba(74,144,226,0.25)",
                 borderRadius: 6,
                 padding: "0 3px",
               }}
             >
-              {part}
+              @{match}
             </span>
           );
         }
@@ -95,6 +111,7 @@ export default function ChatThread({
           overflowY: "auto",
           padding: "0.5rem",
           background: "var(--habita-card)",
+          border: "1px solid rgba(74,144,226,0.25)",
           borderRadius: 10,
           marginBottom: "0.5rem",
           display: "flex",
@@ -165,7 +182,6 @@ export default function ChatThread({
                     background: "var(--habita-card)",
                     border: "1px solid var(--habita-border)",
                     borderRadius: 8,
-                    boxShadow: "var(--habita-shadow)",
                     padding: "0.3rem 0",
                     zIndex: 10,
                     }}
@@ -234,5 +250,5 @@ const sendButtonStyle = {
   fontWeight: 600,
   cursor: "pointer",
   fontSize: "0.9rem",
-  boxShadow: "var(--habita-shadow)",
+  transition: "opacity 0.2s ease",
 };
