@@ -252,7 +252,7 @@ const pageStyle = {
 };
 
 const profileCardStyle = {
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",
@@ -301,7 +301,7 @@ const profileActionsStyle = {
 
 const secondaryButtonStyle = {
   border: "1px solid rgba(74,144,226,0.3)",
-  background: "rgba(74,144,226,0.12)",
+  background: "var(--habita-card)",
   borderRadius: "8px",
   padding: "0.45rem 0.9rem",
   fontSize: "0.85rem",
@@ -310,7 +310,7 @@ const secondaryButtonStyle = {
 };
 
 const groupCardStyle = {
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",
@@ -423,7 +423,7 @@ const tooltipFunStyle = {
 };
 
 const inviteCardStyle = {
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",
@@ -455,7 +455,7 @@ const codeBadgeStyle = {
 };
 
 const settingsCardStyle = {
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",

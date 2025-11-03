@@ -345,22 +345,33 @@ export default function Tasks() {
 
       <section style={filtersSectionStyle}>
         <div style={filterChipRowStyle}>
-          {filterOptions.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => {
-                setFilter(option.id);
-                setDueFilter(null);
-              }}
-              style={{
-                ...filterChipStyle,
-                ...(filter === option.id ? filterChipActiveStyle : {}),
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
+          {filterOptions.map((option) => {
+            const isActive = filter === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={(event) => {
+                  setFilter(option.id);
+                  setDueFilter(null);
+                  event.currentTarget.blur();
+                }}
+                style={{
+                  ...filterChipStyle,
+                  backgroundColor: isActive
+                    ? "rgba(74,144,226,0.18)"
+                    : "var(--habita-chip)",
+                  color: isActive ? "var(--habita-accent)" : "var(--habita-muted)",
+                  borderColor: isActive
+                    ? "var(--habita-accent)"
+                    : "var(--habita-border)",
+                  fontWeight: isActive ? 700 : 600,
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
         <label style={mineToggleStyle}>
           <input
@@ -695,7 +706,7 @@ const headerStyle = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   padding: "1rem 1.25rem",
   borderRadius: "16px",
   border: "1px solid rgba(74,144,226,0.25)",
@@ -761,12 +772,6 @@ const filterChipStyle = {
   transition: "all 0.2s ease",
 };
 
-const filterChipActiveStyle = {
-  backgroundColor: "var(--habita-accent)",
-  color: "var(--habita-button-text)",
-  borderColor: "var(--habita-accent)",
-};
-
 const mineToggleStyle = {
   display: "flex",
   alignItems: "center",
@@ -830,7 +835,7 @@ const emptyStateStyle = {
 };
 
 const taskCardStyle = {
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
   padding: "0.9rem 1rem",
@@ -845,13 +850,14 @@ const taskCardRowStyle = {
 };
 
 const statusToggleStyle = {
-  width: "26px",
-  height: "26px",
+  width: "22px",
+  height: "22px",
   borderRadius: "50%",
   border: "1.5px solid var(--habita-accent)",
   background: "var(--habita-card)",
-  color: "white",
-  fontWeight: 700,
+  color: "var(--habita-accent)",
+  fontWeight: 600,
+  fontSize: "0.75rem",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -861,6 +867,8 @@ const statusToggleStyle = {
 const statusToggleCompletedStyle = {
   background: "var(--habita-accent)",
   color: "var(--habita-button-text)",
+  borderColor: "var(--habita-accent)",
+  fontSize: "0.8rem",
 };
 
 const taskContentStyle = {
@@ -901,7 +909,7 @@ const editButtonStyle = {
 };
 
 const formSectionStyle = {
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",

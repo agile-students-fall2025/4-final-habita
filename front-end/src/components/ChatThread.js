@@ -76,19 +76,22 @@ export default function ChatThread({
     return text.split(/(@\w+)/g).map((part, i) => {
       if (part.startsWith("@")) {
         const name = part.slice(1);
-        if (mentionable.includes(name)) {
+        const match = mentionable.find(
+          (candidate) => candidate.toLowerCase() === name.toLowerCase()
+        );
+        if (match) {
           return (
             <span
               key={i}
               style={{
                 color: "var(--habita-accent)",
                 fontWeight: 600,
-                background: "rgba(74,144,226,0.15)",
+                background: "rgba(74,144,226,0.25)",
                 borderRadius: 6,
                 padding: "0 3px",
               }}
             >
-              {part}
+              @{match}
             </span>
           );
         }
@@ -107,7 +110,7 @@ export default function ChatThread({
           flex: 1,
           overflowY: "auto",
           padding: "0.5rem",
-          background: "rgba(74,144,226,0.08)",
+          background: "var(--habita-card)",
           border: "1px solid rgba(74,144,226,0.25)",
           borderRadius: 10,
           marginBottom: "0.5rem",

@@ -85,7 +85,7 @@ function toISO(d) {
 }
 
 const containerStyle = {
-  backgroundColor: "rgba(74,144,226,0.08)",
+  backgroundColor: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem 1.2rem",

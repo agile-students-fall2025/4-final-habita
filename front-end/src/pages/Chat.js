@@ -573,7 +573,7 @@ const splitLayoutStyle = {
 };
 
 const threadListStyle = {
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   border: "1px solid rgba(74,144,226,0.25)",
   borderRadius: "12px",
   padding: "1rem",
@@ -620,8 +620,8 @@ const emptySectionNoteStyle = {
 };
 
 const threadButtonStyle = {
-  border: "1px solid rgba(74,144,226,0.2)",
-  background: "rgba(74,144,226,0.12)",
+  border: "1px solid rgba(74,144,226,0.25)",
+  background: "var(--habita-card)",
   borderRadius: "10px",
   padding: "0.6rem 0.75rem",
   textAlign: "left",
@@ -634,7 +634,7 @@ const threadButtonStyle = {
 };
 
 const threadButtonActiveStyle = {
-  background: "rgba(74,144,226,0.22)",
+  background: "rgba(74,144,226,0.12)",
   borderColor: "rgba(74,144,226,0.4)",
 };
 
@@ -652,7 +652,7 @@ const threadButtonPreviewStyle = {
 };
 
 const chatPaneStyle = {
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   border: "1px solid rgba(74,144,226,0.25)",
   borderRadius: "12px",
   padding: "1rem",
@@ -775,7 +775,7 @@ const bubbleStyle = {
 const mentionHighlightStyle = {
   color: "var(--habita-accent)",
   fontWeight: 600,
-  background: "rgba(74,144,226,0.15)",
+  background: "rgba(74,144,226,0.25)",
   borderRadius: 6,
   padding: "0 3px",
 };

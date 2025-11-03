@@ -29,7 +29,7 @@ const container = {
   maxWidth: "360px",
   margin: "5rem auto",
   textAlign: "center",
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   padding: "2rem",
   borderRadius: "16px",
   border: "1px solid rgba(74,144,226,0.25)",

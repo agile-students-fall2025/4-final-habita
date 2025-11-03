@@ -146,7 +146,7 @@ const headerStyle = {
   display: "flex",
   alignItems: "center",
   gap: "0.8rem",
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   padding: "0.6rem 0.9rem",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
@@ -169,7 +169,7 @@ const ghostButtonStyle = {
 };
 
 const avatarSectionStyle = {
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",
@@ -222,7 +222,7 @@ const avatarOptionActiveStyle = {
 };
 
 const cardStyle = {
-  background: "rgba(74,144,226,0.08)",
+  background: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
   padding: "1.2rem",
@@ -265,7 +265,7 @@ const buttonRowStyle = {
 
 const secondaryButtonStyle = {
   border: "1px solid rgba(74,144,226,0.3)",
-  background: "rgba(74,144,226,0.12)",
+  background: "var(--habita-card)",
   borderRadius: "8px",
   padding: "0.55rem 1rem",
   fontSize: "0.9rem",

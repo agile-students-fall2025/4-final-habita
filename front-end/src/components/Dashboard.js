@@ -45,7 +45,6 @@ function Dashboard({ children }) {
         <Link
           to="/notifications"
           style={{
-            border: "none",
             background: "var(--habita-card)",
             borderRadius: "50%",
             border: "1px solid rgba(74,144,226,0.25)",
