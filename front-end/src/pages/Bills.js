@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useBills } from "../context/BillsContext";
 
 const filterOptions = [
@@ -32,6 +32,7 @@ const initialBillState = {
 
 export default function Bills() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { bills, addBill, updateBillStatus, togglePayment, updateBill, stats } = useBills();
   const [editingBill, setEditingBill] = useState(null);
   const [filter, setFilter] = useState("all");
@@ -41,10 +42,26 @@ export default function Bills() {
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
-    if (location.state?.openForm) {
-      setShowForm(true);
+    if (!location.state) {
+      return;
     }
-  }, [location.state]);
+    const { openForm, filter: targetFilter } = location.state;
+    let shouldReplace = false;
+
+    if (openForm) {
+      setShowForm(true);
+      shouldReplace = true;
+    }
+
+    if (targetFilter) {
+      setFilter(targetFilter);
+      shouldReplace = true;
+    }
+
+    if (shouldReplace) {
+      navigate("/bills", { replace: true });
+    }
+  }, [location.state, navigate]);
 
   useEffect(() => {
     if (editingBill) {

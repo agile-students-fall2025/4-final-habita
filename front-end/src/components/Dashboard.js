@@ -69,7 +69,7 @@ function Dashboard({ children }) {
           color: "var(--habita-text)",
         }}
       >
-        🧹 {openForMe} of your tasks open ・ 💰 {stats.unpaid} unpaid bills
+        🧹 {openForMe} tasks open ・ 💰 {stats.unpaid} unpaid bills
       </div>
       <div style={{ flex: 1, overflowY: "auto" }}>{children || <Outlet />}</div>
       <Navbar />

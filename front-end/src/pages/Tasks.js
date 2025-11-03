@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTasks } from "../context/TasksContext";
 
@@ -13,16 +13,20 @@ const filterOptions = [
 ];
 
 const statusDisplay = {
-  pending: { label: "Pending", fg: "#1f75d0", bg: "rgba(74,144,226,0.12)" },
+  pending: {
+    label: "Pending",
+    fg: "#2563eb",
+    bg: "rgba(37, 99, 235, 0.16)",
+  },
   "in-progress": {
     label: "In Progress",
-    fg: "#b07900",
-    bg: "rgba(255,169,0,0.15)",
+    fg: "#3f9da5",
+    bg: "rgba(63, 157, 165, 0.18)",
   },
   completed: {
     label: "Completed",
-    fg: "#389e0d",
-    bg: "rgba(88,204,2,0.18)",
+    fg: "#1e3a8a",
+    bg: "rgba(30, 58, 138, 0.16)",
   },
 };
 
@@ -44,36 +48,72 @@ export default function Tasks() {
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({
-    title: "",
-    due: todayISO,
-    assignees: ["You"],
-  });
+  const createDefaultForm = useCallback(
+    () => ({
+      title: "",
+      due: todayISO,
+      assignees: ["You"],
+    }),
+    [todayISO]
+  );
+  const [form, setForm] = useState(() => createDefaultForm());
   const [editDraft, setEditDraft] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const listTopRef = useRef(null);
 
   useEffect(() => {
-    if (location.state?.openForm) {
+    if (!location.state) {
+      return;
+    }
+    const { openForm, filter: targetFilter, mineOnly } = location.state;
+    let shouldReplace = false;
+
+    if (openForm) {
       setShowForm(true);
+      setEditingId(null);
+      setForm(createDefaultForm());
+      shouldReplace = true;
+    }
+
+    if (targetFilter) {
+      setFilter(targetFilter);
+      shouldReplace = true;
+    }
+
+    if (typeof mineOnly === "boolean") {
+      setShowMineOnly(mineOnly);
+      shouldReplace = true;
+    }
+
+    if (shouldReplace) {
       navigate("/tasks", { replace: true });
     }
-  }, [location.state, navigate]);
+  }, [location.state, navigate, createDefaultForm]);
 
   const filteredTasks = useMemo(() => {
-    let base =
+    const byFilter =
       filter === "all"
         ? tasks
         : tasks.filter((task) => task.status === filter);
-    if (showMineOnly) {
-      base = base.filter(
-        (task) =>
-          (Array.isArray(task.assignees) &&
-            task.assignees.some((person) => person === "You")) ||
-          task.assignees === "You"
-      );
-    }
-    return base;
+
+    const mineOnly = showMineOnly
+      ? byFilter.filter(
+          (task) =>
+            (Array.isArray(task.assignees) &&
+              task.assignees.some((person) => person === "You")) ||
+            task.assignees === "You"
+        )
+      : byFilter;
+
+    const dueValue = (value) => {
+      const parsed = Date.parse(value);
+      return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
+    };
+
+    return [...mineOnly].sort(
+      (a, b) => dueValue(a.due) - dueValue(b.due)
+    );
   }, [tasks, filter, showMineOnly]);
 
   const helperText =
@@ -90,16 +130,37 @@ export default function Tasks() {
       due: form.due || todayISO,
       assignees: form.assignees.length ? form.assignees : ["Unassigned"],
     };
-    if (editingId) {
+    const isEditing = Boolean(editingId);
+    if (isEditing) {
       updateTask(editingId, payload);
     } else {
       addTask({ id: Date.now(), status: "pending", ...payload });
     }
-    setForm({ title: "", due: todayISO, assignees: ["You"] });
+    setForm(createDefaultForm());
     setEditingId(null);
     setEditDraft(null);
     setShowForm(false);
     setFilter("all");
+    if (!isEditing) {
+      const scrollToTop = () => {
+        if (listTopRef.current?.scrollIntoView) {
+          listTopRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        } else if (typeof window !== "undefined") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      };
+      if (
+        typeof window !== "undefined" &&
+        typeof window.requestAnimationFrame === "function"
+      ) {
+        window.requestAnimationFrame(scrollToTop);
+      } else {
+        scrollToTop();
+      }
+    }
   };
 
   const toggleAssignee = (name) => {
@@ -138,12 +199,85 @@ export default function Tasks() {
           onClick={() => {
             setShowForm(true);
             setEditingId(null);
-            setForm({ title: "", due: todayISO, assignees: ["You"] });
+            setForm(createDefaultForm());
           }}
         >
           +
         </button>
       </header>
+
+      {showForm && (
+        <section style={{ ...formSectionStyle, marginTop: "0.5rem" }}>
+          <div style={formHeaderStyle}>
+            <h3 style={formTitleStyle}>
+              {editingId ? "Edit Task" : "Add Task"}
+            </h3>
+            <button
+              type="button"
+              style={ghostButtonStyle}
+              onClick={() => {
+                setShowForm(false);
+                setEditingId(null);
+                setForm(createDefaultForm());
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} style={formStyle}>
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Task name</span>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, title: event.target.value }))
+                }
+                placeholder="e.g. Book shared laundry slot"
+                style={inputStyle}
+                required
+              />
+            </label>
+            <div style={fieldRowStyle}>
+              <label style={{ ...fieldStyle, flex: 1 }}>
+                <span style={fieldLabelStyle}>Due date</span>
+                <input
+                  type="date"
+                  value={form.due}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, due: event.target.value }))
+                  }
+                  style={inputStyle}
+                />
+              </label>
+              <div style={{ ...fieldStyle, flex: 1 }}>
+                <span style={fieldLabelStyle}>Assigned to</span>
+                <div style={assigneeChipsWrapperStyle}>
+                  {peopleOptions.map((person) => {
+                    const active = form.assignees.includes(person);
+                    return (
+                      <button
+                        key={person}
+                        type="button"
+                        onClick={() => toggleAssignee(person)}
+                        style={{
+                          ...assigneeChipStyle,
+                          ...(active ? assigneeChipActiveStyle : {}),
+                        }}
+                      >
+                        {person}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <button type="submit" style={submitButtonStyle}>
+              {editingId ? "Update Task" : "Save Task"}
+            </button>
+          </form>
+        </section>
+      )}
 
       <section style={filtersSectionStyle}>
         <div style={filterChipRowStyle}>
@@ -199,7 +333,7 @@ export default function Tasks() {
         </label>
       </section>
 
-      <section style={listSectionStyle}>
+      <section style={listSectionStyle} ref={listTopRef}>
         <p style={helperTextStyle}>{helperText}</p>
 
         {filteredTasks.length === 0 ? (
@@ -359,79 +493,6 @@ export default function Tasks() {
           ))
         )}
       </section>
-
-      {showForm && (
-        <section style={formSectionStyle}>
-          <div style={formHeaderStyle}>
-            <h3 style={formTitleStyle}>
-              {editingId ? "Edit Task" : "Add Task"}
-            </h3>
-            <button
-              type="button"
-              style={ghostButtonStyle}
-              onClick={() => {
-                setShowForm(false);
-                setEditingId(null);
-                setForm({ title: "", due: todayISO, assignees: ["You"] });
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-          <form onSubmit={handleSubmit} style={formStyle}>
-            <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Task name</span>
-              <input
-                type="text"
-                value={form.title}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, title: event.target.value }))
-                }
-                placeholder="e.g. Book shared laundry slot"
-                style={inputStyle}
-                required
-              />
-            </label>
-            <div style={fieldRowStyle}>
-              <label style={{ ...fieldStyle, flex: 1 }}>
-                <span style={fieldLabelStyle}>Due date</span>
-                <input
-                  type="date"
-                  value={form.due}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, due: event.target.value }))
-                  }
-                  style={inputStyle}
-                />
-              </label>
-              <div style={{ ...fieldStyle, flex: 1 }}>
-                <span style={fieldLabelStyle}>Assigned to</span>
-                <div style={assigneeChipsWrapperStyle}>
-                  {peopleOptions.map((person) => {
-                    const active = form.assignees.includes(person);
-                    return (
-                      <button
-                        key={person}
-                        type="button"
-                        onClick={() => toggleAssignee(person)}
-                        style={{
-                          ...assigneeChipStyle,
-                          ...(active ? assigneeChipActiveStyle : {}),
-                        }}
-                      >
-                        {person}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-            <button type="submit" style={submitButtonStyle}>
-              {editingId ? "Update Task" : "Save Task"}
-            </button>
-          </form>
-        </section>
-      )}
     </div>
   );
 }

@@ -43,9 +43,11 @@ const moodAccentStyles = {
   Sad: { bg: "rgba(245,166,35,0.25)", fg: "#a87012" },
   Frustrated: { bg: "rgba(208,2,27,0.22)", fg: "#a30012" },
 };
-export default function MoodTracker() {
+export default function MoodTracker({ variant = "default", onMoodChange }) {
+  const isCompact = variant === "compact";
   const [mood, setMood] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
+  const [showSnapshot, setShowSnapshot] = useState(!isCompact);
 
   const todayKey = new Date().toISOString().slice(0, 10);
 
@@ -98,8 +100,15 @@ export default function MoodTracker() {
     }
   }, [todayKey]);
 
+  useEffect(() => {
+    if (typeof onMoodChange === "function") {
+      onMoodChange(mood);
+    }
+  }, [mood, onMoodChange]);
+
   const handleSelectMood = (selectedMood) => {
     setMood(selectedMood);
+    setIsLocked(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         STORAGE_KEY,
@@ -114,13 +123,36 @@ export default function MoodTracker() {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
+    if (typeof onMoodChange === "function") {
+      onMoodChange(null);
+    }
   };
 
   return (
-    <div style={cardStyle}>
-      <h3 style={titleStyle}>Your Mood Today</h3>
+    <div
+      style={{
+        ...cardStyle,
+        padding: isCompact ? "0.75rem 0.85rem" : cardStyle.padding,
+        textAlign: isCompact ? "left" : cardStyle.textAlign,
+      }}
+    >
+      <h3
+        style={{
+          ...titleStyle,
+          textAlign: isCompact ? "left" : "center",
+          marginBottom: isCompact ? "0.6rem" : titleStyle.marginBottom,
+        }}
+      >
+        Your Mood Today
+      </h3>
       {!isLocked && (
-        <div style={moodContainer}>
+        <div
+          style={{
+            ...moodContainer,
+            justifyContent: isCompact ? "flex-start" : moodContainer.justifyContent,
+            marginBottom: isCompact ? "0.45rem" : moodContainer.marginBottom,
+          }}
+        >
           {moods.map((m) => (
             <button
               key={m.label}
@@ -140,6 +172,8 @@ export default function MoodTracker() {
                   mood?.label === m.label
                     ? moodAccentStyles[m.label].fg
                     : "var(--habita-border)",
+                fontSize: isCompact ? "1.05rem" : moodButton.fontSize,
+                padding: isCompact ? "0.45rem 0.55rem" : moodButton.padding,
               }}
             >
               {m.emoji}
@@ -153,34 +187,46 @@ export default function MoodTracker() {
             ...selectedMoodWrapper,
             backgroundColor: moodAccentStyles[mood.label].bg,
             border: `1px solid ${moodAccentStyles[mood.label].fg}`,
+            marginTop: isCompact ? "0.3rem" : selectedMoodWrapper.marginTop,
+            padding: isCompact ? "0.6rem 0.7rem" : selectedMoodWrapper.padding,
           }}
           onDoubleClick={isLocked ? handleUnlock : undefined}
           title={isLocked ? "Double-click to change your mood" : undefined}
         >
-          <div style={selectedMoodRow}>
+          <div
+            style={{
+              ...selectedMoodRow,
+              alignItems: isCompact ? "flex-start" : selectedMoodRow.alignItems,
+              gap: isCompact ? "0.5rem" : selectedMoodRow.gap,
+            }}
+          >
             <span
               style={{
                 ...selectedMoodEmoji,
                 color: moodAccentStyles[mood.label].fg,
+                fontSize: isCompact ? "1.5rem" : selectedMoodEmoji.fontSize,
               }}
             >
               {mood.emoji}
             </span>
             <div>
               <p
-                style={{
-                  ...textStyle,
-                  textAlign: encouragement?.centered ? "center" : "left",
-                }}
-              >
-                You’re feeling <strong>{mood.label}</strong>{" "}
-                {mood.label === "Happy" ? "today!" : "today."}
-              </p>
+                  style={{
+                    ...textStyle,
+                    textAlign: encouragement?.centered ? "center" : "left",
+                    fontSize: isCompact ? "0.84rem" : textStyle.fontSize,
+                  }}
+                >
+                  You’re feeling <strong>{mood.label}</strong>{" "}
+                  {mood.label === "Happy" ? "today!" : "today."}
+                </p>
               {encouragement && (
                 <p
                   style={{
                     ...encouragementText,
                     textAlign: encouragement.centered ? "center" : "left",
+                    fontSize: isCompact ? "0.78rem" : encouragementText.fontSize,
+                    margin: isCompact ? "0.25rem 0 0" : encouragementText.margin,
                   }}
                 >
                   {encouragement.message}
@@ -189,58 +235,86 @@ export default function MoodTracker() {
             </div>
           </div>
           {isLocked && (
-            <p style={editHint}>Double-click to change your mood selection.</p>
+            <button
+              type="button"
+              style={{
+                ...changeMoodButtonStyle,
+                marginTop: isCompact ? "0.45rem" : changeMoodButtonStyle.marginTop,
+              }}
+              onClick={handleUnlock}
+            >
+              Change mood
+            </button>
           )}
         </div>
       )}
       {showStats && (
-        <div style={statsWrapper}>
-          <p style={statsTitle}>Household mood snapshot</p>
-          {emojiSequence.length > 0 && (
-            <div style={emojiBarWrapper}>
-              <div style={emojiBarRow}>
-                {emojiSequence.map((item) => (
-                  <span key={item.key} style={emojiIcon}>
-                    {item.emoji}
-                  </span>
-                ))}
-              </div>
-              <p style={emojiBarHint}>One emoji per person today.</p>
+        <>
+          {isCompact && (
+            <button
+              type="button"
+              onClick={() => setShowSnapshot((prev) => !prev)}
+              style={toggleStatsButtonStyle}
+            >
+              {showSnapshot ? "Hide household snapshot" : "View household snapshot"}
+            </button>
+          )}
+          {showSnapshot && (
+            <div
+              style={{
+                ...statsWrapper,
+                marginTop: isCompact ? "0.6rem" : statsWrapper.marginTop,
+                paddingTop: isCompact ? "0.6rem" : statsWrapper.paddingTop,
+              }}
+            >
+              <p style={statsTitle}>Household mood snapshot</p>
+              {emojiSequence.length > 0 && (
+                <div style={emojiBarWrapper}>
+                  <div style={emojiBarRow}>
+                    {emojiSequence.map((item) => (
+                      <span key={item.key} style={emojiIcon}>
+                        {item.emoji}
+                      </span>
+                    ))}
+                  </div>
+                  <p style={emojiBarHint}>One emoji per person today.</p>
+                </div>
+              )}
+              {orderedMoods.map((m) => {
+                const count = moodCounts[m.label];
+                const percent = totalCount
+                  ? Math.round((count / totalCount) * 100)
+                  : 0;
+                const label = count === 1 ? "person" : "people";
+                const width =
+                  percent === 0 && count > 0 ? 12 : Math.max(percent, 0);
+
+                return (
+                  <div key={m.label} style={barRow}>
+                    <div style={barHeader}>
+                      <span>
+                        {m.emoji} {m.label}
+                      </span>
+                      <span style={barMeta}>
+                        {count} {label} • {percent}%
+                      </span>
+                    </div>
+                    <div style={barOuter}>
+                      <div
+                        style={{
+                          ...barInner,
+                          width: `${width}%`,
+                          backgroundColor: moodColors[m.label],
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              <p style={statsHint}>Includes your latest update.</p>
             </div>
           )}
-          {orderedMoods.map((m) => {
-            const count = moodCounts[m.label];
-            const percent = totalCount
-              ? Math.round((count / totalCount) * 100)
-              : 0;
-            const label = count === 1 ? "person" : "people";
-            const width =
-              percent === 0 && count > 0 ? 12 : Math.max(percent, 0);
-
-            return (
-              <div key={m.label} style={barRow}>
-                <div style={barHeader}>
-                  <span>
-                    {m.emoji} {m.label}
-                  </span>
-                  <span style={barMeta}>
-                    {count} {label} • {percent}%
-                  </span>
-                </div>
-                <div style={barOuter}>
-                  <div
-                    style={{
-                      ...barInner,
-                      width: `${width}%`,
-                      backgroundColor: moodColors[m.label],
-                    }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-          <p style={statsHint}>Includes your latest update.</p>
-        </div>
+        </>
       )}
     </div>
   );
@@ -307,11 +381,16 @@ const encouragementText = {
   color: "var(--habita-muted)",
 };
 
-const editHint = {
-  margin: "0.5rem 0 0",
-  fontSize: "0.72rem",
-  color: "var(--habita-muted)",
-  fontStyle: "italic",
+const changeMoodButtonStyle = {
+  marginTop: "0.6rem",
+  background: "transparent",
+  border: "none",
+  color: "var(--habita-accent)",
+  fontSize: "0.8rem",
+  fontWeight: 600,
+  cursor: "pointer",
+  textDecoration: "underline",
+  alignSelf: "flex-start",
 };
 
 const statsWrapper = {
@@ -333,6 +412,18 @@ const statsHint = {
   marginTop: "0.6rem",
   fontSize: "0.72rem",
   color: "var(--habita-muted)",
+};
+
+const toggleStatsButtonStyle = {
+  marginTop: "0.6rem",
+  background: "transparent",
+  border: "none",
+  color: "var(--habita-accent)",
+  fontSize: "0.8rem",
+  fontWeight: 600,
+  cursor: "pointer",
+  padding: 0,
+  textAlign: "left",
 };
 
 const emojiBarWrapper = {
