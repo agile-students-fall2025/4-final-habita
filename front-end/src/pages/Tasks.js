@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTasks } from "../context/TasksContext";
+import ChatThread from "../components/ChatThread";
+
 
 const roommates = ["Alex", "Sam", "Jordan"];
 const peopleOptions = ["You", ...roommates];
+
 
 const filterOptions = [
   { id: "all", label: "All" },
@@ -48,6 +51,7 @@ export default function Tasks() {
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [chatOpen, setChatOpen] = useState(null);
   const createDefaultForm = useCallback(
     () => ({
       title: "",
@@ -377,6 +381,13 @@ export default function Tasks() {
                 </span>
                 <button
                   type="button"
+                  style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
+                  onClick={() => setChatOpen(task.id)}
+                >
+                  Chat 💬
+                </button>
+                <button
+                  type="button"
                   style={editButtonStyle}
                   onClick={() => handleEdit(task)}
                 >
@@ -493,6 +504,114 @@ export default function Tasks() {
           ))
         )}
       </section>
+
+      {showForm && (
+        <section style={formSectionStyle}>
+          <div style={formHeaderStyle}>
+            <h3 style={formTitleStyle}>
+              {editingId ? "Edit Task" : "Add Task"}
+            </h3>
+            <button
+              type="button"
+              style={ghostButtonStyle}
+              onClick={() => {
+                setShowForm(false);
+                setEditingId(null);
+                setForm({ title: "", due: todayISO, assignees: ["You"] });
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} style={formStyle}>
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Task name</span>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, title: event.target.value }))
+                }
+                placeholder="e.g. Book shared laundry slot"
+                style={inputStyle}
+                required
+              />
+            </label>
+            <div style={fieldRowStyle}>
+              <label style={{ ...fieldStyle, flex: 1 }}>
+                <span style={fieldLabelStyle}>Due date</span>
+                <input
+                  type="date"
+                  value={form.due}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, due: event.target.value }))
+                  }
+                  style={inputStyle}
+                />
+              </label>
+              <div style={{ ...fieldStyle, flex: 1 }}>
+                <span style={fieldLabelStyle}>Assigned to</span>
+                <div style={assigneeChipsWrapperStyle}>
+                  {peopleOptions.map((person) => {
+                    const active = form.assignees.includes(person);
+                    return (
+                      <button
+                        key={person}
+                        type="button"
+                        onClick={() => toggleAssignee(person)}
+                        style={{
+                          ...assigneeChipStyle,
+                          ...(active ? assigneeChipActiveStyle : {}),
+                        }}
+                      >
+                        {person}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <button type="submit" style={submitButtonStyle}>
+              {editingId ? "Update Task" : "Save Task"}
+            </button>
+          </form>
+        </section>
+      )}
+      {chatOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.4)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 999,
+        }}>
+          <div style={{
+            background: "var(--habita-bg)",
+            borderRadius: "16px",
+            padding: "1rem",
+            width: "90%",
+            maxWidth: "480px",
+            height: "70%",
+            display: "flex",
+            flexDirection: "column",
+          }}>
+            <button
+              onClick={() => setChatOpen(null)}
+              style={{ alignSelf: "flex-end", border: "none", background: "transparent", fontSize: "1.5rem", cursor: "pointer" }}
+            >
+              ✕
+            </button>
+            <ChatThread
+              contextType="task"
+              contextId={chatOpen}
+              title={`Task Chat: ${tasks.find((t) => t.id === chatOpen)?.title}`}
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
