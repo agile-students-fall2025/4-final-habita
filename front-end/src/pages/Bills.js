@@ -500,14 +500,7 @@ export default function Bills() {
             key={option.id}
             style={{
               ...filterButtonStyle,
-              backgroundColor:
-                filter === option.id
-                  ? "var(--habita-accent)"
-                  : "var(--habita-chip)",
-              color:
-                filter === option.id
-                  ? "#ffffff"
-                  : "var(--habita-text)",
+              ...(filter === option.id ? filterButtonActiveStyle : {}),
             }}
             onClick={() => setFilter(option.id)}
           >
@@ -518,9 +511,7 @@ export default function Bills() {
 
       <div style={billsListStyle}>
         {filteredBills.length === 0 ? (
-          <div style={emptyStateStyle}>
-            <p>No bills found</p>
-          </div>
+          <p style={emptyStateStyle}>No bills in this view.</p>
         ) : (
           filteredBills.map((bill) => {
             const billTypeColor = getBillTypeColor(bill.paymentDirection);
@@ -730,10 +721,10 @@ const headerStyle = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   padding: "1rem 1.25rem",
   borderRadius: "16px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
   marginBottom: "1.25rem",
 };
 
@@ -767,10 +758,10 @@ const statsContainerStyle = {
 };
 
 const statItemStyle = {
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   padding: "1rem",
   borderRadius: "12px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -790,10 +781,10 @@ const statValueStyle = {
 };
 
 const formStyle = {
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   padding: "1.5rem",
   borderRadius: "16px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
   marginBottom: "1.5rem",
   display: "flex",
   flexDirection: "column",
@@ -973,13 +964,21 @@ const filterContainerStyle = {
 };
 
 const filterButtonStyle = {
-  border: "none",
-  padding: "0.5rem 1rem",
-  borderRadius: "20px",
+  border: "1px solid var(--habita-border)",
+  borderRadius: "999px",
+  background: "var(--habita-chip)",
+  fontSize: "0.8rem",
+  padding: "0.35rem 0.9rem",
   cursor: "pointer",
-  fontSize: "0.85rem",
+  color: "var(--habita-muted)",
   fontWeight: 600,
   transition: "all 0.2s ease",
+};
+
+const filterButtonActiveStyle = {
+  backgroundColor: "var(--habita-accent)",
+  color: "var(--habita-button-text)",
+  borderColor: "var(--habita-accent)",
 };
 
 const billsListStyle = {
@@ -990,18 +989,18 @@ const billsListStyle = {
 
 const emptyStateStyle = {
   textAlign: "center",
-  padding: "3rem 1rem",
+  padding: "1.2rem 0",
   color: "var(--habita-muted)",
   gridColumn: "1 / -1",
+  fontSize: "0.85rem",
 };
 
 const billCardStyle = {
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   padding: "1.25rem",
   borderRadius: "14px",
-  boxShadow: "var(--habita-shadow)",
-  border: "1px solid var(--habita-border)",
-  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+  border: "1px solid rgba(74,144,226,0.25)",
+  transition: "transform 0.2s ease",
 };
 
 const billTypeIndicatorStyle = {

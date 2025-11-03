@@ -113,20 +113,20 @@ const emptyStyle = {
   margin: 0,
   textAlign: "center",
   color: "var(--habita-muted)",
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   padding: "1rem",
   borderRadius: "12px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
 };
 
 const cardStyle = {
   display: "flex",
   alignItems: "center",
   gap: "0.8rem",
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   borderRadius: "12px",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "0.8rem 0.9rem",
-  boxShadow: "var(--habita-shadow)",
 };
 
 const cardIconStyle = {
@@ -155,5 +155,4 @@ const timeStyle = {
   fontSize: "0.75rem",
   color: "var(--habita-muted)",
 };
-
 

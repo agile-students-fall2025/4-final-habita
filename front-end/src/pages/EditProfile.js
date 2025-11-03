@@ -146,10 +146,10 @@ const headerStyle = {
   display: "flex",
   alignItems: "center",
   gap: "0.8rem",
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   padding: "0.6rem 0.9rem",
   borderRadius: "12px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
 };
 
 const titleStyle = {
@@ -169,10 +169,10 @@ const ghostButtonStyle = {
 };
 
 const avatarSectionStyle = {
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   borderRadius: "12px",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem",
-  boxShadow: "var(--habita-shadow)",
   display: "flex",
   flexDirection: "column",
   gap: "0.6rem",
@@ -217,14 +217,15 @@ const avatarOptionStyle = {
 
 const avatarOptionActiveStyle = {
   borderColor: "var(--habita-accent)",
-  boxShadow: "0 0 0 2px rgba(74,144,226,0.25)",
+  outline: "2px solid rgba(74,144,226,0.3)",
+  outlineOffset: "2px",
 };
 
 const cardStyle = {
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   borderRadius: "12px",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "1.2rem",
-  boxShadow: "var(--habita-shadow)",
 };
 
 const formStyle = {
@@ -263,14 +264,13 @@ const buttonRowStyle = {
 };
 
 const secondaryButtonStyle = {
-  border: "1px solid var(--habita-border)",
-  background: "var(--habita-card)",
+  border: "1px solid rgba(74,144,226,0.3)",
+  background: "rgba(74,144,226,0.12)",
   borderRadius: "8px",
   padding: "0.55rem 1rem",
   fontSize: "0.9rem",
   color: "var(--habita-text)",
   cursor: "pointer",
-  boxShadow: "var(--habita-shadow)",
 };
 
 const primaryButtonStyle = {
@@ -282,5 +282,4 @@ const primaryButtonStyle = {
   fontSize: "0.9rem",
   fontWeight: 600,
   cursor: "pointer",
-  boxShadow: "var(--habita-shadow)",
 };

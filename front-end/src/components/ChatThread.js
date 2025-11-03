@@ -54,6 +54,19 @@ export default function ChatThread({
     const normalized = normalizeMentions(draft.trim(), names); // ✅ Add this
 
     sendMessage(contextType, contextId, "You", normalized);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("habita:thread-message", {
+          detail: {
+            contextType,
+            contextId,
+            sender: "You",
+            text: normalized,
+            timestamp: new Date().toISOString(),
+          },
+        })
+      );
+    }
     setDraft("");
     setShowMentions(false);
   };
@@ -94,7 +107,8 @@ export default function ChatThread({
           flex: 1,
           overflowY: "auto",
           padding: "0.5rem",
-          background: "var(--habita-card)",
+          background: "rgba(74,144,226,0.08)",
+          border: "1px solid rgba(74,144,226,0.25)",
           borderRadius: 10,
           marginBottom: "0.5rem",
           display: "flex",
@@ -165,7 +179,6 @@ export default function ChatThread({
                     background: "var(--habita-card)",
                     border: "1px solid var(--habita-border)",
                     borderRadius: 8,
-                    boxShadow: "var(--habita-shadow)",
                     padding: "0.3rem 0",
                     zIndex: 10,
                     }}
@@ -234,5 +247,5 @@ const sendButtonStyle = {
   fontWeight: 600,
   cursor: "pointer",
   fontSize: "0.9rem",
-  boxShadow: "var(--habita-shadow)",
+  transition: "opacity 0.2s ease",
 };

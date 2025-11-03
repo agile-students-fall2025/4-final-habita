@@ -14,7 +14,7 @@ export default function Login() {
 
   return (
     <div style={container}>
-      <h2 style={title}>Welcome Back 👋</h2>
+      <h2 style={title}>Welcome Back</h2>
       <p style={subtitle}>Sign in to continue to Habita</p>
 
       <form style={form} onSubmit={handleSubmit}>
@@ -39,10 +39,10 @@ const container = {
   maxWidth: "360px",
   margin: "5rem auto",
   textAlign: "center",
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   padding: "2rem",
   borderRadius: "16px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
   color: "var(--habita-text)",
 };
 
@@ -69,7 +69,6 @@ const button = {
   padding: "0.8rem",
   cursor: "pointer",
   fontWeight: "500",
-  boxShadow: "var(--habita-shadow)",
 };
 const footerText = {
   marginTop: "1rem",

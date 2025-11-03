@@ -15,10 +15,9 @@ function Navbar() {
         alignItems: "center",
         height: "60px",
         borderTop: "1px solid var(--habita-border)",
-        background: "var(--habita-card)",
+        background: "rgba(74,144,226,0.08)",
         position: "sticky",
         bottom: 0,
-        boxShadow: "var(--habita-shadow)",
       }}
     >
       <Link

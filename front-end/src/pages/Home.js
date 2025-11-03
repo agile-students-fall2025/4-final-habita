@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import MoodTracker from "../components/MoodTracker";
 import MiniCalendar from "../components/MiniCalendar";
@@ -10,45 +10,8 @@ export default function Home() {
   const { tasks, stats: taskStats } = useTasks();
   const { bills, stats: billStats } = useBills();
 
-  const MOOD_EMOJI = useMemo(
-    () => ({
-      Happy: "😊",
-      Neutral: "😐",
-      Sad: "😢",
-      Frustrated: "😤",
-    }),
-    []
-  );
-
-  const [currentMood, setCurrentMood] = useState(null);
-  const handleMoodChange = useCallback((nextMood) => {
-    if (nextMood) {
-      setCurrentMood({ label: nextMood.label, emoji: nextMood.emoji });
-    } else {
-      setCurrentMood(null);
-    }
-  }, []);
-
   const todayISO = new Date().toISOString().slice(0, 10);
   const todayTimestamp = Date.parse(todayISO);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      const stored = window.localStorage.getItem("habita:mood");
-      if (!stored) {
-        return;
-      }
-      const parsed = JSON.parse(stored);
-      if (parsed?.label && MOOD_EMOJI[parsed.label]) {
-        setCurrentMood({ label: parsed.label, emoji: MOOD_EMOJI[parsed.label] });
-      }
-    } catch (error) {
-      // ignore malformed storage
-    }
-  }, [MOOD_EMOJI]);
 
   const goToTasks = (state) => {
     if (state) {
@@ -152,16 +115,40 @@ export default function Home() {
     [unpaidBills]
   );
 
-  const openTaskCount = pendingCount + inProgressCount;
-  const heroMoodText = currentMood
-    ? `${currentMood.emoji} ${currentMood.label}`
-    : "Tap to log mood";
+  const renderStatCards = (items) => (
+    <div style={statCardsWrapStyle}>
+      {items.map(({ label, value, hint, onClick }) => {
+        const clickable = typeof onClick === "function";
+        if (clickable) {
+          return (
+            <button
+              key={label}
+              type="button"
+              style={statCardStyle}
+              onClick={onClick}
+            >
+              <span style={statCardLabelStyle}>{label}</span>
+              <span style={statCardValueStyle}>{value}</span>
+              {hint && <span style={statCardHintStyle}>{hint}</span>}
+            </button>
+          );
+        }
+        return (
+          <div key={label} style={{ ...statCardStyle, cursor: "default" }}>
+            <span style={statCardLabelStyle}>{label}</span>
+            <span style={statCardValueStyle}>{value}</span>
+            {hint && <span style={statCardHintStyle}>{hint}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div style={pageStyle}>
       <div style={contentStyle}>
         <section style={singleCardSectionStyle}>
-          <MoodTracker variant="compact" onMoodChange={handleMoodChange} />
+          <MoodTracker variant="compact" />
         </section>
 
         <section style={summaryGridStyle}>
@@ -177,7 +164,7 @@ export default function Home() {
           </div>
           <div style={{ ...cardStyle, gap: "1rem" }}>
             <div style={cardHeaderRowStyle}>
-              <h3 style={titleStyle}>📋 Tasks Overview</h3>
+              <h3 style={titleStyle}>Tasks</h3>
               <div style={cardHeaderActionsStyle}>
                 <button
                   type="button"
@@ -196,54 +183,40 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <div style={cardSnapshotRowStyle}>
-              <button
-                type="button"
-                style={cardSnapshotButtonStyle}
-                onClick={() => goToTasks({ filter: "pending", mineOnly: false })}
-              >
-                <span style={cardSnapshotValueStyle}>{dueTodayCount}</span>
-                <span style={cardSnapshotLabelStyle}>due today</span>
-              </button>
-              <button
-                type="button"
-                style={cardSnapshotButtonStyle}
-                onClick={() => goToTasks({ filter: "pending", mineOnly: false })}
-              >
-                <span style={cardSnapshotValueStyle}>{overdueCount}</span>
-                <span style={cardSnapshotLabelStyle}>overdue</span>
-              </button>
-            </div>
-            <p style={cardSummaryTextStyle}>
-              <button
-                type="button"
-                style={cardSummaryLinkStyle}
-                onClick={() => goToTasks({ filter: "pending" })}
-              >
-                {pendingCount} pending
-              </button>
-              <span> • </span>
-              <button
-                type="button"
-                style={cardSummaryLinkStyle}
-                onClick={() => goToTasks({ filter: "in-progress" })}
-              >
-                {inProgressCount} in progress
-              </button>
-              <span> • </span>
-              <button
-                type="button"
-                style={cardSummaryLinkStyle}
-                onClick={() => goToTasks({ filter: "completed" })}
-              >
-                {taskStats.completed} completed
-              </button>
-            </p>
+            {renderStatCards([
+              {
+                label: "Due today",
+                value: dueTodayCount,
+                hint: "Tasks scheduled for today",
+                onClick: () => goToTasks({ dueFilter: "due-today" }),
+              },
+              {
+                label: "Overdue",
+                value: overdueCount,
+                hint: "Past-due tasks",
+                onClick: () => goToTasks({ dueFilter: "overdue" }),
+              },
+              {
+                label: "Pending",
+                value: pendingCount,
+                onClick: () => goToTasks({ filter: "pending" }),
+              },
+              {
+                label: "In progress",
+                value: inProgressCount,
+                onClick: () => goToTasks({ filter: "in-progress" }),
+              },
+              {
+                label: "Completed",
+                value: taskStats.completed,
+                onClick: () => goToTasks({ filter: "completed" }),
+              },
+            ])}
             <div style={cardDividerStyle} />
             <div>
-              <p style={cardSubheadingStyle}>🗓️ Upcoming</p>
+              <p style={cardSubheadingStyle}>Upcoming</p>
               {upcomingTasks.length === 0 ? (
-                <p style={textStyle}>Everything is wrapped up. 🎉</p>
+                <p style={textStyle}>Everything is wrapped up.</p>
               ) : (
                 <ul style={taskListStyle}>
                   {upcomingTasks.map((task) => (
@@ -261,7 +234,7 @@ export default function Home() {
 
           <div style={{ ...cardStyle, gap: "1rem" }}>
             <div style={cardHeaderRowStyle}>
-              <h3 style={titleStyle}>💰 Bills Overview</h3>
+              <h3 style={titleStyle}>Bills</h3>
               <div style={cardHeaderActionsStyle}>
                 <button
                   type="button"
@@ -280,45 +253,40 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <div style={cardSnapshotRowStyle}>
-              <div style={cardSnapshotItemStyle}>
-                <span style={cardSnapshotValueStyle}>{dueSoonBillCount}</span>
-                <span style={cardSnapshotLabelStyle}>due this week</span>
-              </div>
-              <div style={cardSnapshotItemStyle}>
-                <span style={cardSnapshotValueStyle}>
-                  ${myShareDue.toFixed(2)}
-                </span>
-                <span style={cardSnapshotLabelStyle}>your share</span>
-              </div>
-            </div>
-            <p style={cardSummaryTextStyle}>
-              <button
-                type="button"
-                style={cardSummaryLinkStyle}
-                onClick={() => goToBills({ filter: "unpaid" })}
-              >
-                {billStats.unpaid} unpaid
-              </button>
-              <span> • </span>
-              <button
-                type="button"
-                style={cardSummaryLinkStyle}
-                onClick={() => goToBills({ filter: "paid" })}
-              >
-                {billStats.paid} paid
-              </button>
-            </p>
+            {renderStatCards([
+              {
+                label: "Due this week",
+                value: dueSoonBillCount,
+                hint: "Upcoming payments",
+                onClick: () => goToBills({ dueFilter: "due-week" }),
+              },
+              {
+                label: "Your share",
+                value: `$${myShareDue.toFixed(2)}`,
+                hint: "Outstanding split",
+              },
+              {
+                label: "Unpaid",
+                value: billStats.unpaid,
+                onClick: () => goToBills({ filter: "unpaid" }),
+              },
+              {
+                label: "Paid",
+                value: billStats.paid,
+                onClick: () => goToBills({ filter: "paid" }),
+              },
+            ])}
             {billStats.unpaid > 0 ? (
               <>
                 <div style={cardDividerStyle} />
                 <div>
-                  <p style={cardSubheadingStyle}>📆 Coming due</p>
+                  <p style={cardSubheadingStyle}>Coming due</p>
                   <ul style={billListStyle}>
                     {topUnpaidBills.map((bill) => {
-                      const share = Array.isArray(bill.splitBetween) && bill.splitBetween.length
-                        ? bill.amount / bill.splitBetween.length
-                        : bill.amount;
+                      const share =
+                        Array.isArray(bill.splitBetween) && bill.splitBetween.length
+                          ? bill.amount / bill.splitBetween.length
+                          : bill.amount;
                       return (
                         <li key={bill.id} style={billListItemStyle}>
                           <span>{bill.title}</span>
@@ -337,7 +305,7 @@ export default function Home() {
                 </div>
               </>
             ) : (
-              <p style={textStyle}>All bills are settled! 🎉</p>
+              <p style={textStyle}>All bills are settled.</p>
             )}
           </div>
         </section>
@@ -347,7 +315,6 @@ export default function Home() {
 }
 
 function handleExportICS(target) {
-  const url = new URL(window.location.href);
   const fileName = "habita-events.ics";
   const icsContent = generateICSFromStorage();
   const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
@@ -429,9 +396,9 @@ function escapeICS(text) {
 }
 
 const cardStyle = {
-  backgroundColor: "var(--habita-card)",
+  backgroundColor: "rgba(74,144,226,0.08)",
   borderRadius: "12px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "1rem 1.2rem",
   textAlign: "left",
   display: "flex",
@@ -463,66 +430,55 @@ const cardLinkButtonStyle = {
 };
 
 const cardIconButtonStyle = {
-  border: "1px solid var(--habita-border)",
-  background: "var(--habita-card)",
-  color: "var(--habita-accent)",
-  borderRadius: "8px",
+  border: "none",
+  background: "var(--habita-accent)",
+  color: "var(--habita-button-text)",
+  borderRadius: "50%",
   width: "32px",
   height: "32px",
   fontSize: "1.2rem",
   fontWeight: 600,
   cursor: "pointer",
-  boxShadow: "var(--habita-shadow)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
 };
 
-const cardBadgeStyle = {
-  padding: "0.15rem 0.6rem",
-  borderRadius: "999px",
-  backgroundColor: "var(--habita-chip)",
+const statCardsWrapStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "0.75rem",
+};
+
+const statCardStyle = {
+  background: "rgba(74,144,226,0.12)",
+  border: "1px solid rgba(74,144,226,0.2)",
+  borderRadius: "16px",
+  padding: "0.7rem 0.8rem",
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.2rem",
+  minWidth: "120px",
+  cursor: "pointer",
+  alignItems: "flex-start",
+};
+
+const statCardLabelStyle = {
+  fontSize: "0.7rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
   color: "var(--habita-muted)",
-  fontSize: "0.75rem",
+};
+
+const statCardValueStyle = {
+  fontSize: "0.95rem",
+  color: "var(--habita-text)",
   fontWeight: 600,
 };
 
-const cardSnapshotRowStyle = {
-  display: "flex",
-  gap: "0.6rem",
-  flexWrap: "wrap",
-};
-
-const cardSnapshotItemStyle = {
-  backgroundColor: "var(--habita-chip)",
-  borderRadius: "10px",
-  padding: "0.45rem 0.6rem",
-  display: "flex",
-  flexDirection: "column",
-  minWidth: "96px",
-  gap: "0.15rem",
-};
-
-const cardSnapshotButtonStyle = {
-  ...cardSnapshotItemStyle,
-  border: "1px solid transparent",
-  outline: "none",
-  cursor: "pointer",
-  textAlign: "left",
-};
-
-const cardSnapshotValueStyle = {
-  fontSize: "0.9rem",
-  fontWeight: 700,
-  color: "var(--habita-text)",
-  lineHeight: 1.1,
-};
-
-const cardSnapshotLabelStyle = {
-  fontSize: "0.7rem",
+const statCardHintStyle = {
+  fontSize: "0.72rem",
   color: "var(--habita-muted)",
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
 };
 
 const cardDividerStyle = {
@@ -543,42 +499,6 @@ const contentStyle = {
   display: "flex",
   flexDirection: "column",
   gap: "1.5rem",
-};
-
-const heroStyle = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.35rem",
-  color: "var(--habita-text)",
-};
-
-const heroTitleStyle = {
-  margin: 0,
-  fontSize: "1.35rem",
-  fontWeight: 600,
-};
-
-const heroStatsRowStyle = {
-  display: "flex",
-  gap: "0.6rem",
-  flexWrap: "wrap",
-  margin: 0,
-  marginTop: "0.25rem",
-};
-
-const heroStatBadgeStyle = {
-  background: "var(--habita-chip)",
-  color: "var(--habita-text)",
-  borderRadius: "999px",
-  padding: "0.3rem 0.7rem",
-  fontSize: "0.8rem",
-  fontWeight: 600,
-};
-
-const heroCaptionStyle = {
-  margin: "0.4rem 0 0 0",
-  fontSize: "0.75rem",
-  color: "var(--habita-muted)",
 };
 
 const singleCardSectionStyle = {
@@ -611,27 +531,6 @@ const cardSubheadingStyle = {
   fontSize: "0.85rem",
   fontWeight: 600,
   color: "var(--habita-text)",
-};
-
-const cardSummaryTextStyle = {
-  margin: 0,
-  fontSize: "0.8rem",
-  color: "var(--habita-muted)",
-  display: "flex",
-  alignItems: "center",
-  gap: "0.25rem",
-  flexWrap: "wrap",
-};
-
-const cardSummaryLinkStyle = {
-  background: "transparent",
-  border: "none",
-  color: "var(--habita-accent)",
-  fontSize: "0.8rem",
-  fontWeight: 600,
-  padding: 0,
-  cursor: "pointer",
-  textDecoration: "none",
 };
 
 const formatDueLabel = (value) => {
@@ -685,27 +584,4 @@ const billListItemStyle = {
 const billMetaStyle = {
   fontSize: "0.75rem",
   color: "var(--habita-muted)",
-};
-
-const progressTrackStyle = {
-  width: "100%",
-  height: "8px",
-  borderRadius: "999px",
-  backgroundColor: "var(--habita-border)",
-  marginTop: "0.8rem",
-  overflow: "hidden",
-};
-
-const progressFillStyle = {
-  height: "100%",
-  backgroundImage: "linear-gradient(90deg, var(--habita-accent), #9ecbff)",
-  transition: "width 0.3s ease",
-};
-
-const progressLabelStyle = {
-  display: "block",
-  marginTop: "0.4rem",
-  fontSize: "0.8rem",
-  color: "var(--habita-muted)",
-  fontWeight: 600,
 };

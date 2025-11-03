@@ -321,9 +321,9 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
 }
 
 const cardStyle = {
-  backgroundColor: "var(--habita-card)",
+  backgroundColor: "rgba(74,144,226,0.08)",
   borderRadius: "12px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
   padding: "0.85rem 1rem",
   textAlign: "center",
 };

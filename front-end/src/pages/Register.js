@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 export default function Register() {
   return (
     <div style={container}>
-      <h2 style={title}>Create Account 🏡</h2>
+      <h2 style={title}>Create Account</h2>
       <p style={subtitle}>Join your housemates on Habita</p>
 
       <form style={form}>
@@ -29,10 +29,10 @@ const container = {
   maxWidth: "360px",
   margin: "5rem auto",
   textAlign: "center",
-  background: "var(--habita-card)",
+  background: "rgba(74,144,226,0.08)",
   padding: "2rem",
   borderRadius: "16px",
-  boxShadow: "var(--habita-shadow)",
+  border: "1px solid rgba(74,144,226,0.25)",
   color: "var(--habita-text)",
 };
 
@@ -59,7 +59,6 @@ const button = {
   padding: "0.8rem",
   cursor: "pointer",
   fontWeight: "500",
-  boxShadow: "var(--habita-shadow)",
 };
 const footerText = {
   marginTop: "1rem",
