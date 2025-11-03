@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MoodTracker from "../components/MoodTracker";
+import MiniCalendar from "../components/MiniCalendar";
 import { useTasks } from "../context/TasksContext";
 import { useBills } from "../context/BillsContext";
 
@@ -81,6 +82,22 @@ export default function Home() {
     [bills]
   );
 
+  const eventsByISO = useMemo(() => {
+    const map = {};
+    const add = (iso, item) => {
+      if (!iso) return;
+      if (!map[iso]) map[iso] = [];
+      map[iso].push(item);
+    };
+    tasks.forEach((t) => {
+      if (typeof t?.due === "string") add(t.due.slice(0, 10), { type: "task", id: t.id, title: t.title });
+    });
+    bills.forEach((b) => {
+      if (typeof b?.dueDate === "string") add(b.dueDate.slice(0, 10), { type: "bill", id: b.id, title: b.title });
+    });
+    return map;
+  }, [tasks, bills]);
+
   const pendingCount = useMemo(
     () => tasks.filter((task) => task.status === "pending").length,
     [tasks]
@@ -148,6 +165,16 @@ export default function Home() {
         </section>
 
         <section style={summaryGridStyle}>
+          <div style={{ ...cardStyle }}>
+            <MiniCalendar
+              eventsByISO={eventsByISO}
+              onSelectDate={(iso) => {
+                // Navigate to tasks filtered to the selected date
+                navigate("/tasks", { state: { date: iso } });
+              }}
+              onExportICS={(target) => handleExportICS(target)}
+            />
+          </div>
           <div style={{ ...cardStyle, gap: "1rem" }}>
             <div style={cardHeaderRowStyle}>
               <h3 style={titleStyle}>📋 Tasks Overview</h3>
@@ -319,6 +346,88 @@ export default function Home() {
   );
 }
 
+function handleExportICS(target) {
+  const url = new URL(window.location.href);
+  const fileName = "habita-events.ics";
+  const icsContent = generateICSFromStorage();
+  const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+  const blobUrl = URL.createObjectURL(blob);
+  if (target === "google") {
+    // Google Calendar import supports uploading .ics; provide a helper open + download fallback
+    window.open("https://calendar.google.com/calendar/u/0/r/settings/export", "_blank");
+  }
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = fileName;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+}
+
+function generateICSFromStorage() {
+  // Create ICS VCALENDAR with VEVENTS for tasks and bills
+  const pad = (n) => String(n).padStart(2, "0");
+  const toICSDate = (iso) => {
+    const d = new Date(iso);
+    const y = d.getFullYear();
+    const m = pad(d.getMonth() + 1);
+    const day = pad(d.getDate());
+    return `${y}${m}${day}`;
+  };
+  let tasks = [];
+  let bills = [];
+  try {
+    const t = window.localStorage.getItem("habita:tasks");
+    const b = window.localStorage.getItem("habita:bills");
+    tasks = t ? JSON.parse(t) : [];
+    bills = b ? JSON.parse(b) : [];
+  } catch {
+    // ignore
+  }
+  const events = [];
+  tasks.forEach((t) => {
+    if (!t?.due) return;
+    const uid = `task-${t.id || Math.random().toString(36).slice(2)}@habita`;
+    const dt = toICSDate(t.due.slice(0, 10));
+    events.push([
+      "BEGIN:VEVENT",
+      `UID:${uid}`,
+      `DTSTART;VALUE=DATE:${dt}`,
+      `DTEND;VALUE=DATE:${dt}`,
+      `SUMMARY:${escapeICS(`Task: ${t.title}`)}`,
+      "END:VEVENT",
+    ].join("\r\n"));
+  });
+  bills.forEach((b) => {
+    if (!b?.dueDate) return;
+    const uid = `bill-${b.id || Math.random().toString(36).slice(2)}@habita`;
+    const dt = toICSDate(b.dueDate.slice(0, 10));
+    events.push([
+      "BEGIN:VEVENT",
+      `UID:${uid}`,
+      `DTSTART;VALUE=DATE:${dt}`,
+      `DTEND;VALUE=DATE:${dt}`,
+      `SUMMARY:${escapeICS(`Bill: ${b.title}`)}`,
+      "END:VEVENT",
+    ].join("\r\n"));
+  });
+  const body = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Habita//Calendar//EN",
+    ...events,
+    "END:VCALENDAR",
+  ].join("\r\n");
+  return body;
+}
+
+function escapeICS(text) {
+  return String(text)
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
 const cardStyle = {
   backgroundColor: "var(--habita-card)",
   borderRadius: "12px",
@@ -474,14 +583,15 @@ const heroCaptionStyle = {
 
 const singleCardSectionStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "1rem",
+  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gap: "1.25rem",
 };
 
 const summaryGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "1rem",
+  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+  gap: "1.25rem",
+  alignItems: "start",
 };
 
 const titleStyle = {
