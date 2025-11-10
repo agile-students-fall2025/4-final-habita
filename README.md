@@ -47,24 +47,32 @@ If you’d like to suggest improvements or report issues, please open a new Issu
 
 ---
 
-## 🛠️ Build & Test Instructions (To Be Updated)
+## 🛠️ Build & Test Instructions
 
-Once development begins, this section will include detailed setup steps.
+### Back-End (Express + Discord-style notifications)
 
-For now:
 ```bash
-# Clone the repository
-git clone https://github.com/agile-students-fall2025/4-final-habita.git
-
-# Navigate to the project directory
-cd 4-final-habita
-
-# Install dependencies (to be updated once project structure is set)
+# Install dependencies the first time
+cd back-end
 npm install
 
-# Start the development server (example)
+# Start the Express server on http://localhost:3000
 npm start
+
+# Run mocha/chai unit tests with c8 coverage
+npm test
 ```
+
+Key routes currently implemented with mock JSON data:
+
+- `GET /api/health` – Lightweight status check for monitoring.
+- `GET /api/notifications` – Discord-style notification feed with query filters like `?unread=true&mentions=You`.
+- `GET /api/notifications/summary` – Aggregated unread counts and highlights per channel.
+- `GET /api/notifications/channels` – Metadata for the notification channels (Chore Board, Bills HQ, House Chat, etc.).
+- `POST /api/notifications` – Accepts `title`, `body`, `channelId`, and optional metadata to mock new alerts.
+- `PATCH /api/notifications/:id/read` – Marks a notification as read/unread for demos of acknowledgement flows.
+
+All routes are powered by Express.js and respond with deterministic mock JSON so the front-end can integrate without a live database. Static requests to `/` serve a small HTML hand-off page from `back-end/public/index.html`.
 
 
 ## 📚 Additional Documentation
@@ -79,6 +87,5 @@ npm start
 ---
 
 © 2025 Habita Team 
-
 
 

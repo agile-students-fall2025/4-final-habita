@@ -63,14 +63,13 @@ We use the **Feature Branch Workflow**:
    ```
 4. Push the branch and open a Pull Request (PR):
    ```bash
-   git push origin feature/<short-description>
+   git push origin <branch-name>
    ```
 5. Another teammate reviews the PR and merges it once approved.
 
-### Create a New Local Branch
+#### Branch Naming Convention
 
-With the latest code downloaded, create a new branch and “check it out”.  
-The name of the branch should refer to the **User Story**, **Task**, or **Spike** associated with the changes that will be made.
+The following naming convention should be followed when creating a new branch:
 
 Example for a Task with identification number 9 belonging to a User Story with identification number 13:
 ```bash
@@ -125,6 +124,7 @@ Each PR must:
 - Reference a GitHub Issue (e.g., “Fixes #12”)
 - Pass all automated tests and peer reviews
 - Follow the Git workflow described above
+- Use single-line commit messages and create a separate feature branch for each change.
 
 ---
 

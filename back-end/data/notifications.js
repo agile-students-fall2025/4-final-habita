@@ -1,0 +1,145 @@
+const { randomUUID } = require("crypto")
+
+const CHANNELS = [
+  { id: "chores", name: "Chore Board", icon: "🧹" },
+  { id: "bills", name: "Bills HQ", icon: "💰" },
+  { id: "house-chat", name: "House Chat", icon: "💬" },
+  { id: "alerts", name: "System Alerts", icon: "⚡" },
+]
+
+const seedNotifications = [
+  {
+    id: "ntf_001",
+    channelId: "chores",
+    type: "task-assigned",
+    title: "Trash duty assigned",
+    body: "Sam assigned you to take the trash out tonight.",
+    icon: "🧹",
+    mentions: ["You", "Sam"],
+    priority: "normal",
+    createdAt: "2025-01-10T23:15:00.000Z",
+    readAt: null,
+    context: {
+      relatedTaskId: "task-231",
+      due: "2025-01-11T02:00:00.000Z",
+    },
+  },
+  {
+    id: "ntf_002",
+    channelId: "bills",
+    type: "payment-reminder",
+    title: "Utilities past due",
+    body: "Electricity bill is unpaid. Your share is $45.00.",
+    icon: "💡",
+    mentions: ["You"],
+    priority: "urgent",
+    createdAt: "2025-01-10T20:00:00.000Z",
+    readAt: null,
+    context: {
+      relatedBillId: "bill-884",
+      amount: 45,
+      currency: "USD",
+    },
+  },
+  {
+    id: "ntf_003",
+    channelId: "house-chat",
+    type: "thread-reply",
+    title: "Alex mentioned you in #house-chat",
+    body: "“Can you pick up oat milk on your way back?”",
+    icon: "💬",
+    mentions: ["You", "Alex"],
+    priority: "normal",
+    createdAt: "2025-01-10T18:42:00.000Z",
+    readAt: "2025-01-10T19:05:00.000Z",
+    context: {
+      thread: "grocery-run",
+      messageId: "msg-742",
+    },
+  },
+  {
+    id: "ntf_004",
+    channelId: "alerts",
+    type: "system",
+    title: "Weekly digest ready",
+    body: "Your Sunday wrap-up is available.",
+    icon: "📬",
+    mentions: [],
+    priority: "low",
+    createdAt: "2025-01-10T12:00:00.000Z",
+    readAt: "2025-01-10T12:05:00.000Z",
+    context: {
+      digestWeek: "2025-W02",
+    },
+  },
+  {
+    id: "ntf_005",
+    channelId: "chores",
+    type: "task-update",
+    title: "Laundry status updated",
+    body: "Jordan marked Laundry as in progress.",
+    icon: "🧺",
+    mentions: ["Jordan"],
+    priority: "normal",
+    createdAt: "2025-01-09T22:10:00.000Z",
+    readAt: null,
+    context: {
+      relatedTaskId: "task-115",
+    },
+  },
+  {
+    id: "ntf_006",
+    channelId: "bills",
+    type: "bill-split",
+    title: "New rent split",
+    body: "Monthly rent split across everyone.",
+    icon: "🏠",
+    mentions: ["Alex", "Sam", "Jordan", "You"],
+    priority: "normal",
+    createdAt: "2025-01-09T18:05:00.000Z",
+    readAt: null,
+    context: {
+      relatedBillId: "bill-990",
+      amount: 875,
+      currency: "USD",
+    },
+  },
+  {
+    id: "ntf_007",
+    channelId: "house-chat",
+    type: "house-rule",
+    title: "Quiet hours poll",
+    body: "New poll in #house-chat asking about sleep schedules.",
+    icon: "📊",
+    mentions: [],
+    priority: "low",
+    createdAt: "2025-01-09T16:15:00.000Z",
+    readAt: null,
+    context: {
+      pollId: "poll-31",
+    },
+  },
+  {
+    id: "ntf_008",
+    channelId: "alerts",
+    type: "system",
+    title: "Profile synced with Discord",
+    body: "Your Discord handle is now linked to Habita.",
+    icon: "🔗",
+    mentions: ["You"],
+    priority: "low",
+    createdAt: "2025-01-08T11:30:00.000Z",
+    readAt: "2025-01-08T11:31:00.000Z",
+    context: {
+      integration: "discord",
+    },
+  },
+]
+
+const generateId = () => `ntf_${randomUUID().split("-")[0]}`
+
+module.exports = {
+  CHANNELS,
+  seedNotifications,
+  generateId,
+}
