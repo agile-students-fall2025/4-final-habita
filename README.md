@@ -68,6 +68,7 @@ Key routes currently implemented with mock JSON data:
 - `GET /api/health` – Lightweight status check for monitoring.
 - `GET /api/notifications` / `POST /api/notifications` / `PATCH /api/notifications/:id/read` – Notification feed used by the Notifications page and global badges.
 - `GET /api/notifications/summary` / `GET /api/notifications/channels` – Aggregated counts + metadata for notification widgets.
+- `GET /api/home/summary` – Returns the personalized dashboard snapshot powering the Home page (tasks/bills stats, upcoming lists, calendar events).
 - `GET /api/chat/threads` – Returns chat thread summaries (used by the Chat dashboard and sidebars on Tasks/Bills).
 - `POST /api/chat/threads` – Ensures a thread exists for a given `contextType/contextId` pair (task/bill chats are created on the fly).
 - `GET /api/chat/messages?threadId=house` (or `?contextType=task&contextId=42`) – Fetches message history, creating a thread if needed.

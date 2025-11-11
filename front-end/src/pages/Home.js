@@ -1,162 +1,86 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MoodTracker from "../components/MoodTracker";
 import MiniCalendar from "../components/MiniCalendar";
-import { useTasks } from "../context/TasksContext";
-import { useBills } from "../context/BillsContext";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { tasks } = useTasks();
-  const { bills } = useBills();
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const todayTimestamp = Date.parse(todayISO);
-
-  const goToTasks = (state) => {
-    if (state) {
-      navigate("/tasks", { state });
-    } else {
-      navigate("/tasks");
-    }
+  const goToTasks = (state = {}) => {
+    navigate("/tasks", { state: { mineOnly: true, ...state } });
   };
 
-  const goToBills = (state) => {
-    if (state) {
-      navigate("/bills", { state });
-    } else {
-      navigate("/bills");
-    }
+  const goToBills = (state = {}) => {
+    navigate("/bills", { state: { mineOnly: true, ...state } });
   };
 
-  const isAssignedToYou = (task) => {
-    if (Array.isArray(task?.assignees)) {
-      return task.assignees.includes("You");
-    }
-    return task?.assignees === "You";
-  };
-
-  const myTasks = useMemo(
-    () => tasks.filter((task) => isAssignedToYou(task)),
-    [tasks]
-  );
-
-  const upcomingTasks = useMemo(() => {
-    const compareValue = (task) => {
-      const parsed = Date.parse(task.due);
-      return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
-    };
-    return myTasks
-      .filter((task) => task.status !== "completed")
-      .sort((a, b) => compareValue(a) - compareValue(b))
-      .slice(0, 3);
-  }, [myTasks]);
-
-  const isBillSplitWithYou = (bill) =>
-    Array.isArray(bill?.splitBetween) && bill.splitBetween.includes("You");
-
-  const myBills = useMemo(() => bills.filter(isBillSplitWithYou), [bills]);
-
-  const myOutstandingBills = useMemo(
-    () =>
-      myBills.filter((bill) => {
-        if (bill.status !== "unpaid") return false;
-        if (bill.payments && bill.payments["You"] === true) return false;
-        return true;
-      }),
-    [myBills]
-  );
-
-  const eventsByISO = useMemo(() => {
-    const map = {};
-    const add = (iso, item) => {
-      if (!iso) return;
-      if (!map[iso]) map[iso] = [];
-      map[iso].push(item);
-    };
-    tasks.forEach((t) => {
-      if (typeof t?.due === "string") add(t.due.slice(0, 10), { type: "task", id: t.id, title: t.title });
-    });
-    bills.forEach((b) => {
-      if (typeof b?.dueDate === "string") add(b.dueDate.slice(0, 10), { type: "bill", id: b.id, title: b.title });
-    });
-    return map;
-  }, [tasks, bills]);
-
-  const pendingCount = useMemo(
-    () => myTasks.filter((task) => task.status === "pending").length,
-    [myTasks]
-  );
-
-  const inProgressCount = useMemo(
-    () => myTasks.filter((task) => task.status === "in-progress").length,
-    [myTasks]
-  );
-
-  const dueTodayCount = useMemo(
-    () =>
-      myTasks.filter((task) => {
-        if (task.status === "completed") return false;
-        if (typeof task.due !== "string") return false;
-        return task.due.slice(0, 10) === todayISO;
-      }).length,
-    [myTasks, todayISO]
-  );
-
-  const overdueCount = useMemo(
-    () =>
-      myTasks.filter((task) => {
-        if (task.status === "completed") return false;
-        const parsed = Date.parse(task.due);
-        if (Number.isNaN(parsed)) return false;
-        return parsed < todayTimestamp;
-      }).length,
-    [myTasks, todayTimestamp]
-  );
-
-  const myCompletedCount = useMemo(
-    () => myTasks.filter((task) => task.status === "completed").length,
-    [myTasks]
-  );
-
-  const topUnpaidBills = useMemo(
-    () => myOutstandingBills.slice(0, 2),
-    [myOutstandingBills]
-  );
-
-  const dueSoonBillCount = useMemo(() => {
-    const sevenDaysOut = todayTimestamp + 7 * 24 * 60 * 60 * 1000;
-    return myOutstandingBills.filter((bill) => {
-      const parsed = Date.parse(bill.dueDate);
-      if (Number.isNaN(parsed)) return false;
-      return parsed >= todayTimestamp && parsed <= sevenDaysOut;
-    }).length;
-  }, [myOutstandingBills, todayTimestamp]);
-
-  const myBillStats = useMemo(() => {
-    let paid = 0;
-    let unpaid = 0;
-    myBills.forEach((bill) => {
-      if (bill.payments && bill.payments["You"]) {
-        paid += 1;
-      } else {
-        unpaid += 1;
-      }
-    });
-    return { paid, unpaid };
-  }, [myBills]);
-
-  const myShareDue = useMemo(
-    () =>
-      myOutstandingBills.reduce((sum, bill) => {
-        if (!Array.isArray(bill.splitBetween) || bill.splitBetween.length === 0) {
-          return sum + bill.amount;
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("/api/home/summary");
+        if (!response.ok) {
+          throw new Error("Failed to load home summary");
         }
-        const share = bill.amount / bill.splitBetween.length;
-        return share + sum;
-      }, 0),
-    [myOutstandingBills]
-  );
+        const payload = await response.json();
+        if (!cancelled) {
+          setSummary(payload.data);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || "Unable to load data");
+          setLoading(false);
+        }
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const tasksSummary = summary?.tasks ?? {
+    stats: { dueToday: 0, overdue: 0, pending: 0, inProgress: 0, completed: 0 },
+    upcoming: [],
+    items: [],
+  };
+
+  const billsSummary = summary?.bills ?? {
+    stats: { dueSoon: 0, unpaid: 0, paid: 0 },
+    comingDue: [],
+    myShareDue: 0,
+  };
+
+  const eventsByISO = summary?.eventsByISO ?? {};
+
+  const dueTodayCount = tasksSummary.stats?.dueToday ?? 0;
+  const overdueCount = tasksSummary.stats?.overdue ?? 0;
+  const pendingCount = tasksSummary.stats?.pending ?? 0;
+  const inProgressCount = tasksSummary.stats?.inProgress ?? 0;
+  const myCompletedCount = tasksSummary.stats?.completed ?? 0;
+  const upcomingTasks = tasksSummary.upcoming ?? [];
+
+  const dueSoonBillCount = billsSummary.stats?.dueSoon ?? 0;
+  const topUnpaidBills = billsSummary.comingDue ?? [];
+  const myShareDue = billsSummary.myShareDue ?? 0;
+  const outstandingBills = billsSummary.outstanding ?? [];
+  const myBillStats = {
+    unpaid: billsSummary.stats?.unpaid ?? 0,
+    paid: billsSummary.stats?.paid ?? 0,
+  };
+
+  const headerMessage = useMemo(() => {
+    if (loading) return "Syncing your dashboard…";
+    if (error) return error;
+    if (summary?.user) return `Welcome back, ${summary.user}!`;
+    return "Your personal snapshot";
+  }, [loading, error, summary]);
 
   const renderStatCards = (items) => (
     <div style={statCardsWrapStyle}>
@@ -190,6 +114,16 @@ export default function Home() {
   return (
     <div style={pageStyle}>
       <div style={contentStyle}>
+        <div style={homeHeaderStyle}>
+          <div>
+            <h2 style={homeTitleStyle}>Home</h2>
+            <p style={homeSubtitleStyle}>{headerMessage}</p>
+          </div>
+          <span style={homeStatusPillStyle}>
+            {loading ? "Syncing" : error ? "Offline data" : "Live data"}
+          </span>
+        </div>
+
         <section style={singleCardSectionStyle}>
           <MoodTracker variant="compact" />
         </section>
@@ -198,16 +132,15 @@ export default function Home() {
           <div style={{ ...cardStyle }}>
             <MiniCalendar
               eventsByISO={eventsByISO}
-              onSelectDate={(iso) => {
-                // Navigate to tasks filtered to the selected date
-                navigate("/tasks", { state: { date: iso } });
-              }}
-              onExportICS={(target) => handleExportICS(target)}
+              onSelectDate={(iso) =>
+                goToTasks({ dueFilter: { type: "date", value: iso }, date: iso })
+              }
+              onExportICS={(target) => handleExportICS(target, summary)}
             />
           </div>
           <div style={{ ...cardStyle, gap: "1rem" }}>
             <div style={cardHeaderRowStyle}>
-              <h3 style={titleStyle}>Tasks</h3>
+              <h3 style={titleStyle}>My Tasks</h3>
               <div style={cardHeaderActionsStyle}>
                 <button
                   type="button"
@@ -277,7 +210,7 @@ export default function Home() {
 
           <div style={{ ...cardStyle, gap: "1rem" }}>
             <div style={cardHeaderRowStyle}>
-              <h3 style={titleStyle}>Bills</h3>
+              <h3 style={titleStyle}>My Bills</h3>
               <div style={cardHeaderActionsStyle}>
                 <button
                   type="button"
@@ -319,7 +252,7 @@ export default function Home() {
                 onClick: () => goToBills({ filter: "paid", mine: true }),
               },
             ])}
-            {myOutstandingBills.length > 0 ? (
+            {outstandingBills.length > 0 ? (
               <>
                 <div style={cardDividerStyle} />
                 <div>
@@ -340,9 +273,9 @@ export default function Home() {
                       );
                     })}
                   </ul>
-                  {myOutstandingBills.length > topUnpaidBills.length && (
+                  {outstandingBills.length > topUnpaidBills.length && (
                     <span style={billMetaStyle}>
-                      + {myOutstandingBills.length - topUnpaidBills.length} more waiting
+                      + {outstandingBills.length - topUnpaidBills.length} more waiting
                     </span>
                   )}
                 </div>
@@ -357,9 +290,11 @@ export default function Home() {
   );
 }
 
-function handleExportICS(target) {
+function handleExportICS(target, summary) {
   const fileName = "habita-events.ics";
-  const icsContent = generateICSFromStorage();
+  const tasks = summary?.tasks?.items ?? [];
+  const bills = summary?.bills?.items ?? [];
+  const icsContent = generateICS(tasks, bills);
   const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
   const blobUrl = URL.createObjectURL(blob);
   if (target === "google") {
@@ -373,7 +308,7 @@ function handleExportICS(target) {
   setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
 }
 
-function generateICSFromStorage() {
+function generateICS(tasksData = [], billsData = []) {
   // Create ICS VCALENDAR with VEVENTS for tasks and bills
   const pad = (n) => String(n).padStart(2, "0");
   const toICSDate = (iso) => {
@@ -383,15 +318,18 @@ function generateICSFromStorage() {
     const day = pad(d.getDate());
     return `${y}${m}${day}`;
   };
-  let tasks = [];
-  let bills = [];
-  try {
-    const t = window.localStorage.getItem("habita:tasks");
-    const b = window.localStorage.getItem("habita:bills");
-    tasks = t ? JSON.parse(t) : [];
-    bills = b ? JSON.parse(b) : [];
-  } catch {
-    // ignore
+  let tasks = tasksData;
+  let bills = billsData;
+  if ((!tasks || tasks.length === 0) && (!bills || bills.length === 0)) {
+    try {
+      const t = window.localStorage.getItem("habita:tasks");
+      const b = window.localStorage.getItem("habita:bills");
+      tasks = t ? JSON.parse(t) : [];
+      bills = b ? JSON.parse(b) : [];
+    } catch {
+      tasks = [];
+      bills = [];
+    }
   }
   const events = [];
   tasks.forEach((t) => {
@@ -534,6 +472,36 @@ const pageStyle = {
   padding: "1.25rem",
   backgroundColor: "var(--habita-bg)",
   minHeight: "100vh",
+};
+
+const homeHeaderStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "0.5rem 0",
+  gap: "1rem",
+};
+
+const homeTitleStyle = {
+  margin: 0,
+  fontSize: "1.4rem",
+  fontWeight: 700,
+  color: "var(--habita-text)",
+};
+
+const homeSubtitleStyle = {
+  margin: "0.15rem 0 0",
+  fontSize: "0.9rem",
+  color: "var(--habita-muted)",
+};
+
+const homeStatusPillStyle = {
+  fontSize: "0.75rem",
+  fontWeight: 600,
+  borderRadius: "999px",
+  padding: "0.2rem 0.8rem",
+  border: "1px solid rgba(74,144,226,0.35)",
+  color: "var(--habita-accent)",
 };
 
 const contentStyle = {
