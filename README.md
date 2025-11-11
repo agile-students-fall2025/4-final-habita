@@ -49,7 +49,7 @@ If you’d like to suggest improvements or report issues, please open a new Issu
 
 ## 🛠️ Build & Test Instructions
 
-### Back-End (Express + Discord-style notifications)
+### Back-End (Express API)
 
 ```bash
 # Install dependencies the first time
@@ -66,21 +66,43 @@ npm test
 Key routes currently implemented with mock JSON data:
 
 - `GET /api/health` – Lightweight status check for monitoring.
-- `GET /api/notifications` – Discord-style notification feed with query filters like `?unread=true&mentions=You`.
-- `GET /api/notifications/summary` – Aggregated unread counts and highlights per channel.
-- `GET /api/notifications/channels` – Metadata for the notification channels (Chore Board, Bills HQ, House Chat, etc.).
-- `POST /api/notifications` – Accepts `title`, `body`, `channelId`, and optional metadata to mock new alerts.
-- `PATCH /api/notifications/:id/read` – Marks a notification as read/unread for demos of acknowledgement flows.
+- `GET /api/notifications` / `POST /api/notifications` / `PATCH /api/notifications/:id/read` – Notification feed used by the Notifications page and global badges.
+- `GET /api/notifications/summary` / `GET /api/notifications/channels` – Aggregated counts + metadata for notification widgets.
+- `GET /api/chat/threads` – Returns chat thread summaries (used by the Chat dashboard and sidebars on Tasks/Bills).
+- `POST /api/chat/threads` – Ensures a thread exists for a given `contextType/contextId` pair (task/bill chats are created on the fly).
+- `GET /api/chat/messages?threadId=house` (or `?contextType=task&contextId=42`) – Fetches message history, creating a thread if needed.
+- `POST /api/chat/messages` – Accepts `sender`, `text`, optional `contextType`, `contextId`, and `participants` to append a new chat message.
+- `PATCH /api/chat/threads/:id/read` – Marks a thread as read so unread counts on the Chat UI stay in sync.
 
-### Chat API (used by Chat board + task/bill sidebars)
+These endpoints return deterministic mock JSON so the React app can demo a “live” backend without any real credentials. Static requests to `/` still serve the HTML hand-off page from `back-end/public/index.html`.
 
-- `GET /api/chat/threads` – Returns Discord-style thread summaries (unread counts, last message, participants).
-- `POST /api/chat/threads` – Idempotently ensures a thread exists for a given `contextType/contextId` pair (used when opening task/bill chats).
-- `GET /api/chat/messages?threadId=house` or `?contextType=task&contextId=42` – Fetches ordered messages for a thread, creating it on demand if needed.
-- `POST /api/chat/messages` – Persists a new chat message; accepts `sender`, `text`, and optional `contextType`, `contextId`, `participants`, and `name`.
-- `PATCH /api/chat/threads/:id/read` – Marks a thread as read for the current demo user so unread badges fall away once opened.
+### Front-End (React)
 
-All routes are powered by Express.js and respond with deterministic mock JSON so the front-end can integrate without a live database. Static requests to `/` serve a small HTML hand-off page from `back-end/public/index.html`.
+```bash
+# Install dependencies
+cd front-end
+npm install
+
+# Start the dev server (proxied to Express on port 3000)
+npm start
+
+# Build for production
+npm run build
+```
+
+The Chat page and Notifications page consume the Express API above. Home/Tasks/Bills currently rely on local mock data (per sprint plan) but already route users to backend-backed chat threads from those contexts.
+
+### Sprint Requirements At A Glance
+
+Per [`instructions-2-back-end.md`](./instructions-2-back-end.md), this repo currently satisfies:
+
+- ✅ All server logic is implemented with Express.js (`back-end/app.js`) and serves both static assets and dynamic JSON routes.
+- ✅ Every dynamic route returns mock JSON (chat + notifications) without exposing real credentials. Any secrets belong in `.env` files that stay out of version control.
+- ✅ Front-end pages now fetch data exclusively from the Express API (notifications, chat, tasks/bills integrations), and form submits hit real `POST` endpoints.
+- ✅ Back-end tests use **mocha + chai** with **c8** coverage (`npm test` in `/back-end`), exceeding the 10% coverage floor.
+- ✅ This README documents the full setup so anyone can install dependencies, start the server, and run tests locally.
+
+Please keep following the feature-branch workflow and never commit API keys or production credentials—share required `.env` files privately via the team’s messenger per the course policy.
 
 
 ## 📚 Additional Documentation
@@ -95,4 +117,3 @@ All routes are powered by Express.js and respond with deterministic mock JSON so
 ---
 
 © 2025 Habita Team 
-
