@@ -93,18 +93,6 @@ npm run build
 
 The Chat page and Notifications page consume the Express API above. Home/Tasks/Bills currently rely on local mock data (per sprint plan) but already route users to backend-backed chat threads from those contexts.
 
-### Sprint Requirements At A Glance
-
-Per [`instructions-2-back-end.md`](./instructions-2-back-end.md), this repo currently satisfies:
-
-- ✅ All server logic is implemented with Express.js (`back-end/app.js`) and serves both static assets and dynamic JSON routes.
-- ✅ Every dynamic route returns mock JSON (chat + notifications) without exposing real credentials. Any secrets belong in `.env` files that stay out of version control.
-- ✅ Front-end pages now fetch data exclusively from the Express API (notifications, chat, tasks/bills integrations), and form submits hit real `POST` endpoints.
-- ✅ Back-end tests use **mocha + chai** with **c8** coverage (`npm test` in `/back-end`), exceeding the 10% coverage floor.
-- ✅ This README documents the full setup so anyone can install dependencies, start the server, and run tests locally.
-
-Please keep following the feature-branch workflow and never commit API keys or production credentials—share required `.env` files privately via the team’s messenger per the course policy.
-
 
 ## 📚 Additional Documentation
 
