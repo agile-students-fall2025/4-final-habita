@@ -72,6 +72,14 @@ Key routes currently implemented with mock JSON data:
 - `POST /api/notifications` – Accepts `title`, `body`, `channelId`, and optional metadata to mock new alerts.
 - `PATCH /api/notifications/:id/read` – Marks a notification as read/unread for demos of acknowledgement flows.
 
+### Chat API (used by Chat board + task/bill sidebars)
+
+- `GET /api/chat/threads` – Returns Discord-style thread summaries (unread counts, last message, participants).
+- `POST /api/chat/threads` – Idempotently ensures a thread exists for a given `contextType/contextId` pair (used when opening task/bill chats).
+- `GET /api/chat/messages?threadId=house` or `?contextType=task&contextId=42` – Fetches ordered messages for a thread, creating it on demand if needed.
+- `POST /api/chat/messages` – Persists a new chat message; accepts `sender`, `text`, and optional `contextType`, `contextId`, `participants`, and `name`.
+- `PATCH /api/chat/threads/:id/read` – Marks a thread as read for the current demo user so unread badges fall away once opened.
+
 All routes are powered by Express.js and respond with deterministic mock JSON so the front-end can integrate without a live database. Static requests to `/` serve a small HTML hand-off page from `back-end/public/index.html`.
 
 
@@ -87,5 +95,4 @@ All routes are powered by Express.js and respond with deterministic mock JSON so
 ---
 
 © 2025 Habita Team 
-
 

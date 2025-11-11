@@ -186,7 +186,6 @@ export default function Tasks() {
       updateTask(editingId, payload);
     } else {
       addTask({ id: createdTaskId, status: "pending", ...payload });
-      addTaskChatThread(createdTaskId, payload.title);
     }
     setForm(createDefaultForm());
     setEditingId(null);
@@ -214,15 +213,6 @@ export default function Tasks() {
         scrollToTop();
       }
     }
-  };
-
-  const addTaskChatThread = (taskId, title) => {
-    if (!title) return;
-    window.dispatchEvent(
-      new CustomEvent("habita:new-task-thread", {
-        detail: { taskId, title },
-      })
-    );
   };
 
   const toggleAssignee = (name) => {

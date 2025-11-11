@@ -7,8 +7,8 @@ import { useBills } from "../context/BillsContext";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { tasks, stats: taskStats } = useTasks();
-  const { bills, stats: billStats } = useBills();
+  const { tasks } = useTasks();
+  const { bills } = useBills();
 
   const todayISO = new Date().toISOString().slice(0, 10);
   const todayTimestamp = Date.parse(todayISO);
@@ -29,20 +29,42 @@ export default function Home() {
     }
   };
 
+  const isAssignedToYou = (task) => {
+    if (Array.isArray(task?.assignees)) {
+      return task.assignees.includes("You");
+    }
+    return task?.assignees === "You";
+  };
+
+  const myTasks = useMemo(
+    () => tasks.filter((task) => isAssignedToYou(task)),
+    [tasks]
+  );
+
   const upcomingTasks = useMemo(() => {
     const compareValue = (task) => {
       const parsed = Date.parse(task.due);
       return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
     };
-    return tasks
+    return myTasks
       .filter((task) => task.status !== "completed")
       .sort((a, b) => compareValue(a) - compareValue(b))
       .slice(0, 3);
-  }, [tasks]);
+  }, [myTasks]);
 
-  const unpaidBills = useMemo(
-    () => bills.filter((bill) => bill.status === "unpaid"),
-    [bills]
+  const isBillSplitWithYou = (bill) =>
+    Array.isArray(bill?.splitBetween) && bill.splitBetween.includes("You");
+
+  const myBills = useMemo(() => bills.filter(isBillSplitWithYou), [bills]);
+
+  const myOutstandingBills = useMemo(
+    () =>
+      myBills.filter((bill) => {
+        if (bill.status !== "unpaid") return false;
+        if (bill.payments && bill.payments["You"] === true) return false;
+        return true;
+      }),
+    [myBills]
   );
 
   const eventsByISO = useMemo(() => {
@@ -62,57 +84,78 @@ export default function Home() {
   }, [tasks, bills]);
 
   const pendingCount = useMemo(
-    () => tasks.filter((task) => task.status === "pending").length,
-    [tasks]
+    () => myTasks.filter((task) => task.status === "pending").length,
+    [myTasks]
   );
 
   const inProgressCount = useMemo(
-    () => tasks.filter((task) => task.status === "in-progress").length,
-    [tasks]
+    () => myTasks.filter((task) => task.status === "in-progress").length,
+    [myTasks]
   );
 
   const dueTodayCount = useMemo(
     () =>
-      tasks.filter((task) => {
+      myTasks.filter((task) => {
         if (task.status === "completed") return false;
         if (typeof task.due !== "string") return false;
         return task.due.slice(0, 10) === todayISO;
       }).length,
-    [tasks, todayISO]
+    [myTasks, todayISO]
   );
 
   const overdueCount = useMemo(
     () =>
-      tasks.filter((task) => {
+      myTasks.filter((task) => {
         if (task.status === "completed") return false;
         const parsed = Date.parse(task.due);
         if (Number.isNaN(parsed)) return false;
         return parsed < todayTimestamp;
       }).length,
-    [tasks, todayTimestamp]
+    [myTasks, todayTimestamp]
   );
 
-  const topUnpaidBills = useMemo(() => unpaidBills.slice(0, 2), [unpaidBills]);
+  const myCompletedCount = useMemo(
+    () => myTasks.filter((task) => task.status === "completed").length,
+    [myTasks]
+  );
+
+  const topUnpaidBills = useMemo(
+    () => myOutstandingBills.slice(0, 2),
+    [myOutstandingBills]
+  );
 
   const dueSoonBillCount = useMemo(() => {
     const sevenDaysOut = todayTimestamp + 7 * 24 * 60 * 60 * 1000;
-    return unpaidBills.filter((bill) => {
+    return myOutstandingBills.filter((bill) => {
       const parsed = Date.parse(bill.dueDate);
       if (Number.isNaN(parsed)) return false;
       return parsed >= todayTimestamp && parsed <= sevenDaysOut;
     }).length;
-  }, [unpaidBills, todayTimestamp]);
+  }, [myOutstandingBills, todayTimestamp]);
+
+  const myBillStats = useMemo(() => {
+    let paid = 0;
+    let unpaid = 0;
+    myBills.forEach((bill) => {
+      if (bill.payments && bill.payments["You"]) {
+        paid += 1;
+      } else {
+        unpaid += 1;
+      }
+    });
+    return { paid, unpaid };
+  }, [myBills]);
 
   const myShareDue = useMemo(
     () =>
-      unpaidBills.reduce((sum, bill) => {
+      myOutstandingBills.reduce((sum, bill) => {
         if (!Array.isArray(bill.splitBetween) || bill.splitBetween.length === 0) {
           return sum + bill.amount;
         }
         const share = bill.amount / bill.splitBetween.length;
-        return bill.splitBetween.includes("You") ? sum + share : sum;
+        return share + sum;
       }, 0),
-    [unpaidBills]
+    [myOutstandingBills]
   );
 
   const renderStatCards = (items) => (
@@ -208,7 +251,7 @@ export default function Home() {
               },
               {
                 label: "Completed",
-                value: taskStats.completed,
+                value: myCompletedCount,
                 onClick: () => goToTasks({ filter: "completed" }),
               },
             ])}
@@ -267,16 +310,16 @@ export default function Home() {
               },
               {
                 label: "Unpaid",
-                value: billStats.unpaid,
-                onClick: () => goToBills({ filter: "unpaid" }),
+                value: myBillStats.unpaid,
+                onClick: () => goToBills({ filter: "unpaid", mine: true }),
               },
               {
                 label: "Paid",
-                value: billStats.paid,
-                onClick: () => goToBills({ filter: "paid" }),
+                value: myBillStats.paid,
+                onClick: () => goToBills({ filter: "paid", mine: true }),
               },
             ])}
-            {billStats.unpaid > 0 ? (
+            {myOutstandingBills.length > 0 ? (
               <>
                 <div style={cardDividerStyle} />
                 <div>
@@ -297,15 +340,15 @@ export default function Home() {
                       );
                     })}
                   </ul>
-                  {billStats.unpaid > topUnpaidBills.length && (
+                  {myOutstandingBills.length > topUnpaidBills.length && (
                     <span style={billMetaStyle}>
-                      + {billStats.unpaid - topUnpaidBills.length} more waiting
+                      + {myOutstandingBills.length - topUnpaidBills.length} more waiting
                     </span>
                   )}
                 </div>
               </>
             ) : (
-              <p style={textStyle}>All bills are settled.</p>
+              <p style={textStyle}>All of your bills are settled.</p>
             )}
           </div>
         </section>
