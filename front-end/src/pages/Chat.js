@@ -1,231 +1,142 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useBills } from "../context/BillsContext";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "../context/ChatContext";
-import { useTasks } from "../context/TasksContext";
 
-const roommates = ["Alex", "Sam", "Jordan"];
 const roommateProfiles = {
   Alex: { role: "Organizer", fun: "Keeps the house calendar in check." },
   Sam: { role: "Bills Lead", fun: "Balances every split in seconds." },
   Jordan: { role: "Cleaning Crew", fun: "Owns the spotless kitchen playlist." },
 };
 
-const baseThreads = {
-  house: {
-    id: "house",
-    name: "House Chat",
-    type: "group",
-    contextType: "house",
-    contextId: null,
-    participants: roommates,
-    messages: [
-      {
-        id: 1,
-        sender: "Alex",
-        text: "Morning! Recycling pickup is tonight.",
-        timestamp: "09:12",
-      },
-      {
-        id: 2,
-        sender: "Sam",
-        text: "Thanks! I’ll tie up the bags after class.",
-        timestamp: "09:15",
-      },
-      {
-        id: 3,
-        sender: "You",
-        text: "I'll take them downstairs before dinner.",
-        timestamp: "09:17",
-      },
-    ],
-  },
-};
-
-roommates.forEach((roommate, index) => {
-  baseThreads[`direct-${roommate}`] = {
-    id: `direct-${roommate}`,
-    name: roommate,
-    type: "direct",
-    contextType: "direct",
-    contextId: roommate,
-    participants: [roommate],
-    messages: [
-      {
-        id: 100 + index * 2,
-        sender: roommate,
-        text: "Hey! Need to sync later?",
-        timestamp: "20:05",
-      },
-      {
-        id: 100 + index * 2 + 1,
-        sender: "You",
-        text: "Sure thing, ping me anytime.",
-        timestamp: "20:07",
-      },
-    ],
-  };
-});
-
 const quickReplies = ["On my way!", "Can someone cover tonight?", "All set ✅"];
-const mentionFallback = ["You", ...roommates];
+const mentionFallback = ["You", "Alex", "Sam", "Jordan"];
+const mentionRegex = /@you\b/i;
+const LAST_SEEN_STORAGE_KEY = "habita:chat:last-seen";
+const MUTED_STORAGE_KEY = "habita:chat:muted";
 
-function formatTimestamp(date) {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
+const containsMentionForYou = (text = "") => mentionRegex.test(text.toLowerCase());
+const escapeRegExp = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-function formatDueDate(value) {
+const sectionDefinitions = [
+  { key: "house", label: "House", matcher: (thread) => thread.contextType === "house" || (thread.tags || []).includes("house") },
+  { key: "tasks", label: "Tasks", matcher: (thread) => thread.contextType === "task" },
+  { key: "bills", label: "Bills", matcher: (thread) => thread.contextType === "bill" },
+  { key: "direct", label: "Direct", matcher: (thread) => thread.contextType === "direct" },
+  { key: "other", label: "Other", matcher: () => true },
+];
+
+const formatTimestamp = (value) => {
   if (!value) return "";
   const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) return "";
-  return new Date(parsed).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function normalizeMentions(text, names = mentionFallback) {
-  return text.replace(/@(\w+)/g, (_match, raw) => {
-    const target = names.find(
-      (name) => name.toLowerCase() === String(raw).toLowerCase()
-    );
-    return target ? `@${target}` : `@${raw}`;
-  });
-}
-
-function uniqueParticipants(value) {
-  if (!value) return [];
-  if (Array.isArray(value)) {
-    return Array.from(new Set(value));
-  }
-  return [value];
-}
+  if (Number.isNaN(parsed)) return value;
+  return new Date(parsed).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
 
 export default function Chat() {
-  const { bills } = useBills();
-  const { tasks } = useTasks();
-  const { threads: storedThreads, sendMessage } = useChat();
+  const {
+    threads,
+    messagesByThread,
+    loadMessages,
+    sendMessage,
+    markThreadRead,
+    status,
+  } = useChat();
 
-  const initialIsMobile =
-    typeof window !== "undefined" ? window.innerWidth <= 900 : false;
-  const [isMobile, setIsMobile] = useState(initialIsMobile);
-  const [viewMode, setViewMode] = useState(initialIsMobile ? "list" : "chat");
-  const [activeThreadId, setActiveThreadId] = useState(
-    initialIsMobile ? null : "house"
-  );
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth <= 900 : false));
+  const [viewMode, setViewMode] = useState(isMobile ? "list" : "chat");
+  const [activeThreadId, setActiveThreadId] = useState(null);
   const [draft, setDraft] = useState("");
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [hoveredProfile, setHoveredProfile] = useState(null);
+  const [currentAnchor, setCurrentAnchor] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const scrollRef = useRef(null);
+
+  const [lastSeen, setLastSeen] = useState(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const stored = window.localStorage.getItem(LAST_SEEN_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [mutedThreads, setMutedThreads] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = window.localStorage.getItem(MUTED_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const markThreadAsRead = useCallback((threadId, totalMessages = 0) => {
+    setLastSeen((prev) => {
+      const nextCount = Math.max(totalMessages, 0);
+      if (prev[threadId] === nextCount) return prev;
+      return { ...prev, [threadId]: nextCount };
+    });
+  }, []);
+
+  const toggleMuteThread = useCallback((threadId) => {
+    setMutedThreads((prev) =>
+      prev.includes(threadId) ? prev.filter((id) => id !== threadId) : [...prev, threadId]
+    );
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LAST_SEEN_STORAGE_KEY, JSON.stringify(lastSeen));
+    }
+  }, [lastSeen]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(MUTED_STORAGE_KEY, JSON.stringify(mutedThreads));
+    }
+  }, [mutedThreads]);
+
+  const { sections, threadMap, defaultThreadId, hasAnyThread } = useMemo(() => {
+    const clones = sectionDefinitions.map((section) => ({
+      ...section,
+      threads: [],
+    }));
+    const defaultSection = clones.find((section) => section.key === "other");
+    const addToSection = (thread) => {
+      const target = clones.find((section) => section.matcher(thread)) || defaultSection;
+      target.threads.push(thread);
+    };
+    threads.forEach(addToSection);
+    const map = Object.fromEntries(threads.map((thread) => [thread.id, thread]));
+    const defaultThread =
+      clones.find((section) => section.threads.length > 0)?.threads[0]?.id ?? null;
+    const hasAny = clones.some((section) => section.threads.length > 0);
+    return { sections: clones, threadMap: map, defaultThreadId: defaultThread, hasAnyThread: hasAny };
+  }, [threads]);
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
 
   useEffect(() => {
     const handleResize = () => {
-      if (typeof window !== "undefined") {
-        const mobile = window.innerWidth <= 900;
-        setIsMobile(mobile);
-        if (!mobile && !activeThreadId) {
-          setActiveThreadId("house");
-          setViewMode("chat");
-        }
+      if (typeof window === "undefined") return;
+      const mobile = window.innerWidth <= 900;
+      setIsMobile(mobile);
+      if (!mobile && !activeThreadId) {
+        setViewMode("chat");
+        setActiveThreadId(defaultThreadId);
+      }
+      if (mobile && !viewMode) {
+        setViewMode("list");
       }
     };
     handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [activeThreadId]);
-
-  const { sections, threadMap, defaultThreadId, hasAnyThread } = useMemo(() => {
-    const sections = [
-      { key: "house", label: "House", threads: [] },
-      { key: "tasks", label: "Tasks", threads: [] },
-      { key: "bills", label: "Bills", threads: [] },
-      { key: "direct", label: "Direct", threads: [] },
-    ];
-    const lookup = {};
-
-    const formatStored = (list = []) =>
-      list.map((msg) => ({
-        id: msg.id,
-        sender: msg.sender,
-        text: msg.text,
-        timestamp: msg.timestamp,
-        isSelf: msg.sender === "You",
-        isSystem: msg.sender === "System" || msg.isSystem,
-      }));
-
-    const upsert = (sectionKey, thread) => {
-      if (!thread) return;
-      const section = sections.find((item) => item.key === sectionKey);
-      if (!section) return;
-      section.threads.push(thread);
-      lookup[thread.id] = thread;
-    };
-
-    const houseStored = storedThreads.house ?? [];
-    const houseThread = {
-      ...baseThreads.house,
-      name: "# house-chat",
-      messages: [...baseThreads.house.messages, ...formatStored(houseStored)],
-    };
-    upsert("house", houseThread);
-
-    roommates.forEach((roommate) => {
-      const key = `direct-${roommate}`;
-      const stored = storedThreads[key] ?? [];
-      upsert("direct", {
-        ...baseThreads[key],
-        messages: [...baseThreads[key].messages, ...formatStored(stored)],
-      });
-    });
-
-    Object.entries(storedThreads).forEach(([key, list]) => {
-      if (!key.startsWith("task-") || !Array.isArray(list) || list.length === 0) {
-        return;
-      }
-      const taskId = key.slice(5);
-      const task = tasks.find((item) => String(item.id) === taskId);
-      upsert("tasks", {
-        id: key,
-        name: task ? task.title : `Task ${taskId}`,
-        type: "task",
-        contextType: "task",
-        contextId: taskId,
-        participants: uniqueParticipants(task?.assignees),
-        messages: formatStored(list),
-      });
-    });
-
-    bills.forEach((bill) => {
-      const key = `bill-${bill.id}`;
-      const stored = storedThreads[key] ?? [];
-      const dueLabel = formatDueDate(bill.dueDate);
-      const intro = {
-        id: `${key}-intro`,
-        sender: "System",
-        text: `Created ${bill.title} for $${Number(bill.amount || 0).toFixed(
-          2
-        )}.${dueLabel ? ` Due ${dueLabel}.` : ""}`,
-        timestamp: formatTimestamp(new Date()),
-        isSystem: true,
-      };
-      upsert("bills", {
-        id: key,
-        name: bill.title || "Bill",
-        type: "bill",
-        contextType: "bill",
-        contextId: bill.id,
-        participants: Array.isArray(bill.splitBetween) ? bill.splitBetween : [],
-        messages: [intro, ...formatStored(stored)],
-      });
-    });
-
-    const defaultThread =
-      sections.find((section) => section.threads.length > 0)?.threads[0]?.id ??
-      null;
-    const hasAny = sections.some((section) => section.threads.length > 0);
-
-    return { sections, threadMap: lookup, defaultThreadId: defaultThread, hasAnyThread: hasAny };
-  }, [bills, storedThreads, tasks]);
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+    return () => {};
+  }, [activeThreadId, defaultThreadId, viewMode]);
 
   useEffect(() => {
     if (!isMobile && !activeThreadId && defaultThreadId) {
@@ -233,32 +144,91 @@ export default function Chat() {
     }
   }, [isMobile, activeThreadId, defaultThreadId]);
 
-  useEffect(() => {
-    if (activeThreadId && !threadMap[activeThreadId]) {
-      if (isMobile) {
-        setActiveThreadId(null);
-        setViewMode("list");
-      } else {
-        setActiveThreadId(defaultThreadId || null);
-      }
-    }
-  }, [activeThreadId, threadMap, defaultThreadId, isMobile]);
-
-  useEffect(() => {
-    if (!isMobile) {
-      setViewMode("chat");
-    } else if (!activeThreadId) {
-      setViewMode("list");
-    }
-  }, [isMobile, activeThreadId]);
-
   const activeThread = activeThreadId ? threadMap[activeThreadId] : null;
+  const activeMessages = activeThread ? messagesByThread[activeThread.id] || [] : [];
+
+  useEffect(() => {
+    if (!activeThread) return;
+    loadMessages({
+      threadId: activeThread.id,
+      contextType: activeThread.contextType,
+      contextId: activeThread.contextId,
+      name: activeThread.name,
+      participants: activeThread.participants,
+    });
+  }, [activeThread, loadMessages]);
+
+  useEffect(() => {
+    if (!activeThread) return;
+    markThreadRead(activeThread.id).catch(() => {});
+    markThreadAsRead(activeThread.id, activeMessages.length);
+  }, [activeThread, activeMessages.length, markThreadAsRead, markThreadRead]);
+
+  const deriveThreadActivity = useCallback(
+    (thread) => {
+      const messageCount = thread.messageCount ?? 0;
+      const readCount = Math.min(lastSeen[thread.id] ?? 0, messageCount);
+      const unreadCount = Math.max(messageCount - readCount, thread.unreadCount || 0);
+      const mentionCount = thread.mentionCount || 0;
+      const muted = mutedThreads.includes(thread.id);
+      return {
+        unreadCount,
+        mentionCount,
+        muted,
+        bold: !muted && mentionCount === 0 && unreadCount > 0,
+        highlight: !muted && mentionCount > 0,
+        readCount,
+      };
+    },
+    [lastSeen, mutedThreads]
+  );
+
+  const getThreadMatchInfo = useCallback(
+    (thread) => {
+      const defaultPreview = thread.lastMessage
+        ? `${thread.lastMessage.sender === "You" ? "You" : thread.lastMessage.sender}: ${
+            thread.lastMessage.text
+          }`
+        : "No messages yet";
+      if (!normalizedSearch) {
+        return { matches: true, snippet: defaultPreview };
+      }
+      const nameMatch = thread.name.toLowerCase().includes(normalizedSearch);
+      const lastMessageMatch =
+        thread.lastMessage &&
+        thread.lastMessage.text.toLowerCase().includes(normalizedSearch);
+      return {
+        matches: nameMatch || lastMessageMatch,
+        snippet: lastMessageMatch ? defaultPreview : thread.lastMessage?.text || defaultPreview,
+      };
+    },
+    [normalizedSearch]
+  );
+
+  const renderHighlighted = useCallback(
+    (text) => {
+      if (!normalizedSearch) return text;
+      const regex = new RegExp(`(${escapeRegExp(normalizedSearch)})`, "ig");
+      const parts = String(text).split(regex);
+      const lowerTerm = normalizedSearch.toLowerCase();
+      return parts.map((part, index) =>
+        part.toLowerCase() === lowerTerm ? (
+          <span key={`${part}-${index}`} style={searchHighlightStyle}>
+            {part}
+          </span>
+        ) : (
+          <Fragment key={`${part}-${index}`}>{part}</Fragment>
+        )
+      );
+    },
+    [normalizedSearch]
+  );
 
   const mentionOptions = useMemo(() => {
-    const set = new Set([
-      ...mentionFallback,
-      ...(activeThread?.participants ?? []),
-    ]);
+    const set = new Set(mentionFallback);
+    if (activeThread?.participants) {
+      activeThread.participants.forEach((name) => set.add(name));
+    }
     return Array.from(set);
   }, [activeThread]);
 
@@ -266,32 +236,15 @@ export default function Chat() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [activeThreadId, activeThread?.messages?.length]);
+  }, [activeThreadId, activeMessages.length]);
 
-  const handleSend = (text) => {
-    const trimmed = text.trim();
-    if (!trimmed || !activeThread) return;
-
-    const normalized = normalizeMentions(trimmed, mentionOptions);
-    sendMessage(
-      activeThread.contextType,
-      activeThread.contextId,
-      "You",
-      normalized
-    );
-    setDraft("");
-    setShowMentions(false);
-    setMentionQuery("");
-  };
-
-  const filteredMentions = useMemo(() => {
-    if (!mentionQuery) return mentionOptions;
-    return mentionOptions.filter((name) =>
-      name.toLowerCase().startsWith(mentionQuery.toLowerCase())
-    );
-  }, [mentionOptions, mentionQuery]);
-
-  const handleThreadSelect = (threadId) => {
+  const handleThreadSelect = (threadId, activity) => {
+    if (!threadId) return;
+    if (activity?.unreadCount > 0) {
+      setCurrentAnchor({ threadId, index: activity.readCount });
+    } else {
+      setCurrentAnchor(null);
+    }
     setActiveThreadId(threadId);
     if (isMobile) {
       setViewMode("chat");
@@ -304,29 +257,106 @@ export default function Chat() {
     setDraft("");
     setShowMentions(false);
     setMentionQuery("");
+    setCurrentAnchor(null);
   };
+
+  const filteredSections = useMemo(() => {
+    if (!normalizedSearch) return sections;
+    return sections.map((section) => {
+      const filtered = section.threads
+        .map((thread) => {
+          const info = getThreadMatchInfo(thread);
+          return info.matches ? { thread, snippet: info.snippet } : null;
+        })
+        .filter(Boolean);
+      return { ...section, threads: filtered };
+    });
+  }, [sections, normalizedSearch, getThreadMatchInfo]);
+
+  const filteredMentions = useMemo(() => {
+    if (!mentionQuery) return mentionOptions;
+    return mentionOptions.filter((name) =>
+      name.toLowerCase().startsWith(mentionQuery.toLowerCase())
+    );
+  }, [mentionOptions, mentionQuery]);
+
+  const handleSendMessage = useCallback(
+    async (text, options) => {
+      const trimmed = text.trim();
+      if (!trimmed || !activeThread) return;
+      const normalized = normalizeMentions(trimmed, options);
+      try {
+        await sendMessage({
+          threadId: activeThread.id,
+          contextType: activeThread.contextType,
+          contextId: activeThread.contextId,
+          sender: "You",
+          text: normalized,
+          name: activeThread.name,
+          participants: activeThread.participants,
+        });
+        setDraft("");
+        setShowMentions(false);
+        setMentionQuery("");
+        setCurrentAnchor(null);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn("[chat] send failed", error);
+      }
+    },
+    [activeThread, sendMessage]
+  );
 
   const renderThreadList = () => (
     <div style={threadListStyle}>
       <div style={listHeaderStyle}>
         <h2 style={listTitleStyle}>Chats</h2>
         <p style={listHintStyle}>
-          {hasAnyThread
+          {status.loading
+            ? "Loading chat history..."
+            : hasAnyThread
             ? "Pick someone to message."
             : "No chats yet—start one from a task or bill."}
         </p>
       </div>
-      {sections.map((section) => (
+      <div style={searchWrapperStyle}>
+        <span style={searchIconStyle} aria-hidden="true">
+          🔍
+        </span>
+        <input
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder="Search chats or messages"
+          style={searchInputStyle}
+        />
+        {searchTerm && (
+          <button type="button" style={clearSearchButtonStyle} onClick={() => setSearchTerm("")}>
+            Clear
+          </button>
+        )}
+      </div>
+      {filteredSections.map((section) => (
         <div key={section.key} style={threadSectionStyle}>
           <div style={sectionTitleStyle}>{section.label}</div>
           {section.threads.length === 0 ? (
-            <div style={emptySectionNoteStyle}>Nothing here yet.</div>
+            <div style={emptySectionNoteStyle}>
+              {normalizedSearch ? "No matches in this section." : "Nothing here yet."}
+            </div>
           ) : (
-            section.threads.map((thread) => {
-              const last = thread.messages[thread.messages.length - 1];
-              const preview = last
-                ? `${last.sender === "You" ? "You" : last.sender}: ${last.text}`
-                : "No messages yet";
+            section.threads.map((entry) => {
+              const thread = entry.thread || entry;
+              const activity = deriveThreadActivity(thread);
+              const nameContent = normalizedSearch
+                ? renderHighlighted(thread.name)
+                : thread.name;
+              const preview = thread.lastMessage
+                ? `${thread.lastMessage.sender === "You" ? "You" : thread.lastMessage.sender}: ${
+                    entry.snippet || thread.lastMessage.text
+                  }`
+                : entry.snippet || "No messages yet";
+              const previewContent = normalizedSearch
+                ? renderHighlighted(preview)
+                : preview;
               return (
                 <button
                   key={thread.id}
@@ -335,10 +365,54 @@ export default function Chat() {
                     ...threadButtonStyle,
                     ...(thread.id === activeThreadId ? threadButtonActiveStyle : {}),
                   }}
-                  onClick={() => handleThreadSelect(thread.id)}
+                  onClick={() => handleThreadSelect(thread.id, activity)}
                 >
-                  <span style={threadButtonNameStyle}>{thread.name}</span>
-                  <span style={threadButtonPreviewStyle}>{preview}</span>
+                  <div style={threadRowLeftStyle}>
+                    <div style={threadLabelColumnStyle}>
+                      <span
+                        style={{
+                          ...threadButtonNameStyle,
+                          fontWeight:
+                            activity.highlight || activity.bold ? 700 : 500,
+                          color: activity.highlight ? "#ff6b6b" : "var(--habita-text)",
+                        }}
+                      >
+                        {nameContent}
+                      </span>
+                      <span
+                        style={{
+                          ...threadButtonPreviewStyle,
+                          fontWeight:
+                            !activity.muted && activity.unreadCount > 0 ? 600 : 400,
+                          color: activity.highlight ? "#ffb4a1" : "var(--habita-muted)",
+                        }}
+                      >
+                        {previewContent}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={threadRowRightStyle}>
+                    {activity.mentionCount > 0 && (
+                      <span style={mentionBadgeStyle}>{activity.mentionCount}</span>
+                    )}
+                    {!activity.highlight &&
+                      !activity.muted &&
+                      activity.mentionCount === 0 &&
+                      activity.unreadCount > 0 && (
+                        <span style={unreadBadgeStyle}>{activity.unreadCount}</span>
+                      )}
+                    <button
+                      type="button"
+                      style={muteToggleStyle(activity.muted)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleMuteThread(thread.id);
+                      }}
+                      aria-label={activity.muted ? "Unmute channel" : "Mute channel"}
+                    >
+                      {activity.muted ? "Unmute" : "Mute"}
+                    </button>
+                  </div>
                 </button>
               );
             })
@@ -363,15 +437,19 @@ export default function Chat() {
     }
 
     const subtitle =
-      activeThread.type === "group"
-        ? roommates.join(" • ")
-        : activeThread.type === "bill"
+      activeThread.contextType === "house"
+        ? activeThread.participants?.join(" • ")
+        : activeThread.contextType === "bill"
         ? "Bill conversation"
-        : activeThread.type === "task"
+        : activeThread.contextType === "task"
         ? "Task chat"
-        : activeThread.participants?.[0]
-        ? `Direct message with ${activeThread.participants[0]}`
+        : activeThread.contextType === "direct"
+        ? `Direct message with ${activeThread.participants?.find((name) => name !== "You") || ""}`
         : "";
+
+    const mentionOptionsForThread = Array.from(
+      new Set([...(activeThread.participants || []), ...mentionFallback])
+    );
 
     return (
       <div style={chatPaneStyle}>
@@ -388,89 +466,97 @@ export default function Chat() {
         </header>
 
         <div ref={scrollRef} style={messagesWrapperStyle}>
-          {activeThread.messages.map((msg) => (
-            <div
-              key={msg.id}
-              style={{
-                ...messageRowStyle,
-                justifyContent: msg.sender === "You" ? "flex-end" : "flex-start",
-              }}
-            >
-              {msg.sender !== "You" && !msg.isSystem && (
-                <div
-                  style={avatarWrapperStyle}
-                  onMouseEnter={() => setHoveredProfile({ id: msg.id, name: msg.sender })}
-                  onMouseLeave={() => setHoveredProfile(null)}
-                >
-                  <div style={avatarStyle}>{msg.sender.charAt(0)}</div>
-                  {hoveredProfile?.id === msg.id && (
-                    <div style={avatarTooltipStyle}>
-                      <strong style={tooltipTitleStyle}>{msg.sender}</strong>
-                      <span style={tooltipMetaStyle}>
-                        {roommateProfiles[msg.sender]?.role ?? "Participant"}
-                      </span>
-                      <span style={tooltipFunStyle}>
-                        {roommateProfiles[msg.sender]?.fun ?? "Stays in the loop."}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div
-                style={{
-                  ...bubbleStyle,
-                  background: msg.sender === "You"
-                    ? "var(--habita-accent)"
-                    : msg.isSystem
-                    ? "rgba(74,144,226,0.18)"
-                    : "var(--habita-card)",
-                  border: msg.sender === "You"
-                    ? "1px solid transparent"
-                    : "1px solid rgba(74,144,226,0.25)",
-                  color: msg.sender === "You"
-                    ? "var(--habita-button-text)"
-                    : "var(--habita-text)",
-                  alignItems: msg.sender === "You" ? "flex-end" : "flex-start",
-                  opacity: msg.isSystem ? 0.85 : 1,
-                }}
-              >
-                {msg.sender !== "You" && !msg.isSystem && (
-                  <span style={senderStyle}>{msg.sender}</span>
+          {activeMessages.map((msg, index) => {
+            const anchorIndex =
+              currentAnchor?.threadId === activeThread.id ? currentAnchor.index : null;
+            const showDivider =
+              anchorIndex !== null &&
+              index === anchorIndex &&
+              anchorIndex !== activeMessages.length;
+            return (
+              <Fragment key={msg.id}>
+                {showDivider && (
+                  <div style={newDividerStyle}>
+                    <span style={newDividerLineStyle} />
+                    <span style={newDividerLabelStyle}>New messages</span>
+                    <span style={newDividerLineStyle} />
+                  </div>
                 )}
-                <p style={messageTextStyle}>
-                  {msg.text.split(/(@\w+)/g).map((part, index) => {
-                    if (part.startsWith("@")) {
-                      const raw = part.slice(1);
-                      const match = mentionOptions.find(
-                        (name) => name.toLowerCase() === raw.toLowerCase()
-                      );
-                      if (match) {
-                        return (
-                          <span
-                            key={`${msg.id}-mention-${index}`}
-                            style={mentionHighlightStyle}
-                          >
-                            @{match}
-                          </span>
-                        );
-                      }
-                    }
-                    return <span key={`${msg.id}-part-${index}`}>{part}</span>;
-                  })}
-                </p>
-                <span
+                <div
                   style={{
-                    ...timestampStyle,
-                    color: msg.sender === "You"
-                      ? "rgba(255,255,255,0.85)"
-                      : "var(--habita-muted)",
+                    ...messageRowStyle,
+                    justifyContent: msg.sender === "You" ? "flex-end" : "flex-start",
                   }}
                 >
-                  {msg.timestamp}
-                </span>
-              </div>
-            </div>
-          ))}
+                  {msg.sender !== "You" && (
+                    <div
+                      style={avatarWrapperStyle}
+                      onMouseEnter={() => setHoveredProfile({ id: msg.id, name: msg.sender })}
+                      onMouseLeave={() => setHoveredProfile(null)}
+                    >
+                      <div style={avatarStyle}>{msg.sender.charAt(0)}</div>
+                      {hoveredProfile?.id === msg.id && (
+                        <div style={avatarTooltipStyle}>
+                          <strong style={tooltipTitleStyle}>{msg.sender}</strong>
+                          <span style={tooltipMetaStyle}>
+                            {roommateProfiles[msg.sender]?.role ?? "Participant"}
+                          </span>
+                          <span style={tooltipFunStyle}>
+                            {roommateProfiles[msg.sender]?.fun ?? "Stays in the loop."}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      ...bubbleStyle,
+                      background:
+                        msg.sender === "You"
+                          ? "var(--habita-accent)"
+                          : containsMentionForYou(msg.text)
+                          ? "rgba(255,223,0,0.20)"
+                          : "var(--habita-card)",
+                      border:
+                        msg.sender === "You"
+                          ? "1px solid transparent"
+                          : "1px solid rgba(74,144,226,0.25)",
+                      color:
+                        msg.sender === "You" ? "var(--habita-button-text)" : "var(--habita-text)",
+                    }}
+                  >
+                    {msg.sender !== "You" && <span style={senderStyle}>{msg.sender}</span>}
+                    <p style={messageTextStyle}>
+                      {msg.text.split(/(@\w+)/g).map((part, partIndex) => {
+                        if (part.startsWith("@")) {
+                          const raw = part.slice(1);
+                          const match = mentionOptionsForThread.find(
+                            (name) => name.toLowerCase() === raw.toLowerCase()
+                          );
+                          if (match) {
+                            return (
+                              <span key={`${msg.id}-mention-${partIndex}`} style={mentionHighlightStyle}>
+                                @{match}
+                              </span>
+                            );
+                          }
+                        }
+                        return <span key={`${msg.id}-part-${partIndex}`}>{part}</span>;
+                      })}
+                    </p>
+                    <span
+                      style={{
+                        ...timestampStyle,
+                        color: msg.sender === "You" ? "rgba(255,255,255,0.85)" : "var(--habita-muted)",
+                      }}
+                    >
+                      {msg.timestamp || formatTimestamp(msg.createdAt)}
+                    </span>
+                  </div>
+                </div>
+              </Fragment>
+            );
+          })}
         </div>
 
         <div style={toolbarStyle}>
@@ -480,7 +566,7 @@ export default function Chat() {
                 key={reply}
                 type="button"
                 style={quickReplyButtonStyle}
-                onClick={() => handleSend(reply)}
+                onClick={() => handleSendMessage(reply, mentionOptionsForThread)}
               >
                 {reply}
               </button>
@@ -489,7 +575,7 @@ export default function Chat() {
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              handleSend(draft);
+              handleSendMessage(draft, mentionOptionsForThread);
             }}
             style={formStyle}
           >
@@ -543,7 +629,11 @@ export default function Chat() {
   return (
     <div style={pageStyle}>
       {isMobile ? (
-        viewMode === "list" ? renderThreadList() : renderChatPane()
+        viewMode === "list" ? (
+          renderThreadList()
+        ) : (
+          renderChatPane()
+        )
       ) : (
         <div style={splitLayoutStyle}>
           {renderThreadList()}
@@ -552,6 +642,13 @@ export default function Chat() {
       )}
     </div>
   );
+}
+
+function normalizeMentions(text, names = mentionFallback) {
+  return text.replace(/@(\w+)/g, (_match, raw) => {
+    const target = names.find((name) => name.toLowerCase() === String(raw).toLowerCase());
+    return target ? `@${target}` : `@${raw}`;
+  });
 }
 
 const pageStyle = {
@@ -601,6 +698,50 @@ const listHintStyle = {
   color: "var(--habita-muted)",
 };
 
+const searchWrapperStyle = {
+  display: "flex",
+  gap: "0.4rem",
+  alignItems: "center",
+  border: "1px solid rgba(74,144,226,0.25)",
+  borderRadius: "10px",
+  padding: "0.35rem 0.5rem",
+  background: "var(--habita-input)",
+};
+
+const searchInputStyle = {
+  flex: 1,
+  borderRadius: "6px",
+  border: "none",
+  padding: "0.4rem 0.25rem",
+  fontSize: "0.85rem",
+  background: "var(--habita-input)",
+  color: "var(--habita-text)",
+  outline: "none",
+};
+
+const searchIconStyle = {
+  fontSize: "0.9rem",
+  color: "var(--habita-muted)",
+};
+
+const clearSearchButtonStyle = {
+  border: "none",
+  background: "rgba(74,144,226,0.15)",
+  color: "var(--habita-accent)",
+  borderRadius: "8px",
+  padding: "0.4rem 0.75rem",
+  fontSize: "0.8rem",
+  cursor: "pointer",
+};
+
+const searchHighlightStyle = {
+  background: "rgba(74,144,226,0.35)",
+  color: "var(--habita-text)",
+  borderRadius: 4,
+  padding: "0 2px",
+  fontWeight: 600,
+};
+
 const threadSectionStyle = {
   display: "flex",
   flexDirection: "column",
@@ -626,8 +767,10 @@ const threadButtonStyle = {
   padding: "0.6rem 0.75rem",
   textAlign: "left",
   display: "flex",
-  flexDirection: "column",
-  gap: "0.25rem",
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "0.75rem",
   cursor: "pointer",
   color: "var(--habita-text)",
   transition: "background-color 0.2s ease, border-color 0.2s ease",
@@ -650,6 +793,56 @@ const threadButtonPreviewStyle = {
   overflow: "hidden",
   textOverflow: "ellipsis",
 };
+
+const threadRowLeftStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.5rem",
+  minWidth: 0,
+  flex: 1,
+};
+
+const threadLabelColumnStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.2rem",
+  minWidth: 0,
+};
+
+const threadRowRightStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.4rem",
+};
+
+const mentionBadgeStyle = {
+  background: "#ff6b6b",
+  color: "#fff",
+  borderRadius: "999px",
+  padding: "0.05rem 0.55rem",
+  fontSize: "0.7rem",
+  fontWeight: 700,
+  boxShadow: "0 0 0 2px rgba(255,255,255,0.15)",
+};
+
+const unreadBadgeStyle = {
+  background: "var(--habita-accent)",
+  color: "var(--habita-button-text)",
+  borderRadius: "999px",
+  padding: "0.05rem 0.45rem",
+  fontSize: "0.7rem",
+  fontWeight: 600,
+};
+
+const muteToggleStyle = (muted) => ({
+  border: "1px solid rgba(74,144,226,0.25)",
+  background: muted ? "rgba(255,255,255,0.05)" : "rgba(74,144,226,0.12)",
+  color: muted ? "var(--habita-muted)" : "var(--habita-accent)",
+  borderRadius: "8px",
+  padding: "0.2rem 0.5rem",
+  fontSize: "0.72rem",
+  cursor: "pointer",
+});
 
 const chatPaneStyle = {
   background: "var(--habita-card)",
@@ -708,6 +901,26 @@ const messagesWrapperStyle = {
   flexDirection: "column",
   gap: "0.75rem",
   paddingRight: "0.25rem",
+};
+
+const newDividerStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.5rem",
+  margin: "0.35rem 0",
+};
+
+const newDividerLineStyle = {
+  flex: 1,
+  height: "1px",
+  background: "rgba(255,107,107,0.4)",
+};
+
+const newDividerLabelStyle = {
+  fontSize: "0.65rem",
+  color: "#ff6b6b",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
 };
 
 const messageRowStyle = {
@@ -773,11 +986,12 @@ const bubbleStyle = {
 };
 
 const mentionHighlightStyle = {
-  color: "var(--habita-accent)",
-  fontWeight: 600,
-  background: "rgba(74,144,226,0.25)",
+  color: "var(--habita-button-text)",
+  fontWeight: 700,
+  background: "var(--habita-accent)",
   borderRadius: 6,
-  padding: "0 3px",
+  padding: "0 4px",
+  boxShadow: "0 0 0 1px rgba(255,255,255,0.25)",
 };
 
 const senderStyle = {
@@ -813,27 +1027,30 @@ const quickReplyWrapperStyle = {
 };
 
 const quickReplyButtonStyle = {
-  border: "1px solid rgba(74,144,226,0.3)",
-  background: "rgba(74,144,226,0.12)",
+  border: "1px solid var(--habita-border)",
   borderRadius: "999px",
-  padding: "0.4rem 0.8rem",
+  padding: "0.35rem 0.8rem",
   fontSize: "0.75rem",
   cursor: "pointer",
+  background: "var(--habita-chip)",
   color: "var(--habita-text)",
 };
 
 const formStyle = {
   display: "flex",
   gap: "0.5rem",
+  width: "100%",
   alignItems: "center",
+  minWidth: 0,
 };
 
 const inputStyle = {
   flex: 1,
-  borderRadius: "999px",
-  border: "1px solid rgba(74,144,226,0.25)",
-  padding: "0.6rem 1.1rem",
-  fontSize: "0.9rem",
+  width: "100%",
+  borderRadius: "16px",
+  border: "1px solid var(--habita-border)",
+  padding: "0.8rem 1rem",
+  fontSize: "1rem",
   outline: "none",
   background: "var(--habita-input)",
   color: "var(--habita-text)",
@@ -846,7 +1063,7 @@ const mentionDropdownStyle = {
   left: 0,
   right: 0,
   background: "var(--habita-card)",
-  border: "1px solid rgba(74,144,226,0.3)",
+  border: "1px solid var(--habita-border)",
   borderRadius: 8,
   padding: "0.3rem 0",
   zIndex: 10,

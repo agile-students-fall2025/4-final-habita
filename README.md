@@ -47,24 +47,51 @@ If you’d like to suggest improvements or report issues, please open a new Issu
 
 ---
 
-## 🛠️ Build & Test Instructions (To Be Updated)
+## 🛠️ Build & Test Instructions
 
-Once development begins, this section will include detailed setup steps.
+### Back-End (Express API)
 
-For now:
 ```bash
-# Clone the repository
-git clone https://github.com/agile-students-fall2025/4-final-habita.git
-
-# Navigate to the project directory
-cd 4-final-habita
-
-# Install dependencies (to be updated once project structure is set)
+# Install dependencies the first time
+cd back-end
 npm install
 
-# Start the development server (example)
+# Start the Express server on http://localhost:3000
 npm start
+
+# Run mocha/chai unit tests with c8 coverage
+npm test
 ```
+
+Key routes currently implemented with mock JSON data:
+
+- `GET /api/health` – Lightweight status check for monitoring.
+- `GET /api/notifications` / `POST /api/notifications` / `PATCH /api/notifications/:id/read` – Notification feed used by the Notifications page and global badges.
+- `GET /api/notifications/summary` / `GET /api/notifications/channels` – Aggregated counts + metadata for notification widgets.
+- `GET /api/home/summary` – Returns the personalized dashboard snapshot powering the Home page (tasks/bills stats, upcoming lists, calendar events).
+- `GET /api/chat/threads` – Returns chat thread summaries (used by the Chat dashboard and sidebars on Tasks/Bills).
+- `POST /api/chat/threads` – Ensures a thread exists for a given `contextType/contextId` pair (task/bill chats are created on the fly).
+- `GET /api/chat/messages?threadId=house` (or `?contextType=task&contextId=42`) – Fetches message history, creating a thread if needed.
+- `POST /api/chat/messages` – Accepts `sender`, `text`, optional `contextType`, `contextId`, and `participants` to append a new chat message.
+- `PATCH /api/chat/threads/:id/read` – Marks a thread as read so unread counts on the Chat UI stay in sync.
+
+These endpoints return deterministic mock JSON so the React app can demo a “live” backend without any real credentials. Static requests to `/` still serve the HTML hand-off page from `back-end/public/index.html`.
+
+### Front-End (React)
+
+```bash
+# Install dependencies
+cd front-end
+npm install
+
+# Start the dev server (proxied to Express on port 3000)
+npm start
+
+# Build for production
+npm run build
+```
+
+The Chat page and Notifications page consume the Express API above. Home/Tasks/Bills currently rely on local mock data (per sprint plan) but already route users to backend-backed chat threads from those contexts.
 
 
 ## 📚 Additional Documentation
@@ -79,6 +106,3 @@ npm start
 ---
 
 © 2025 Habita Team 
-
-
-

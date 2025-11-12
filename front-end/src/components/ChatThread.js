@@ -1,6 +1,6 @@
 // front-end/src/components/ChatThread.js
 import { useEffect, useRef, useState, useMemo } from "react";
-import { useChat } from "../context/ChatContext";
+import { getThreadKey, useChat } from "../context/ChatContext";
 
 function normalizeMentions(text, mentionables = []) {
     return text.replace(/@(\w+)/g, (_m, raw) => {
@@ -10,13 +10,17 @@ function normalizeMentions(text, mentionables = []) {
 }
 
 export default function ChatThread({
-  contextType,        // 'house' | 'bill' | 'task'
-  contextId,          // id for bill/task; undefined for house
+  contextType, // 'house' | 'bill' | 'task'
+  contextId, // id for bill/task; undefined for house
   title,
-  participants = [],  // ['Alex','Sam','Jordan','You']
+  participants = [], // ['Alex','Sam','Jordan','You']
 }) {
-  const { getMessages, sendMessage } = useChat();
-  const [messages, setMessages] = useState(() => getMessages(contextType, contextId));
+  const { messagesByThread, loadMessages, sendMessage } = useChat();
+  const threadId = getThreadKey(contextType, contextId);
+  const messages = useMemo(
+    () => messagesByThread[threadId] || [],
+    [messagesByThread, threadId]
+  );
   const [draft, setDraft] = useState("");
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
@@ -36,8 +40,22 @@ export default function ChatThread({
 
 
   useEffect(() => {
-    setMessages(getMessages(contextType, contextId));
-  }, [contextType, contextId, getMessages]);
+    let cancelled = false;
+    loadMessages({
+      threadId,
+      contextType,
+      contextId,
+      name: title,
+      participants: names,
+    }).catch(() => {
+      if (!cancelled) {
+        // no-op
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [threadId, contextType, contextId, title, names, loadMessages]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -47,28 +65,26 @@ export default function ChatThread({
 
 
 
-  const handleSend = (e) => {
-    e.preventDefault();
+  const handleSend = async (event) => {
+    event.preventDefault();
     if (!draft.trim()) return;
-
-    const normalized = normalizeMentions(draft.trim(), names); // ✅ Add this
-
-    sendMessage(contextType, contextId, "You", normalized);
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("habita:thread-message", {
-          detail: {
-            contextType,
-            contextId,
-            sender: "You",
-            text: normalized,
-            timestamp: new Date().toISOString(),
-          },
-        })
-      );
+    const normalized = normalizeMentions(draft.trim(), names);
+    try {
+      await sendMessage({
+        threadId,
+        contextType,
+        contextId,
+        sender: "You",
+        text: normalized,
+        name: title,
+        participants: names,
+      });
+      setDraft("");
+      setShowMentions(false);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn("[chat] failed to send message", error);
     }
-    setDraft("");
-    setShowMentions(false);
   };
 
   // highlight @mentions inside message text
@@ -143,7 +159,15 @@ export default function ChatThread({
             <p style={{ margin: 0, fontSize: "0.9rem" }}>
               {renderWithMentions(m.text)}
             </p>
-            <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>{m.timestamp}</span>
+            <span style={{ fontSize: "0.7rem", opacity: 0.7 }}>
+              {m.timestamp ||
+                (m.createdAt
+                  ? new Date(m.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "")}
+            </span>
           </div>
         );})}
       </div>
