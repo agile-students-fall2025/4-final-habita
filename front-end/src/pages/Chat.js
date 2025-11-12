@@ -425,13 +425,6 @@ export default function Chat() {
   );
 
   const renderChatPane = () => {
-    if (!activeThread) {
-      return (
-        <div style={chatPaneStyle}>
-          <div style={emptyChatStyle}>Pick a conversation to start chatting.</div>
-        </div>
-      );
-    }
 
     const subtitle =
       activeThread.contextType === "house"
@@ -450,12 +443,14 @@ export default function Chat() {
 
     return (
       <div style={chatPaneStyle}>
-        <header style={chatHeaderStyle}>
+        {!isMobile && (
+          <header style={chatHeaderStyle}>
           <div>
             <h2 style={chatTitleStyle}>{activeThread.name}</h2>
             <p style={chatSubtitleStyle}>{subtitle}</p>
           </div>
         </header>
+      )}
 
         <div ref={scrollRef} style={messagesWrapperStyle}>
           {activeMessages.map((msg, index) => {
@@ -637,7 +632,30 @@ export default function Chat() {
               >
                 ←
               </button>
-              {viewMode === "chat" ? (activeThread?.name || "Chat") : "Chats"}
+            
+              {viewMode === "chat" ? (
+                <>
+                  {activeThread?.contextType === "task" ? (
+                   <button
+                      type="button"
+                      style={openPageButtonStyle}
+                     onClick={() => navigate("/tasks", { state: { openChatForTaskId: activeThread?.contextId } })}
+                    >
+                      {activeThread.name}
+                    </button>
+                  ) : activeThread?.contextType === "bill" ? (
+                     <button
+                      type="button"
+                      style={openPageButtonStyle}
+                       onClick={() => navigate("/bills", { state: { openChatForBillId: activeThread?.contextId } })}
+                    >
+                      {activeThread.name}
+                    </button>
+                  ) : (
+                    <span>{activeThread?.name}</span>
+                  )}
+                </>
+              ) : "Chats"}
             </h2>
           </div>
           {!activeThread && (
@@ -705,8 +723,11 @@ const topHeaderTitleStyle = {
   color: "var(--habita-text)",
 };
 const topHeaderRowStyle = {
+  position: "relative",
   display: "flex",
-  alignItems: "flex-start",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "100%",
   gap: "0.6rem",
   fontSize: "1.1rem",
 };
@@ -908,9 +929,22 @@ const backButtonStyle = {
   fontSize: "inherit",
   fontWeight: 600,
   cursor: "pointer",
-  padding: "0 0.5rem 0 0",
+  padding: 0,
+  position: "absolute",
+  left: "0rem",
+  top: "50%",
+  transform: "translateY(-50%)",
 };
 
+const openPageButtonStyle = {
+  border: "none",
+  background: "transparent",
+  color: "var(--habita-accent)",
+  fontSize: "inherit",
+  fontWeight: 600,
+  cursor: "pointer",
+  padding: 0,
+};
 const chatTitleStyle = {
   margin: 0,
   fontSize: "1.2rem",

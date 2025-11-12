@@ -48,7 +48,7 @@ export default function Bills() {
     if (!location.state) {
       return;
     }
-    const { openForm, filter: targetFilter } = location.state;
+    const { openForm, filter: targetFilter, openChatForBillId } = location.state;
     let shouldReplace = false;
 
     if (openForm) {
@@ -58,6 +58,16 @@ export default function Bills() {
 
     if (targetFilter) {
       setFilter(targetFilter);
+      shouldReplace = true;
+    }
+
+    if (openChatForBillId) {
+      const targetId = `bill-card-${openChatForBillId}`;
+      const scrollToTarget = () => {
+        const el = document.getElementById(targetId);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      };
+      window.requestAnimationFrame(scrollToTarget);
       shouldReplace = true;
     }
 
@@ -529,7 +539,7 @@ export default function Bills() {
           filteredBills.map((bill) => {
             const billTypeColor = getBillTypeColor(bill.paymentDirection);
             return (
-              <div key={bill.id} style={billCardStyle}>
+              <div id={`bill-card-${bill.id}`} key={bill.id} style={billCardStyle}>
                 <div style={billTypeIndicatorStyle}>
                   <span style={{
                     ...billTypeBadgeStyle,

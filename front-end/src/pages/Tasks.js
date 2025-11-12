@@ -77,6 +77,7 @@ export default function Tasks() {
       mineOnly,
       dueFilter: targetDueFilter,
       date: targetDate,
+      openChatForTaskId,
     } = location.state;
     let shouldReplace = false;
 
@@ -105,6 +106,16 @@ export default function Tasks() {
       } else if (targetDate) {
         setDueFilter({ type: "date", value: targetDate.slice(0, 10) });
       }
+      shouldReplace = true;
+    }
+
+    if (openChatForTaskId) {
+      const targetId = `task-card-${openChatForTaskId}`;
+      const scrollToTarget = () => {
+        const el = document.getElementById(targetId);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      };
+      window.requestAnimationFrame(scrollToTarget);
       shouldReplace = true;
     }
 
@@ -408,7 +419,7 @@ export default function Tasks() {
           <p style={emptyStateStyle}>No tasks in this view.</p>
         ) : (
           filteredTasks.map((task) => (
-            <article key={task.id} style={taskCardStyle}>
+            <article id={`task-card-${task.id}`} key={task.id} style={taskCardStyle}>
               <div style={taskCardRowStyle}>
                 <button
                   type="button"
