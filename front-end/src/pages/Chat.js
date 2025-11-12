@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useChat } from "../context/ChatContext";
 
 const roommateProfiles = {
@@ -40,6 +41,8 @@ export default function Chat() {
     markThreadRead,
     status,
   } = useChat();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth <= 900 : false));
   const [viewMode, setViewMode] = useState(isMobile ? "list" : "chat");
@@ -146,6 +149,14 @@ export default function Chat() {
 
   const activeThread = activeThreadId ? threadMap[activeThreadId] : null;
   const activeMessages = activeThread ? messagesByThread[activeThread.id] || [] : [];
+
+  useEffect(() => {
+    const openId = location?.state && location.state.openThreadId;
+    if (openId) {
+      setActiveThreadId(openId);
+      setViewMode("chat");
+    }
+  }, [location?.state]);
 
   useEffect(() => {
     if (!activeThread) return;
@@ -309,16 +320,7 @@ export default function Chat() {
 
   const renderThreadList = () => (
     <div style={threadListStyle}>
-      <div style={listHeaderStyle}>
-        <h2 style={listTitleStyle}>Chats</h2>
-        <p style={listHintStyle}>
-          {status.loading
-            ? "Loading chat history..."
-            : hasAnyThread
-            ? "Pick someone to message."
-            : "No chats yet—start one from a task or bill."}
-        </p>
-      </div>
+      
       <div style={searchWrapperStyle}>
         <span style={searchIconStyle} aria-hidden="true">
           🔍
@@ -393,13 +395,13 @@ export default function Chat() {
                   </div>
                   <div style={threadRowRightStyle}>
                     {activity.mentionCount > 0 && (
-                      <span style={mentionBadgeStyle}>{activity.mentionCount}</span>
+                      <span className="habita-badge-notification habita-badge-notification-urgent">{activity.mentionCount}</span>
                     )}
                     {!activity.highlight &&
                       !activity.muted &&
                       activity.mentionCount === 0 &&
                       activity.unreadCount > 0 && (
-                        <span style={unreadBadgeStyle}>{activity.unreadCount}</span>
+                        <span className="habita-badge-notification">{activity.unreadCount}</span>
                       )}
                     <button
                       type="button"
@@ -423,18 +425,6 @@ export default function Chat() {
   );
 
   const renderChatPane = () => {
-    if (!activeThread) {
-      return (
-        <div style={chatPaneStyle}>
-          {isMobile && (
-            <button type="button" style={backButtonStyle} onClick={handleBackToList}>
-              ← Chats
-            </button>
-          )}
-          <div style={emptyChatStyle}>Pick a conversation to start chatting.</div>
-        </div>
-      );
-    }
 
     const subtitle =
       activeThread.contextType === "house"
@@ -453,17 +443,14 @@ export default function Chat() {
 
     return (
       <div style={chatPaneStyle}>
-        <header style={chatHeaderStyle}>
-          {isMobile && (
-            <button type="button" style={backButtonStyle} onClick={handleBackToList}>
-              ← Chats
-            </button>
-          )}
+        {!isMobile && (
+          <header style={chatHeaderStyle}>
           <div>
             <h2 style={chatTitleStyle}>{activeThread.name}</h2>
             <p style={chatSubtitleStyle}>{subtitle}</p>
           </div>
         </header>
+      )}
 
         <div ref={scrollRef} style={messagesWrapperStyle}>
           {activeMessages.map((msg, index) => {
@@ -559,7 +546,7 @@ export default function Chat() {
           })}
         </div>
 
-        <div style={toolbarStyle}>
+        <div style={{ ...toolbarStyle, ...(isMobile ? { position: "sticky", bottom: 0, background: "var(--habita-card)", zIndex: 2 } : {}) }}>
           <div style={quickReplyWrapperStyle}>
             {quickReplies.map((reply) => (
               <button
@@ -628,6 +615,60 @@ export default function Chat() {
 
   return (
     <div style={pageStyle}>
+      {isMobile && (
+        <header style={topHeaderStyle}>
+          <div style={topHeaderRowStyle}>
+            <h2 style={topHeaderTitleStyle}>
+              <button
+                type="button"
+                style={backButtonStyle}
+                onClick={() => {
+                  if (viewMode === "chat") {
+                    handleBackToList();
+                  } else {
+                    navigate("/home");
+                  }
+                }}
+              >
+                ←
+              </button>
+            
+              {viewMode === "chat" ? (
+                <>
+                  {activeThread?.contextType === "task" ? (
+                   <button
+                      type="button"
+                      style={openPageButtonStyle}
+                     onClick={() => navigate("/tasks", { state: { openChatForTaskId: activeThread?.contextId } })}
+                    >
+                      {activeThread.name}
+                    </button>
+                  ) : activeThread?.contextType === "bill" ? (
+                     <button
+                      type="button"
+                      style={openPageButtonStyle}
+                       onClick={() => navigate("/bills", { state: { openChatForBillId: activeThread?.contextId } })}
+                    >
+                      {activeThread.name}
+                    </button>
+                  ) : (
+                    <span>{activeThread?.name}</span>
+                  )}
+                </>
+              ) : "Chats"}
+            </h2>
+          </div>
+          {!activeThread && (
+          <p style={listHintStyle}>
+            {status.loading
+              ? "Loading chat history..."
+              : hasAnyThread
+              ? "Pick someone to message."
+              : "No chats yet—start one from a task or bill."}
+          </p>
+          )}
+        </header>
+      )}
       {isMobile ? (
         viewMode === "list" ? (
           renderThreadList()
@@ -662,6 +703,34 @@ const pageStyle = {
   boxSizing: "border-box",
 };
 
+const topHeaderStyle = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: "0.6rem",
+  backgroundColor: "var(--habita-card)",
+  padding: "1rem 1.5rem",
+  borderBottom: "1px solid var(--habita-border)",
+  position: "sticky",
+  top: 0,
+  zIndex: 5,
+  margin: "-1rem -1rem 0 -1rem",
+};
+
+const topHeaderTitleStyle = {
+  margin: 0,
+  fontWeight: 600,
+  color: "var(--habita-text)",
+};
+const topHeaderRowStyle = {
+  position: "relative",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "100%",
+  gap: "0.6rem",
+  fontSize: "1.1rem",
+};
 const splitLayoutStyle = {
   display: "grid",
   gridTemplateColumns: "260px 1fr",
@@ -671,7 +740,7 @@ const splitLayoutStyle = {
 
 const threadListStyle = {
   background: "var(--habita-card)",
-  border: "1px solid rgba(74,144,226,0.25)",
+  border: "1px solid var(--habita-border)",
   borderRadius: "12px",
   padding: "1rem",
   display: "flex",
@@ -702,7 +771,7 @@ const searchWrapperStyle = {
   display: "flex",
   gap: "0.4rem",
   alignItems: "center",
-  border: "1px solid rgba(74,144,226,0.25)",
+  border: "1px solid var(--habita-border)",
   borderRadius: "10px",
   padding: "0.35rem 0.5rem",
   background: "var(--habita-input)",
@@ -815,25 +884,6 @@ const threadRowRightStyle = {
   gap: "0.4rem",
 };
 
-const mentionBadgeStyle = {
-  background: "#ff6b6b",
-  color: "#fff",
-  borderRadius: "999px",
-  padding: "0.05rem 0.55rem",
-  fontSize: "0.7rem",
-  fontWeight: 700,
-  boxShadow: "0 0 0 2px rgba(255,255,255,0.15)",
-};
-
-const unreadBadgeStyle = {
-  background: "var(--habita-accent)",
-  color: "var(--habita-button-text)",
-  borderRadius: "999px",
-  padding: "0.05rem 0.45rem",
-  fontSize: "0.7rem",
-  fontWeight: 600,
-};
-
 const muteToggleStyle = (muted) => ({
   border: "1px solid rgba(74,144,226,0.25)",
   background: muted ? "rgba(255,255,255,0.05)" : "rgba(74,144,226,0.12)",
@@ -846,13 +896,14 @@ const muteToggleStyle = (muted) => ({
 
 const chatPaneStyle = {
   background: "var(--habita-card)",
-  border: "1px solid rgba(74,144,226,0.25)",
+  border: "1px solid var(--habita-border)",
   borderRadius: "12px",
   padding: "1rem",
   display: "flex",
   flexDirection: "column",
   gap: "1rem",
-  minHeight: "60vh",
+  flex: 1,
+  minHeight: 0,
 };
 
 const emptyChatStyle = {
@@ -875,12 +926,25 @@ const backButtonStyle = {
   border: "none",
   background: "transparent",
   color: "var(--habita-accent)",
-  fontSize: "0.9rem",
+  fontSize: "inherit",
+  fontWeight: 600,
+  cursor: "pointer",
+  padding: 0,
+  position: "absolute",
+  left: "0rem",
+  top: "50%",
+  transform: "translateY(-50%)",
+};
+
+const openPageButtonStyle = {
+  border: "none",
+  background: "transparent",
+  color: "var(--habita-accent)",
+  fontSize: "inherit",
   fontWeight: 600,
   cursor: "pointer",
   padding: 0,
 };
-
 const chatTitleStyle = {
   margin: 0,
   fontSize: "1.2rem",
@@ -901,6 +965,7 @@ const messagesWrapperStyle = {
   flexDirection: "column",
   gap: "0.75rem",
   paddingRight: "0.25rem",
+  minHeight: 0,
 };
 
 const newDividerStyle = {
@@ -1018,6 +1083,7 @@ const toolbarStyle = {
   gap: "0.6rem",
   borderTop: "1px solid rgba(74,144,226,0.25)",
   paddingTop: "0.75rem",
+  marginTop: "auto",
 };
 
 const quickReplyWrapperStyle = {
@@ -1055,6 +1121,7 @@ const inputStyle = {
   background: "var(--habita-input)",
   color: "var(--habita-text)",
   minWidth: 0,
+  boxSizing: "border-box",
 };
 
 const mentionDropdownStyle = {

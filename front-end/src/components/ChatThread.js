@@ -14,6 +14,7 @@ export default function ChatThread({
   contextId, // id for bill/task; undefined for house
   title,
   participants = [], // ['Alex','Sam','Jordan','You']
+  onAfterSend,
 }) {
   const { messagesByThread, loadMessages, sendMessage } = useChat();
   const threadId = getThreadKey(contextType, contextId);
@@ -81,6 +82,7 @@ export default function ChatThread({
       });
       setDraft("");
       setShowMentions(false);
+      onAfterSend(threadId);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.warn("[chat] failed to send message", error);

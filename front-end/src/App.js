@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import "./App.css";
 import Dashboard from "./components/Dashboard";
 import Home from "./pages/Home";
 import Tasks from "./pages/Tasks";
@@ -8,7 +9,6 @@ import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
-import Notifications from "./pages/Notifications";
 import { TasksProvider } from "./context/TasksContext";
 import { UserProvider } from "./context/UserContext";
 import { BillsProvider } from "./context/BillsContext";
@@ -42,7 +42,6 @@ function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/edit" element={<EditProfile />} />
-          <Route path="/notifications" element={<Notifications />} />
         </Route>
       </Routes>
     </Router>
