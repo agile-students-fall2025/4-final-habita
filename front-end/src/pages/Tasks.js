@@ -672,6 +672,10 @@ export default function Tasks() {
               contextId={chatOpen}
               title={`Task Chat: ${tasks.find(t => t.id === chatOpen)?.title}`}
               participants={["Alex", "Sam", "Jordan", "You"]}
+              onAfterSend={(threadId) => {
+                setChatOpen(null);
+                navigate("/chat", { state: { openThreadId: threadId } });
+              }}
             />
 
           </div>

@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useChat } from "../context/ChatContext";
 
 const roommateProfiles = {
@@ -40,6 +41,7 @@ export default function Chat() {
     markThreadRead,
     status,
   } = useChat();
+  const location = useLocation();
 
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth <= 900 : false));
   const [viewMode, setViewMode] = useState(isMobile ? "list" : "chat");
@@ -146,6 +148,14 @@ export default function Chat() {
 
   const activeThread = activeThreadId ? threadMap[activeThreadId] : null;
   const activeMessages = activeThread ? messagesByThread[activeThread.id] || [] : [];
+
+  useEffect(() => {
+    const openId = location?.state && location.state.openThreadId;
+    if (openId) {
+      setActiveThreadId(openId);
+      setViewMode("chat");
+    }
+  }, [location?.state]);
 
   useEffect(() => {
     if (!activeThread) return;

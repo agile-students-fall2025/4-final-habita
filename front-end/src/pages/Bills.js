@@ -713,6 +713,10 @@ export default function Bills() {
               contextId={chatOpen}
               title={`Bill Chat: ${bills.find(b => b.id === chatOpen)?.title}`}
               participants={["Alex", "Sam", "Jordan", "You"]}
+              onAfterSend={(threadId) => {
+                setChatOpen(null);
+                navigate("/chat", { state: { openThreadId: threadId } });
+              }}
             />
           </div>
         </div>
