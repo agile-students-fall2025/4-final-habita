@@ -437,11 +437,11 @@ export default function Tasks() {
                 <span
                   style={{
                     ...statusPillStyle,
-                    color: statusDisplay[task.status].fg,
-                    backgroundColor: statusDisplay[task.status].bg,
+                    color: statusDisplay[task.status]?.fg ?? "var(--habita-text)",
+                    backgroundColor: statusDisplay[task.status]?.bg ?? "rgba(0,0,0,0.04)",
                   }}
                 >
-                  {statusDisplay[task.status].label}
+                  {statusDisplay[task.status]?.label ?? task.status ?? "Unknown"}
                 </span>
                 <button
                   type="button"

@@ -245,11 +245,11 @@ export default function Bills() {
         </div>
         <div style={statItemStyle}>
           <span style={statLabelStyle}>You Owe</span>
-          <span style={statValueStyle}>${calculateYouOwe().toFixed(2)}</span>
+          <span style={statValueStyle}>${(calculateYouOwe() ?? 0).toFixed(2)}</span>
         </div>
         <div style={statItemStyle}>
           <span style={statLabelStyle}>Total Amount</span>
-          <span style={statValueStyle}>${stats.totalAmount.toFixed(2)}</span>
+          <span style={statValueStyle}>${(stats?.totalAmount ?? 0).toFixed(2)}</span>
         </div>
       </div>
 
@@ -558,11 +558,11 @@ export default function Bills() {
                       }
                       style={{
                         ...statusChipStyle,
-                        backgroundColor: statusDisplay[bill.status].bg,
-                        color: statusDisplay[bill.status].fg,
+                        backgroundColor: statusDisplay[bill.status]?.bg ?? "rgba(0,0,0,0.06)",
+                        color: statusDisplay[bill.status]?.fg ?? "var(--habita-text)",
                       }}
                     >
-                      {statusDisplay[bill.status].label}
+                      {statusDisplay[bill.status]?.label ?? bill.status ?? "Unknown"}
                     </button>
                     <button
                       onClick={() => setChatOpen(bill.id)}
