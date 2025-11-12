@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
+import { useTasks } from "../context/TasksContext";
 
 const roommates = [
   { id: 1, name: "Alex", initials: "A", role: "Organizer" },
@@ -18,6 +19,7 @@ const roommateProfiles = {
 export default function Profile() {
   const navigate = useNavigate();
   const { user, cycleAvatar, darkMode, toggleDarkMode, updateUser } = useUser();
+  const { tasks } = useTasks();
   const [inviteCode] = useState("HBT-92F7");
   const [showInvite, setShowInvite] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -28,6 +30,14 @@ export default function Profile() {
   const [hoveredRoommate, setHoveredRoommate] = useState(null);
 
   const groupedRoommates = useMemo(() => [...roommates], []);
+
+  const myTasks = useMemo(() => {
+    return tasks.filter((task) =>
+      (Array.isArray(task.assignees) &&
+        task.assignees.some((person) => person === "You")) ||
+      task.assignees === "You"
+    );
+  }, [tasks]);
 
   return (
     <div style={pageStyle}>
@@ -55,6 +65,61 @@ export default function Profile() {
             Edit Profile
           </button>
         </div>
+      </section>
+
+      <section style={tasksCardStyle}>
+        <header style={sectionHeaderStyle}>
+          <h3 style={sectionTitleStyle}>My Tasks</h3>
+          <button
+            type="button"
+            style={ghostButtonStyle}
+            onClick={() => navigate("/tasks", { state: { mineOnly: true } })}
+          >
+            View All
+          </button>
+        </header>
+        {myTasks.length === 0 ? (
+          <p style={emptyTasksStyle}>No tasks assigned to you.</p>
+        ) : (
+          <div style={tasksListStyle}>
+            {myTasks.slice(0, 3).map((task) => (
+              <div key={task.id} style={taskItemStyle}>
+                <div style={taskInfoStyle}>
+                  <span style={taskTitleTextStyle}>{task.title}</span>
+                  <span style={taskMetaTextStyle}>
+                    Due: {new Date(task.due).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                </div>
+                <span
+                  style={{
+                    ...taskStatusBadgeStyle,
+                    backgroundColor:
+                      task.status === "completed"
+                        ? "rgba(30, 58, 138, 0.16)"
+                        : task.status === "in-progress"
+                        ? "rgba(63, 157, 165, 0.18)"
+                        : "rgba(37, 99, 235, 0.16)",
+                    color:
+                      task.status === "completed"
+                        ? "#1e3a8a"
+                        : task.status === "in-progress"
+                        ? "#3f9da5"
+                        : "#2563eb",
+                  }}
+                >
+                  {task.status === "completed"
+                    ? "Completed"
+                    : task.status === "in-progress"
+                    ? "In Progress"
+                    : "Pending"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section style={groupCardStyle}>
@@ -541,4 +606,65 @@ const logoutButtonStyle = {
   fontWeight: 600,
   cursor: "pointer",
   marginTop: "0.5rem",
+};
+
+const tasksCardStyle = {
+  background: "var(--habita-card)",
+  borderRadius: "12px",
+  border: "1px solid rgba(74,144,226,0.25)",
+  padding: "1rem",
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.8rem",
+};
+
+const emptyTasksStyle = {
+  margin: 0,
+  fontSize: "0.85rem",
+  color: "var(--habita-muted)",
+  textAlign: "center",
+  padding: "1rem 0",
+};
+
+const tasksListStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.6rem",
+};
+
+const taskItemStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "0.8rem",
+  padding: "0.7rem 0.9rem",
+  background: "var(--habita-chip)",
+  borderRadius: "8px",
+  border: "1px solid var(--habita-border)",
+};
+
+const taskInfoStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.2rem",
+  flex: 1,
+};
+
+const taskTitleTextStyle = {
+  fontSize: "0.9rem",
+  fontWeight: 600,
+  color: "var(--habita-text)",
+};
+
+const taskMetaTextStyle = {
+  fontSize: "0.75rem",
+  color: "var(--habita-muted)",
+};
+
+const taskStatusBadgeStyle = {
+  fontSize: "0.7rem",
+  fontWeight: 600,
+  padding: "0.25rem 0.6rem",
+  borderRadius: "999px",
+  whiteSpace: "nowrap",
 };
