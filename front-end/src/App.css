@@ -36,3 +36,23 @@
     transform: rotate(360deg);
   }
 }
+
+.habita-badge-notification {
+  border-radius: 999px;
+  background: var(--habita-accent);
+  color: var(--habita-button-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.05rem 0.45rem;
+}
+.habita-badge-notification-urgent {
+  background: #ff6b6b;
+  color: #fff;
+}
+
+.habita-badge-notification--overlay {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+}

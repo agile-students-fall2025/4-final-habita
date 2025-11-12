@@ -39,12 +39,6 @@ function Navbar() {
         Bills
       </Link>
       <Link
-        to="/chat"
-        style={{ color: active("/chat"), textDecoration: "none", fontWeight: 600 }}
-      >
-        Chat
-      </Link>
-      <Link
         to="/profile"
         style={{ color: active("/profile"), textDecoration: "none", fontWeight: 600 }}
       >

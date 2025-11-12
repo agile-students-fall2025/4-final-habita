@@ -393,13 +393,13 @@ export default function Chat() {
                   </div>
                   <div style={threadRowRightStyle}>
                     {activity.mentionCount > 0 && (
-                      <span style={mentionBadgeStyle}>{activity.mentionCount}</span>
+                      <span className="habita-badge-notification habita-badge-notification-urgent">{activity.mentionCount}</span>
                     )}
                     {!activity.highlight &&
                       !activity.muted &&
                       activity.mentionCount === 0 &&
                       activity.unreadCount > 0 && (
-                        <span style={unreadBadgeStyle}>{activity.unreadCount}</span>
+                        <span className="habita-badge-notification">{activity.unreadCount}</span>
                       )}
                     <button
                       type="button"
@@ -813,25 +813,6 @@ const threadRowRightStyle = {
   display: "flex",
   alignItems: "center",
   gap: "0.4rem",
-};
-
-const mentionBadgeStyle = {
-  background: "#ff6b6b",
-  color: "#fff",
-  borderRadius: "999px",
-  padding: "0.05rem 0.55rem",
-  fontSize: "0.7rem",
-  fontWeight: 700,
-  boxShadow: "0 0 0 2px rgba(255,255,255,0.15)",
-};
-
-const unreadBadgeStyle = {
-  background: "var(--habita-accent)",
-  color: "var(--habita-button-text)",
-  borderRadius: "999px",
-  padding: "0.05rem 0.45rem",
-  fontSize: "0.7rem",
-  fontWeight: 600,
 };
 
 const muteToggleStyle = (muted) => ({

@@ -2,10 +2,13 @@ import Navbar from "./Navbar";
 import { Outlet, Link } from "react-router-dom";
 import { useTasks } from "../context/TasksContext";
 import { useBills } from "../context/BillsContext";
+import { useChat } from "../context/ChatContext";
 
 function Dashboard({ children }) {
   const { tasks } = useTasks();
   const { stats } = useBills();
+  const { threads } = useChat();
+  const unreadWindows = threads.filter((t) => (t.unreadCount || 0) > 0).length;
 
   const myTasks = tasks.filter((task) =>
     Array.isArray(task.assignees)
@@ -43,7 +46,7 @@ function Dashboard({ children }) {
           </Link>
         </h2>
         <Link
-          to="/notifications"
+          to="/chat"
           style={{
             background: "var(--habita-card)",
             borderRadius: "50%",
@@ -53,10 +56,16 @@ function Dashboard({ children }) {
             color: "var(--habita-text)",
             textDecoration: "none",
             display: "inline-block",
+            position: "relative",
           }}
-          aria-label="Open notifications"
+          aria-label="Open chat"
         >
-          🔔
+          <span role="img" aria-label="chat">💬</span>
+          {unreadWindows > 0 && (
+              <span className="habita-badge-notification habita-badge-notification--overlay">
+              {unreadWindows}
+            </span>
+          )}
         </Link>
       </header>
       <div
