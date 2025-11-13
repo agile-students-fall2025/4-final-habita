@@ -3,6 +3,7 @@ import { useMemo } from "react";
 export default function MiniCalendar({
   monthDate = new Date(),
   eventsByISO = {},
+  moodEntriesByISO = {},
   onSelectDate,
   onExportICS,
   onMonthChange,
@@ -59,6 +60,7 @@ export default function MiniCalendar({
         {weeks.flat().map((cell) => {
           const iso = cell.iso;
           const count = eventsByISO[iso]?.length || 0;
+          const moodSwatches = getMoodSwatches(moodEntriesByISO[iso]);
           const isToday = iso === new Date().toISOString().slice(0, 10);
           const hasEvents = count > 0;
           return (
@@ -79,6 +81,18 @@ export default function MiniCalendar({
               ) : (
                 <span style={eventPlaceholderStyle} />
               )}
+              <div style={moodDotRowStyle}>
+                {moodSwatches.length === 0 ? (
+                  <span style={moodDotPlaceholderStyle} />
+                ) : (
+                  moodSwatches.map((color, index) => (
+                    <span
+                      key={`${iso}-mood-${index}`}
+                      style={{ ...moodDotStyle, backgroundColor: color }}
+                    />
+                  ))
+                )}
+              </div>
             </button>
           );
         })}
@@ -88,6 +102,13 @@ export default function MiniCalendar({
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const moodDotColors = {
+  Happy: "#4A90E2",
+  Neutral: "#9B9B9B",
+  Sad: "#F5A623",
+  Frustrated: "#D0021B",
+};
+const MAX_MOOD_SWATCHES = 3;
 
 function buildMonthGrid(baseDate) {
   const year = baseDate.getFullYear();
@@ -120,6 +141,20 @@ function toISO(d) {
   const m = `${d.getMonth() + 1}`.padStart(2, "0");
   const day = `${d.getDate()}`.padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function getMoodSwatches(entries = []) {
+  if (!Array.isArray(entries) || entries.length === 0) return [];
+  const seen = new Set();
+  const colors = [];
+  entries.forEach((entry) => {
+    if (!entry?.label || seen.has(entry.label) || colors.length >= MAX_MOOD_SWATCHES) {
+      return;
+    }
+    seen.add(entry.label);
+    colors.push(moodDotColors[entry.label] || "var(--habita-border)");
+  });
+  return colors;
 }
 
 const containerStyle = {
@@ -196,6 +231,28 @@ const monthGridStyle = {
   gridAutoRows: "42px",
   gap: "0.3rem",
   alignItems: "center",
+};
+
+const moodDotRowStyle = {
+  display: "flex",
+  justifyContent: "center",
+  gap: "0.15rem",
+  marginTop: "0.15rem",
+  minHeight: "6px",
+};
+
+const moodDotStyle = {
+  width: "6px",
+  height: "6px",
+  borderRadius: "50%",
+  display: "inline-flex",
+};
+
+const moodDotPlaceholderStyle = {
+  width: "6px",
+  height: "6px",
+  borderRadius: "50%",
+  background: "transparent",
 };
 
 const weekdayHeaderCellStyle = {

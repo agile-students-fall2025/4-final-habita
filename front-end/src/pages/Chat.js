@@ -39,6 +39,7 @@ export default function Chat() {
     messagesByThread,
     loadMessages,
     sendMessage,
+    ensureThread,
     markThreadRead,
     status,
   } = useChat();
@@ -103,6 +104,10 @@ export default function Chat() {
     }
   }, [mutedThreads]);
 
+  const clearNavigationState = useCallback(() => {
+    navigate(location.pathname, { replace: true, state: null });
+  }, [navigate, location.pathname]);
+
   const { sections, threadMap, defaultThreadId, hasAnyThread } = useMemo(() => {
     const clones = sectionDefinitions.map((section) => ({
       ...section,
@@ -158,12 +163,25 @@ export default function Chat() {
   const activeMessages = activeThread ? messagesByThread[activeThread.id] || [] : [];
 
   useEffect(() => {
-    const openId = location?.state && location.state.openThreadId;
-    if (openId) {
-      setActiveThreadId(openId);
+    if (!location?.state) return;
+    const { openThreadId, openThreadContext } = location.state;
+    if (openThreadId) {
+      setActiveThreadId(openThreadId);
       setViewMode("chat");
+      clearNavigationState();
+      return;
     }
-  }, [location?.state]);
+    if (openThreadContext) {
+      ensureThread(openThreadContext)
+        .then((thread) => {
+          if (thread?.id) {
+            setActiveThreadId(thread.id);
+            setViewMode("chat");
+          }
+        })
+        .finally(() => clearNavigationState());
+    }
+  }, [location?.state, ensureThread, clearNavigationState]);
 
   useEffect(() => {
     if (!activeThread) return;

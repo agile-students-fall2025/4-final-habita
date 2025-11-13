@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useUser } from "../context/UserContext";
 
 const moods = [
   { emoji: "😢", label: "Sad" },
@@ -31,46 +32,39 @@ const encouragements = {
 };
 
 const STORAGE_KEY = "habita:mood";
-const moodColors = {
-  Happy: "#4A90E2",
-  Neutral: "#9B9B9B",
-  Sad: "#F5A623",
-  Frustrated: "#D0021B",
-};
+const HISTORY_KEY = "habita:mood-history";
+const REACTIONS_KEY = "habita:mood-reactions";
+const reactionOptions = ["👍", "🍪", "❤️"];
 const moodAccentStyles = {
   Happy: { bg: "rgba(74,144,226,0.2)", fg: "#0f4da8" },
   Neutral: { bg: "rgba(155,155,155,0.2)", fg: "#4f4f4f" },
   Sad: { bg: "rgba(245,166,35,0.25)", fg: "#a87012" },
   Frustrated: { bg: "rgba(208,2,27,0.22)", fg: "#a30012" },
 };
-export default function MoodTracker({ variant = "default", onMoodChange }) {
+export default function MoodTracker({
+  variant = "default",
+  onMoodChange,
+  onMoodHistoryChange,
+  onCheckInRequest,
+}) {
+  const { user: currentUser } = useUser();
+  const currentUserName = currentUser?.name || "You";
   const isCompact = variant === "compact";
   const [mood, setMood] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
   const [showSnapshot, setShowSnapshot] = useState(!isCompact);
+  const [moodHistory, setMoodHistory] = useState(() => loadMoodHistory());
+  const [reactionLedger, setReactionLedger] = useState(() => loadReactionLedger());
 
   const todayKey = new Date().toISOString().slice(0, 10);
 
-  const moodCounts = moods.reduce((acc, m) => {
-    acc[m.label] = 0;
-    return acc;
-  }, {});
-
-  roommates.forEach(({ mood: roommateMood }) => {
-    moodCounts[roommateMood] += 1;
-  });
-
-  if (mood) {
-    moodCounts[mood.label] += 1;
-  }
-
-  const showStats = Boolean(mood) && !isCompact;
-  const totalCount = Object.values(moodCounts).reduce(
-    (sum, value) => sum + value,
-    0
-  );
-  const orderedMoods = [...moods].reverse();
   const encouragement = mood ? encouragements[mood.label] : null;
+  const timelineDays = useMemo(() => buildTimelineDays(moodHistory), [moodHistory]);
+  const householdFeed = useMemo(
+    () => moodHistory.filter((entry) => entry.date === todayKey).slice(0, 5),
+    [moodHistory, todayKey]
+  );
+  const hasHistory = moodHistory.length > 0;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -100,9 +94,39 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
     }
   }, [mood, onMoodChange]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(HISTORY_KEY, JSON.stringify(moodHistory));
+    }
+    if (typeof onMoodHistoryChange === "function") {
+      onMoodHistoryChange(moodHistory);
+    }
+  }, [moodHistory, onMoodHistoryChange]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(REACTIONS_KEY, JSON.stringify(reactionLedger));
+    }
+  }, [reactionLedger]);
+
   const handleSelectMood = (selectedMood) => {
     setMood(selectedMood);
     setIsLocked(true);
+    const entry = {
+      id: `mood-${Date.now()}`,
+      userName: currentUserName,
+      label: selectedMood.label,
+      emoji: selectedMood.emoji,
+      date: todayKey,
+      timestamp: new Date().toISOString(),
+      reactions: {},
+    };
+    setMoodHistory((prev) => {
+      const filtered = prev.filter(
+        (item) => !(item.userName === currentUserName && item.date === todayKey)
+      );
+      return [entry, ...filtered];
+    });
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
         STORAGE_KEY,
@@ -114,6 +138,9 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
   const handleUnlock = () => {
     setIsLocked(false);
     setMood(null);
+    setMoodHistory((prev) =>
+      prev.filter((item) => !(item.userName === currentUserName && item.date === todayKey))
+    );
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
@@ -121,6 +148,27 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
       onMoodChange(null);
     }
   };
+
+  const handleReaction = (entryId, emoji) => {
+    if (reactionLedger[entryId]) return;
+    setMoodHistory((prev) =>
+      prev.map((entry) =>
+        entry.id === entryId
+          ? {
+              ...entry,
+              reactions: {
+                ...entry.reactions,
+                [emoji]: (entry.reactions?.[emoji] || 0) + 1,
+              },
+            }
+          : entry
+      )
+    );
+    setReactionLedger((prev) => ({ ...prev, [entryId]: emoji }));
+  };
+
+  const shouldShowCheckIn = (entry) =>
+    entry.userName !== currentUserName && (entry.label === "Sad" || entry.label === "Frustrated");
 
   return (
     <div
@@ -272,7 +320,7 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
           )}
         </div>
       )}
-      {showStats && (
+      {hasHistory && (
         <>
           {isCompact && (
             <button
@@ -280,51 +328,90 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
               onClick={() => setShowSnapshot((prev) => !prev)}
               style={toggleStatsButtonStyle}
             >
-              {showSnapshot ? "Hide household snapshot" : "View household snapshot"}
+              {showSnapshot ? "Hide house vibes" : "Show house vibes"}
             </button>
           )}
-          {showSnapshot && (
-            <div
-              style={{
-                ...statsWrapper,
-                marginTop: isCompact ? "0.6rem" : statsWrapper.marginTop,
-                paddingTop: isCompact ? "0.6rem" : statsWrapper.paddingTop,
-              }}
-            >
-              <p style={statsTitle}>Household mood snapshot</p>
-              {orderedMoods.map((m) => {
-                const count = moodCounts[m.label];
-                const percent = totalCount
-                  ? Math.round((count / totalCount) * 100)
-                  : 0;
-                const label = count === 1 ? "person" : "people";
-                const width =
-                  percent === 0 && count > 0 ? 12 : Math.max(percent, 0);
-
-                return (
-                  <div key={m.label} style={barRow}>
-                    <div style={barHeader}>
-                      <span>
-                        {m.emoji} {m.label}
-                      </span>
-                      <span style={barMeta}>
-                        {count} {label} • {percent}%
+          {(!isCompact || showSnapshot) && (
+            <>
+              <div style={timelineCardStyle}>
+                <div style={timelineHeaderStyle}>
+                  <p style={statsTitle}>House vibe (7 days)</p>
+                  <span style={timelineHintStyle}>Dominant mood per day</span>
+                </div>
+                <div style={timelineStripStyle}>
+                  {timelineDays.map((day) => (
+                    <div
+                      key={day.iso}
+                      style={{
+                        ...timelineDayStyle,
+                        border:
+                          day.isToday && day.mood
+                            ? "1px solid var(--habita-accent)"
+                            : "1px solid rgba(255,255,255,0.08)",
+                        opacity: day.mood ? 1 : 0.5,
+                      }}
+                    >
+                      <span style={timelineDayLabelStyle}>{day.weekday}</span>
+                      <span style={timelineEmojiStyle}>{day.mood?.emoji ?? "–"}</span>
+                      <span style={timelineMoodLabelStyle}>
+                        {day.mood?.label ?? "No log"}
                       </span>
                     </div>
-                    <div style={barOuter}>
-                      <div
-                        style={{
-                          ...barInner,
-                          width: `${width}%`,
-                          backgroundColor: moodColors[m.label],
-                        }}
-                      />
+                  ))}
+                </div>
+              </div>
+              <div style={houseFeedCardStyle}>
+                <div style={houseFeedHeaderStyle}>
+                  <p style={statsTitle}>Household check-ins</p>
+                  <span style={houseFeedHintStyle}>Tap a sticker to react</span>
+                </div>
+                {householdFeed.length === 0 ? (
+                  <p style={emptyFeedStyle}>No moods logged today.</p>
+                ) : (
+                  householdFeed.map((entry) => (
+                    <div key={entry.id} style={houseFeedRowStyle}>
+                      <div style={houseFeedInfoStyle}>
+                        <span style={houseFeedNameStyle}>
+                          {entry.emoji} {entry.userName}
+                        </span>
+                        <span style={houseFeedMetaStyle}>
+                          {formatRelativeDay(entry.date)} • {formatTimeLabel(entry.timestamp)}
+                        </span>
+                      </div>
+                      <div style={houseFeedMoodStyle}>{entry.label}</div>
+                      <div style={reactionRowStyle}>
+                        {reactionOptions.map((emoji) => {
+                          const count = entry.reactions?.[emoji] || 0;
+                          const reacted = reactionLedger[entry.id] === emoji;
+                          const disabled = Boolean(reactionLedger[entry.id]);
+                          return (
+                            <button
+                              key={`${entry.id}-${emoji}`}
+                              type="button"
+                              style={reactionButtonStyle(disabled, reacted)}
+                              onClick={() => handleReaction(entry.id, emoji)}
+                              disabled={disabled}
+                            >
+                              {emoji}
+                              {count > 0 && <span style={reactionCountStyle}>{count}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {shouldShowCheckIn(entry) && (
+                        <button
+                          type="button"
+                          style={checkInButtonStyle}
+                          onClick={() => onCheckInRequest?.(entry)}
+                        >
+                          Check in with {entry.userName}
+                        </button>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
-              <p style={statsHint}>Includes your latest update.</p>
-            </div>
+                  ))
+                )}
+              </div>
+            </>
           )}
         </>
       )}
@@ -405,25 +492,11 @@ const changeMoodButtonStyle = {
   alignSelf: "flex-start",
 };
 
-const statsWrapper = {
-  marginTop: "0.8rem",
-  textAlign: "left",
-  borderTop: "1px solid var(--habita-border)",
-  paddingTop: "0.8rem",
-};
-
-
 const statsTitle = {
   margin: "0 0 0.5rem 0",
   color: "var(--habita-text)",
   fontSize: "0.85rem",
   fontWeight: 600,
-};
-
-const statsHint = {
-  marginTop: "0.6rem",
-  fontSize: "0.72rem",
-  color: "var(--habita-muted)",
 };
 
 const toggleStatsButtonStyle = {
@@ -438,35 +511,150 @@ const toggleStatsButtonStyle = {
   textAlign: "left",
 };
 
-const barRow = {
-  marginBottom: "0.65rem",
+const timelineCardStyle = {
+  marginTop: "0.8rem",
+  paddingTop: "0.6rem",
+  borderTop: "1px solid var(--habita-border)",
+  textAlign: "left",
 };
 
-const barHeader = {
+const timelineHeaderStyle = {
   display: "flex",
+  alignItems: "center",
   justifyContent: "space-between",
-  fontSize: "0.78rem",
-  color: "var(--habita-muted)",
-  marginBottom: "0.25rem",
+  gap: "0.5rem",
 };
 
-const barMeta = {
+const timelineHintStyle = {
+  fontSize: "0.7rem",
+  color: "var(--habita-muted)",
+};
+
+const timelineStripStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+  gap: "0.35rem",
+  marginTop: "0.5rem",
+};
+
+const timelineDayStyle = {
+  borderRadius: "10px",
+  padding: "0.4rem 0.35rem",
+  background: "rgba(255,255,255,0.04)",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "0.2rem",
+  minHeight: "72px",
+};
+
+const timelineDayLabelStyle = {
+  fontSize: "0.65rem",
+  color: "var(--habita-muted)",
+};
+
+const timelineEmojiStyle = {
+  fontSize: "1.1rem",
+};
+
+const timelineMoodLabelStyle = {
+  fontSize: "0.7rem",
+  color: "var(--habita-text)",
+  textAlign: "center",
+};
+
+const houseFeedCardStyle = {
+  marginTop: "0.8rem",
+  paddingTop: "0.8rem",
+  borderTop: "1px solid var(--habita-border)",
+  textAlign: "left",
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.75rem",
+};
+
+const houseFeedHeaderStyle = {
+  display: "flex",
+  alignItems: "baseline",
+  justifyContent: "space-between",
+};
+
+const houseFeedHintStyle = {
+  fontSize: "0.7rem",
+  color: "var(--habita-muted)",
+};
+
+const houseFeedRowStyle = {
+  border: "1px solid rgba(74,144,226,0.2)",
+  borderRadius: "12px",
+  padding: "0.65rem 0.75rem",
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.45rem",
+};
+
+const houseFeedInfoStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.1rem",
+};
+
+const houseFeedNameStyle = {
   fontWeight: 600,
   color: "var(--habita-text)",
 };
 
-const barOuter = {
-  width: "100%",
-  height: "8px",
-  borderRadius: "999px",
-  backgroundColor: "var(--habita-border)",
-  overflow: "hidden",
+const houseFeedMetaStyle = {
+  fontSize: "0.75rem",
+  color: "var(--habita-muted)",
 };
 
-const barInner = {
-  height: "100%",
+const houseFeedMoodStyle = {
+  fontSize: "0.8rem",
+  fontWeight: 600,
+  color: "var(--habita-accent)",
+};
+
+const reactionRowStyle = {
+  display: "flex",
+  gap: "0.4rem",
+};
+
+const reactionButtonStyle = (disabled, reacted) => ({
+  border: "1px solid rgba(255,255,255,0.15)",
+  background: reacted ? "rgba(74,144,226,0.25)" : "transparent",
+  color: "var(--habita-text)",
   borderRadius: "999px",
-  transition: "width 0.25s ease",
+  padding: "0.2rem 0.6rem",
+  fontSize: "0.85rem",
+  cursor: disabled && !reacted ? "not-allowed" : "pointer",
+  opacity: disabled && !reacted ? 0.4 : 1,
+  display: "flex",
+  alignItems: "center",
+  gap: "0.25rem",
+});
+
+const reactionCountStyle = {
+  fontSize: "0.75rem",
+  fontWeight: 600,
+};
+
+const emptyFeedStyle = {
+  margin: 0,
+  fontSize: "0.82rem",
+  color: "var(--habita-muted)",
+};
+
+const checkInButtonStyle = {
+  alignSelf: "flex-start",
+  border: "none",
+  background: "rgba(246,135,97,0.15)",
+  color: "#f68761",
+  borderRadius: "999px",
+  padding: "0.25rem 0.75rem",
+  fontSize: "0.75rem",
+  fontWeight: 600,
+  cursor: "pointer",
 };
 
 const compactSelectedMoodWrapper = {
@@ -520,3 +708,96 @@ const compactChangeButton = {
   fontWeight: 600,
   cursor: "pointer",
 };
+
+const formatTimeLabel = (value) => {
+  if (!value) return "";
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value;
+  return new Date(parsed).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+};
+
+const formatRelativeDay = (iso) => {
+  if (!iso) return "";
+  const today = new Date().toISOString().slice(0, 10);
+  if (iso === today) return "Today";
+  const dayMs = 24 * 60 * 60 * 1000;
+  const diff =
+    (new Date(today).setHours(0, 0, 0, 0) - new Date(iso).setHours(0, 0, 0, 0)) / dayMs;
+  if (diff === -1) return "Tomorrow";
+  if (diff === 1) return "Yesterday";
+  return new Date(iso).toLocaleDateString(undefined, { weekday: "short" });
+};
+
+function buildTimelineDays(history = []) {
+  const days = [];
+  for (let i = 6; i >= 0; i -= 1) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const iso = date.toISOString().slice(0, 10);
+    const entries = history.filter((entry) => entry.date === iso);
+    const counts = entries.reduce((acc, entry) => {
+      const key = entry.label;
+      acc[key] = acc[key] || { count: 0, emoji: entry.emoji, label: entry.label };
+      acc[key].count += 1;
+      return acc;
+    }, {});
+    const dominant =
+      Object.values(counts).sort((a, b) => b.count - a.count)[0] || null;
+    days.push({
+      iso,
+      weekday: date.toLocaleDateString(undefined, { weekday: "short" }),
+      isToday: i === 0,
+      mood: dominant,
+    });
+  }
+  return days;
+}
+
+function loadMoodHistory() {
+  if (typeof window === "undefined") {
+    return seedMoodHistory();
+  }
+  try {
+    const stored = window.localStorage.getItem(HISTORY_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : seedMoodHistory();
+    }
+    return seedMoodHistory();
+  } catch {
+    return seedMoodHistory();
+  }
+}
+
+function loadReactionLedger() {
+  if (typeof window === "undefined") return {};
+  try {
+    const stored = window.localStorage.getItem(REACTIONS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+function seedMoodHistory() {
+  const history = [];
+  const now = new Date();
+  roommates.forEach((roommate, index) => {
+    for (let offset = 0; offset < 3; offset += 1) {
+      const day = new Date(now);
+      day.setDate(now.getDate() - (offset + index));
+      const iso = day.toISOString().slice(0, 10);
+      const moodSource = moods[(index + offset) % moods.length];
+      history.push({
+        id: `seed-${roommate.name}-${offset}`,
+        userName: roommate.name,
+        label: moodSource.label,
+        emoji: moodSource.emoji,
+        date: iso,
+        timestamp: new Date(day.getTime() + (index + offset + 8) * 60 * 60 * 1000).toISOString(),
+        reactions: {},
+      });
+    }
+  });
+  return history.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+}
