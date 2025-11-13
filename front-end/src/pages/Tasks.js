@@ -123,6 +123,8 @@ export default function Tasks() {
       dueFilter: targetDueFilter,
       date: targetDate,
       openChatForTaskId,
+      highlightTaskTitle,
+      highlightTaskDue,
     } = location.state;
     let shouldReplace = false;
 
@@ -154,11 +156,35 @@ export default function Tasks() {
       shouldReplace = true;
     }
 
-    if (openChatForTaskId) {
-      const targetId = `task-card-${openChatForTaskId}`;
+    const normalize = (value) =>
+      typeof value === "string" ? value.trim().toLowerCase() : "";
+    let derivedTargetTaskId = openChatForTaskId;
+    if (!derivedTargetTaskId && (highlightTaskTitle || highlightTaskDue)) {
+      const titleKey = normalize(highlightTaskTitle);
+      const dueKey =
+        typeof highlightTaskDue === "string"
+          ? highlightTaskDue.slice(0, 10)
+          : null;
+      const fallbackTask = tasks.find((task) => {
+        const titleMatch = titleKey && normalize(task.title) === titleKey;
+        const dueMatch =
+          dueKey &&
+          typeof task?.due === "string" &&
+          task.due.slice(0, 10) === dueKey;
+        return titleMatch || dueMatch;
+      });
+      if (fallbackTask) {
+        derivedTargetTaskId = fallbackTask.id;
+      }
+    }
+
+    if (derivedTargetTaskId) {
+      const targetId = `task-card-${derivedTargetTaskId}`;
       const scrollToTarget = () => {
         const el = document.getElementById(targetId);
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (el?.scrollIntoView) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
       };
       window.requestAnimationFrame(scrollToTarget);
       shouldReplace = true;
@@ -167,7 +193,7 @@ export default function Tasks() {
     if (shouldReplace) {
       navigate("/tasks", { replace: true });
     }
-  }, [location.state, navigate, createDefaultForm]);
+  }, [location.state, navigate, createDefaultForm, tasks]);
 
   const filteredTasks = useMemo(() => {
     const byFilter =
@@ -581,7 +607,7 @@ const helperText =
                   style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
                   onClick={() => setChatOpen(task.id)}
                 >
-                  Chat 💬
+                  Chat
                 </button>
                 <button
                   type="button"
