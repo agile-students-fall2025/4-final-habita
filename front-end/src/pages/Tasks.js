@@ -7,6 +7,27 @@ import ChatThread from "../components/ChatThread";
 const roommates = ["Alex", "Sam", "Jordan"];
 const peopleOptions = ["You", ...roommates];
 
+const repeatOptions = [
+  { id: "none", label: "Never" },
+  { id: "daily", label: "Daily" },
+  { id: "weekdays", label: "Weekdays" },
+  { id: "weekends", label: "Weekends" },
+  { id: "weekly", label: "Weekly" },
+  { id: "biweekly", label: "Biweekly" },
+  { id: "monthly", label: "Monthly" },
+  { id: "every-3-months", label: "Every 3 Months" },
+  { id: "every-6-months", label: "Every 6 Months" },
+  { id: "yearly", label: "Yearly" },
+  { id: "custom", label: "Custom" },
+];
+
+const repeatUnitOptions = [
+  { id: "days", label: "Days" },
+  { id: "weeks", label: "Weeks" },
+  { id: "months", label: "Months" },
+  { id: "years", label: "Years" },
+];
+
 
 const filterOptions = [
   { id: "all", label: "All" },
@@ -44,6 +65,29 @@ const formatDueLabel = (value) => {
   });
 };
 
+const ensureRepeat = (value) => {
+  if (!value) return { type: "none", interval: 1, unit: "weeks" };
+  if (typeof value === "string") return { type: value, interval: 1, unit: "weeks" };
+  return {
+    type: value.type || "none",
+    interval:
+      typeof value.interval === "number" && value.interval > 0 ? value.interval : 1,
+    unit: value.unit || "weeks",
+  };
+};
+
+const formatRepeatLabel = (repeat) => {
+  if (!repeat || repeat.type === "none") return null;
+  if (repeat.type === "custom") {
+    const interval = repeat.interval || 1;
+    const unit = repeat.unit || "weeks";
+    const unitLabel = interval === 1 ? unit.replace(/s$/, "") : unit;
+    return `Repeats every ${interval} ${unitLabel}`;
+  }
+  const preset = repeatOptions.find((option) => option.id === repeat.type);
+  return preset ? preset.label : "Repeats";
+};
+
 export default function Tasks() {
   const todayISO = new Date().toISOString().slice(0, 10);
   const { tasks, addTask, updateTask, toggleTaskStatus, stats } = useTasks();
@@ -58,6 +102,7 @@ export default function Tasks() {
       title: "",
       due: todayISO,
       assignees: ["You"],
+      repeat: ensureRepeat(),
     }),
     [todayISO]
   );
@@ -177,8 +222,8 @@ export default function Tasks() {
     );
   }, [tasks, filter, showMineOnly, dueFilter, todayISO]);
 
-  const helperText =
-    "✨ Tap the status dot to move a task from pending → in progress → completed.";
+const helperText =
+  "✨ Tap the status dot to move a task from pending → in progress → completed.";
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -190,6 +235,7 @@ export default function Tasks() {
       title: trimmedTitle,
       due: form.due || todayISO,
       assignees: form.assignees.length ? form.assignees : ["Unassigned"],
+      repeat: ensureRepeat(form.repeat),
     };
     const createdTaskId = Date.now();
     const isEditing = Boolean(editingId);
@@ -246,6 +292,7 @@ export default function Tasks() {
       assignees: Array.isArray(task.assignees)
         ? task.assignees
         : [task.assignees ?? "Unassigned"],
+      repeat: ensureRepeat(task.repeat),
     });
   };
 
@@ -337,6 +384,74 @@ export default function Tasks() {
                 </div>
               </div>
             </div>
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Repeat</span>
+              <select
+                value={form.repeat.type}
+                onChange={(event) => {
+                  const nextType = event.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    repeat:
+                      nextType === "custom"
+                        ? {
+                            type: "custom",
+                            interval: prev.repeat.interval || 1,
+                            unit: prev.repeat.unit || "weeks",
+                          }
+                        : { type: nextType, interval: 1, unit: "weeks" },
+                  }));
+                }}
+                style={selectStyle}
+              >
+                {repeatOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {form.repeat.type === "custom" && (
+                <div style={customRepeatRowStyle}>
+                  <label style={customRepeatFieldStyle}>
+                    <span style={fieldLabelStyle}>Every</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.repeat.interval}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          repeat: {
+                            ...prev.repeat,
+                            interval: Math.max(1, Number(event.target.value) || 1),
+                          },
+                        }))
+                      }
+                      style={customRepeatInputStyle}
+                    />
+                  </label>
+                  <label style={customRepeatFieldStyle}>
+                    <span style={fieldLabelStyle}>Unit</span>
+                    <select
+                      value={form.repeat.unit}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          repeat: { ...prev.repeat, unit: event.target.value },
+                        }))
+                      }
+                      style={selectStyle}
+                    >
+                      {repeatUnitOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
+            </label>
             <button type="submit" style={submitButtonStyle}>
               {editingId ? "Update Task" : "Save Task"}
             </button>
@@ -418,8 +533,10 @@ export default function Tasks() {
         {filteredTasks.length === 0 ? (
           <p style={emptyStateStyle}>No tasks in this view.</p>
         ) : (
-          filteredTasks.map((task) => (
-            <article id={`task-card-${task.id}`} key={task.id} style={taskCardStyle}>
+          filteredTasks.map((task) => {
+            const repeatLabel = formatRepeatLabel(task.repeat)
+            return (
+              <article id={`task-card-${task.id}`} key={task.id} style={taskCardStyle}>
               <div style={taskCardRowStyle}>
                 <button
                   type="button"
@@ -443,6 +560,11 @@ export default function Tasks() {
                         ? task.assignees.join(", ")
                         : task.assignees}
                     </span>
+                    {repeatLabel && (
+                      <span style={repeatBadgeStyle}>
+                        {repeatLabel}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <span
@@ -481,6 +603,7 @@ export default function Tasks() {
                       assignees: editDraft.assignees.length
                         ? editDraft.assignees
                         : ["Unassigned"],
+                      repeat: ensureRepeat(editDraft.repeat),
                     });
                     setEditingId(null);
                     setEditDraft(null);
@@ -555,12 +678,86 @@ export default function Tasks() {
                             </button>
                           );
                         })}
-                      </div>
                     </div>
                   </div>
-                  <div style={inlineButtonRowStyle}>
-                    <button
-                      type="button"
+                <label style={inlineFieldStyle}>
+                  <span style={inlineLabelStyle}>Repeat</span>
+                  <select
+                    value={editDraft.repeat?.type || "none"}
+                    onChange={(event) => {
+                      const nextType = event.target.value
+                      setEditDraft((prev) => ({
+                        ...prev,
+                        repeat:
+                          nextType === "custom"
+                            ? {
+                                type: "custom",
+                                interval: prev.repeat?.interval || 1,
+                                unit: prev.repeat?.unit || "weeks",
+                              }
+                            : { type: nextType, interval: 1, unit: "weeks" },
+                      }))
+                    }}
+                    style={selectStyle}
+                  >
+                    {repeatOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  {editDraft.repeat?.type === "custom" && (
+                    <div style={customRepeatRowStyle}>
+                      <label style={customRepeatFieldStyle}>
+                        <span style={fieldLabelStyle}>Every</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={editDraft.repeat.interval}
+                          onChange={(event) =>
+                            setEditDraft((prev) => ({
+                              ...prev,
+                              repeat: {
+                                ...prev.repeat,
+                                interval: Math.max(
+                                  1,
+                                  Number(event.target.value) || 1
+                                ),
+                              },
+                            }))
+                          }
+                          style={customRepeatInputStyle}
+                        />
+                      </label>
+                      <label style={customRepeatFieldStyle}>
+                        <span style={fieldLabelStyle}>Unit</span>
+                        <select
+                          value={editDraft.repeat.unit}
+                          onChange={(event) =>
+                            setEditDraft((prev) => ({
+                              ...prev,
+                              repeat: {
+                                ...prev.repeat,
+                                unit: event.target.value,
+                              },
+                            }))
+                          }
+                          style={selectStyle}
+                        >
+                          {repeatUnitOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  )}
+                </label>
+                </div>
+                <div style={inlineButtonRowStyle}>
+                  <button
+                    type="button"
                       style={ghostButtonStyle}
                       onClick={() => {
                         setEditingId(null);
@@ -575,83 +772,12 @@ export default function Tasks() {
                   </div>
                 </form>
               )}
-            </article>
-          ))
+              </article>
+            )
+          })
         )}
       </section>
 
-      {showForm && (
-        <section style={formSectionStyle}>
-          <div style={formHeaderStyle}>
-            <h3 style={formTitleStyle}>
-              {editingId ? "Edit Task" : "Add Task"}
-            </h3>
-            <button
-              type="button"
-              style={ghostButtonStyle}
-              onClick={() => {
-                setShowForm(false);
-                setEditingId(null);
-                setForm({ title: "", due: todayISO, assignees: ["You"] });
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-          <form onSubmit={handleSubmit} style={formStyle}>
-            <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Task name</span>
-              <input
-                type="text"
-                value={form.title}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, title: event.target.value }))
-                }
-                placeholder="e.g. Book shared laundry slot"
-                style={inputStyle}
-                required
-              />
-            </label>
-            <div style={fieldRowStyle}>
-              <label style={{ ...fieldStyle, flex: 1 }}>
-                <span style={fieldLabelStyle}>Due date</span>
-                <input
-                  type="date"
-                  value={form.due}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, due: event.target.value }))
-                  }
-                  style={inputStyle}
-                />
-              </label>
-              <div style={{ ...fieldStyle, flex: 1 }}>
-                <span style={fieldLabelStyle}>Assigned to</span>
-                <div style={assigneeChipsWrapperStyle}>
-                  {peopleOptions.map((person) => {
-                    const active = form.assignees.includes(person);
-                    return (
-                      <button
-                        key={person}
-                        type="button"
-                        onClick={() => toggleAssignee(person)}
-                        style={{
-                          ...assigneeChipStyle,
-                          ...(active ? assigneeChipActiveStyle : {}),
-                        }}
-                      >
-                        {person}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-            <button type="submit" style={submitButtonStyle}>
-              {editingId ? "Update Task" : "Save Task"}
-            </button>
-          </form>
-        </section>
-      )}
       {chatOpen && (
         <div style={{
           position: "fixed",
@@ -897,6 +1023,15 @@ const taskMetaStyle = {
   color: "var(--habita-muted)",
 };
 
+const repeatBadgeStyle = {
+  padding: "0.15rem 0.45rem",
+  borderRadius: "999px",
+  background: "rgba(74,144,226,0.18)",
+  color: "var(--habita-accent)",
+  fontSize: "0.72rem",
+  fontWeight: 600,
+};
+
 const statusPillStyle = {
   borderRadius: "999px",
   fontSize: "0.7rem",
@@ -967,6 +1102,38 @@ const inputStyle = {
   outline: "none",
   background: "var(--habita-input)",
   color: "var(--habita-text)",
+};
+
+const selectStyle = {
+  ...inputStyle,
+  appearance: "none",
+  WebkitAppearance: "none",
+  backgroundImage: "linear-gradient(45deg, transparent 50%, var(--habita-accent) 50%), linear-gradient(135deg, var(--habita-accent) 50%, transparent 50%)",
+  backgroundPosition: "calc(100% - 12px) calc(50% - 2px), calc(100% - 7px) calc(50% - 2px)",
+  backgroundSize: "5px 5px, 5px 5px",
+  backgroundRepeat: "no-repeat",
+  paddingRight: "1.8rem",
+  cursor: "pointer",
+};
+
+const customRepeatRowStyle = {
+  display: "flex",
+  gap: "0.6rem",
+  marginTop: "0.5rem",
+  flexWrap: "wrap",
+};
+
+const customRepeatFieldStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.3rem",
+  minWidth: "120px",
+  flex: 1,
+};
+
+const customRepeatInputStyle = {
+  ...inputStyle,
+  width: "100%",
 };
 
 const assigneeChipsWrapperStyle = {

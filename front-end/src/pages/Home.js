@@ -8,6 +8,7 @@ export default function Home() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [calendarDate, setCalendarDate] = useState(() => new Date());
 
   const goToTasks = (state = {}) => {
     navigate("/tasks", { state: { mineOnly: true, ...state } });
@@ -75,12 +76,18 @@ export default function Home() {
     paid: billsSummary.stats?.paid ?? 0,
   };
 
-  const headerMessage = useMemo(() => {
+  const userName = summary?.user && summary.user !== "You" ? summary.user : "roomie";
+  const headerTitle = useMemo(() => {
     if (loading) return "Syncing your dashboard…";
+    if (error) return "Home";
+    return `Welcome back, ${userName}!`;
+  }, [loading, error, userName]);
+
+  const headerMessage = useMemo(() => {
+    if (loading) return "Fetching your personal snapshot…";
     if (error) return error;
-    if (summary?.user) return `Welcome back, ${summary.user}!`;
     return "Your personal snapshot";
-  }, [loading, error, summary]);
+  }, [loading, error]);
 
   const renderStatCards = (items) => (
     <div style={statCardsWrapStyle}>
@@ -116,29 +123,17 @@ export default function Home() {
       <div style={contentStyle}>
         <div style={homeHeaderStyle}>
           <div>
-            <h2 style={homeTitleStyle}>Home</h2>
+            <h2 style={homeTitleStyle}>{headerTitle}</h2>
             <p style={homeSubtitleStyle}>{headerMessage}</p>
           </div>
-          <span style={homeStatusPillStyle}>
-            {loading ? "Syncing" : error ? "Offline data" : "Live data"}
-          </span>
         </div>
 
         <section style={singleCardSectionStyle}>
           <MoodTracker variant="compact" />
         </section>
 
-        <section style={summaryGridStyle}>
-          <div style={{ ...cardStyle }}>
-            <MiniCalendar
-              eventsByISO={eventsByISO}
-              onSelectDate={(iso) =>
-                goToTasks({ dueFilter: { type: "date", value: iso }, date: iso })
-              }
-              onExportICS={(target) => handleExportICS(target, summary)}
-            />
-          </div>
-          <div style={{ ...cardStyle, gap: "1rem" }}>
+        <section style={cardsRowStyle}>
+          <div style={{ ...cardStyle, ...cardColumnStyle, gap: "1rem" }}>
             <div style={cardHeaderRowStyle}>
               <h3 style={titleStyle}>My Tasks</h3>
               <div style={cardHeaderActionsStyle}>
@@ -208,7 +203,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div style={{ ...cardStyle, gap: "1rem" }}>
+          <div style={{ ...cardStyle, ...cardColumnStyle, gap: "1rem" }}>
             <div style={cardHeaderRowStyle}>
               <h3 style={titleStyle}>My Bills</h3>
               <div style={cardHeaderActionsStyle}>
@@ -285,6 +280,25 @@ export default function Home() {
             )}
           </div>
         </section>
+
+        <div style={{ ...cardStyle, marginTop: "1rem" }}>
+          <MiniCalendar
+            titlePrefix="Calendar"
+            monthDate={calendarDate}
+            eventsByISO={eventsByISO}
+            onSelectDate={(iso) =>
+              goToTasks({ dueFilter: { type: "date", value: iso }, date: iso })
+            }
+            onExportICS={(target) => handleExportICS(target, summary)}
+            onMonthChange={(direction) => {
+              setCalendarDate((prev) => {
+                const next = new Date(prev);
+                next.setMonth(prev.getMonth() + direction);
+                return next;
+              });
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -400,6 +414,7 @@ const cardHeaderActionsStyle = {
   gap: "0.4rem",
 };
 
+
 const cardLinkButtonStyle = {
   background: "transparent",
   border: "none",
@@ -495,15 +510,6 @@ const homeSubtitleStyle = {
   color: "var(--habita-muted)",
 };
 
-const homeStatusPillStyle = {
-  fontSize: "0.75rem",
-  fontWeight: 600,
-  borderRadius: "999px",
-  padding: "0.2rem 0.8rem",
-  border: "1px solid rgba(74,144,226,0.35)",
-  color: "var(--habita-accent)",
-};
-
 const contentStyle = {
   maxWidth: "720px",
   margin: "0 auto",
@@ -518,11 +524,16 @@ const singleCardSectionStyle = {
   gap: "1.25rem",
 };
 
-const summaryGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+const cardsRowStyle = {
+  display: "flex",
   gap: "1.25rem",
-  alignItems: "start",
+  flexWrap: "wrap",
+  alignItems: "stretch",
+};
+
+const cardColumnStyle = {
+  flex: "1 1 280px",
+  minWidth: "260px",
 };
 
 const titleStyle = {

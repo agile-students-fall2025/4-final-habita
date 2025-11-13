@@ -8,6 +8,23 @@ const addDays = (days) => {
   return date.toISOString().slice(0, 10);
 };
 
+const normalizeRepeat = (value) => {
+  if (!value) {
+    return { type: "none", interval: 1, unit: "weeks" };
+  }
+  if (typeof value === "string") {
+    return { type: value, interval: 1, unit: "weeks" };
+  }
+  return {
+    type: value.type || "none",
+    interval:
+      typeof value.interval === "number" && value.interval > 0
+        ? value.interval
+        : 1,
+    unit: value.unit || "weeks",
+  };
+};
+
 const normalizeTask = (task, fallbackId) => {
   const normalizedAssignees = Array.isArray(task.assignees)
     ? task.assignees
@@ -21,6 +38,7 @@ const normalizeTask = (task, fallbackId) => {
     due: task.due ?? addDays(0),
     assignees: normalizedAssignees,
     status: validStatuses.includes(task.status) ? task.status : "pending",
+    repeat: normalizeRepeat(task.repeat),
   };
 };
 
@@ -85,15 +103,17 @@ export function TasksProvider({ children }) {
   }, [tasks]);
 
   const addTask = (task) => {
-    const next = normalizeTask({ status: "pending", ...task });
-    setTasks((prev) => [next, ...prev]);
-  };
+    const next = normalizeTask({ status: "pending", ...task })
+    setTasks((prev) => [next, ...prev])
+  }
 
   const updateTask = (taskId, updates) => {
     setTasks((prev) =>
-      prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
-    );
-  };
+      prev.map((task) =>
+        task.id === taskId ? normalizeTask({ ...task, ...updates }, task.id) : task
+      )
+    )
+  }
 
   const toggleTaskStatus = (taskId) => {
     setTasks((prev) =>
