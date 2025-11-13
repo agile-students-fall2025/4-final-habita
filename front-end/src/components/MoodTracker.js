@@ -36,9 +36,9 @@ const HISTORY_KEY = "habita:mood-history";
 const REACTIONS_KEY = "habita:mood-reactions";
 const reactionOptions = ["👍", "🍪", "❤️"];
 const moodAccentStyles = {
-  Happy: { bg: "rgba(74,144,226,0.2)", fg: "#0f4da8" },
+  Happy: { bg: "rgba(245,166,35,0.2)", fg: "#a87012" },
   Neutral: { bg: "rgba(155,155,155,0.2)", fg: "#4f4f4f" },
-  Sad: { bg: "rgba(245,166,35,0.25)", fg: "#a87012" },
+  Sad: { bg: "rgba(74,144,226,0.2)", fg: "#0f4da8" },
   Frustrated: { bg: "rgba(208,2,27,0.22)", fg: "#a30012" },
 };
 export default function MoodTracker({

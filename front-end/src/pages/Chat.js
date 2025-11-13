@@ -745,7 +745,12 @@ function getThreadPresentation(thread, currentUser = "You") {
   }
   const cleanedName = sanitizeThreadName(thread.name || "");
   const participants = Array.isArray(thread.participants) ? thread.participants : [];
-  const others = participants.filter((name) => name && name !== currentUser);
+  const others = participants.filter(
+    (name) =>
+      name &&
+      name !== currentUser &&
+      name.toLowerCase() !== "you"
+  );
   const roommateCount = participants.length;
   const roommateSubtitle =
     roommateCount > 0

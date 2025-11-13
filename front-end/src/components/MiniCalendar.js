@@ -103,9 +103,9 @@ export default function MiniCalendar({
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const moodDotColors = {
-  Happy: "#4A90E2",
+  Happy: "#F5A623",
   Neutral: "#9B9B9B",
-  Sad: "#F5A623",
+  Sad: "#4A90E2",
   Frustrated: "#D0021B",
 };
 const MAX_MOOD_SWATCHES = 3;

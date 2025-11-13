@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import MoodTracker from "../components/MoodTracker";
 import MiniCalendar from "../components/MiniCalendar";
 import { useUser } from "../context/UserContext";
+import { useTasks } from "../context/TasksContext";
 
 const MOOD_HISTORY_STORAGE_KEY = "habita:mood-history";
 
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useUser();
+  const { tasks } = useTasks();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,13 +18,19 @@ export default function Home() {
   const [moodHistory, setMoodHistory] = useState([]);
   const [selectedMoodISO, setSelectedMoodISO] = useState(null);
 
-  const goToTasks = (state = {}) => {
-    navigate("/tasks", { state: { mineOnly: true, ...state } });
-  };
+  const goToTasks = useCallback(
+    (state = {}) => {
+      navigate("/tasks", { state: { mineOnly: true, ...state } });
+    },
+    [navigate]
+  );
 
-  const goToBills = (state = {}) => {
-    navigate("/bills", { state: { mineOnly: true, ...state } });
-  };
+  const goToBills = useCallback(
+    (state = {}) => {
+      navigate("/bills", { state: { mineOnly: true, ...state } });
+    },
+    [navigate]
+  );
 
   const handleMoodHistoryChange = useCallback((history) => {
     setMoodHistory(history || []);
@@ -136,7 +144,50 @@ export default function Home() {
       ? Math.max(outstandingBills.length - (nextBill ? 1 : 0), 0)
       : 0;
 
-  const userName = summary?.user || user?.name || "roomie";
+  const matchedLocalNextTask = useMemo(() => {
+    if (!nextTask || !Array.isArray(tasks) || tasks.length === 0) {
+      return null;
+    }
+    const normalize = (value) =>
+      typeof value === "string" ? value.trim().toLowerCase() : "";
+    const byId = tasks.find((task) => task.id === nextTask.id);
+    if (byId) return byId;
+    const titleKey = normalize(nextTask.title);
+    if (titleKey) {
+      const byTitle = tasks.find((task) => normalize(task.title) === titleKey);
+      if (byTitle) return byTitle;
+    }
+    const nextIso =
+      typeof nextTask?.due === "string" ? nextTask.due.slice(0, 10) : null;
+    if (nextIso) {
+      const byDate = tasks.find(
+        (task) =>
+          typeof task?.due === "string" && task.due.slice(0, 10) === nextIso
+      );
+      if (byDate) return byDate;
+    }
+    return null;
+  }, [nextTask, tasks]);
+
+  const handleNextTaskClick = useCallback(() => {
+    if (!nextTask) return;
+    const navState = {
+      highlightTaskTitle: nextTask.title,
+      highlightTaskDue: nextTask.due,
+    };
+    if (matchedLocalNextTask) {
+      if (typeof matchedLocalNextTask.due === "string") {
+        navState.dueFilter = {
+          type: "date",
+          value: matchedLocalNextTask.due.slice(0, 10),
+        };
+      }
+      navState.openChatForTaskId = matchedLocalNextTask.id;
+    }
+    goToTasks(navState);
+  }, [goToTasks, nextTask, matchedLocalNextTask]);
+
+  const userName = summary?.user || user?.name || null;
 
   const renderStatCards = (items) => (
     <div style={statCardsWrapStyle}>
@@ -170,19 +221,6 @@ export default function Home() {
   return (
     <div style={pageStyle}>
       <div style={contentStyle}>
-        <div style={homeHeaderStyle}>
-          <div>
-            <h2 style={homeTitleStyle}>Home</h2>
-            <p style={homeSubtitleStyle}>
-              {loading
-                ? "Syncing your dashboard…"
-                : error
-                ? error
-                : `Welcome back, ${userName}!`}
-            </p>
-          </div>
-        </div>
-
         <section style={singleCardSectionStyle}>
           <MoodTracker
             variant="compact"
@@ -233,13 +271,18 @@ export default function Home() {
               {!nextTask ? (
                 <p style={textStyle}>Everything is wrapped up.</p>
               ) : (
-                <div style={singleListItemStyle}>
+                <button
+                  type="button"
+                  style={singleListButtonStyle}
+                  onClick={handleNextTaskClick}
+                  aria-label={nextTask.title ? `Open task "${nextTask.title}"` : "View upcoming tasks"}
+                >
                   <div style={singleListTitleStyle}>{nextTask.title}</div>
                   <div style={singleListMetaStyle}>
                     {formatDueLabel(nextTask.due)} •{" "}
                     {nextTask.assignee || "You"}
                   </div>
-                </div>
+                </button>
               )}
               {pendingCount + inProgressCount + myCompletedCount > 0 && (
                 <p style={miniMetaStyle}>
@@ -282,6 +325,7 @@ export default function Home() {
                 label: "Your share",
                 value: `$${myShareDue.toFixed(2)}`,
                 hint: "Outstanding split",
+                onClick: () => goToBills({ filter: "unpaid" }),
               },
             ])}
             {nextBill ? (
@@ -289,13 +333,26 @@ export default function Home() {
                 <div style={cardDividerStyle} />
                 <div>
                   <p style={cardSubheadingStyle}>Next bill</p>
-                  <div style={singleListItemStyle}>
+                  <button
+                    type="button"
+                    style={singleListButtonStyle}
+                    onClick={() => {
+                      const state = {
+                        filter: nextBill?.status === "paid" ? "paid" : "unpaid",
+                      };
+                      if (nextBill?.id) {
+                        state.openChatForBillId = nextBill.id;
+                      }
+                      goToBills(state);
+                    }}
+                    aria-label={nextBill.title ? `Open bill "${nextBill.title}"` : "View bills"}
+                  >
                     <div style={singleListTitleStyle}>{nextBill.title}</div>
                     <div style={singleListMetaStyle}>
                       {formatDueLabel(nextBill.dueDate)} • $
                       {calculateShare(nextBill).toFixed(2)}
                     </div>
-                  </div>
+                  </button>
                   {(remainingBills > 0 || myBillStats.unpaid > 1) && (
                     <p style={miniMetaStyle}>
                       + {remainingBills || myBillStats.unpaid - 1} more bills waiting
@@ -617,34 +674,6 @@ const pageStyle = {
   minHeight: "100vh",
 };
 
-const homeHeaderStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "0.5rem 0",
-  gap: "1rem",
-};
-
-const homeTitleStyle = {
-  margin: 0,
-  fontSize: "1.4rem",
-  fontWeight: 700,
-  color: "var(--habita-text)",
-};
-
-const homeSubtitleStyle = {
-  margin: "0.15rem 0 0",
-  fontSize: "0.9rem",
-  color: "var(--habita-muted)",
-};
-
-const homeSecondarySubtitleStyle = {
-  margin: "0.15rem 0 0",
-  fontSize: "0.85rem",
-  color: "var(--habita-text)",
-  fontWeight: 600,
-};
-
 const contentStyle = {
   maxWidth: "680px",
   margin: "0 auto",
@@ -726,6 +755,16 @@ const singleListItemStyle = {
   padding: "0.5rem 0.65rem",
   borderRadius: "10px",
   backgroundColor: "rgba(74,144,226,0.08)",
+};
+
+const singleListButtonStyle = {
+  ...singleListItemStyle,
+  border: "none",
+  width: "100%",
+  textAlign: "left",
+  background: singleListItemStyle.backgroundColor,
+  cursor: "pointer",
+  font: "inherit",
 };
 
 const singleListTitleStyle = {
