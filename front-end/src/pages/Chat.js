@@ -395,13 +395,13 @@ export default function Chat() {
                   </div>
                   <div style={threadRowRightStyle}>
                     {activity.mentionCount > 0 && (
-                      <span className="habita-badge-notification habita-badge-notification-urgent">{activity.mentionCount}</span>
+                      <span style={mentionBadgeStyle}>{activity.mentionCount}</span>
                     )}
                     {!activity.highlight &&
                       !activity.muted &&
                       activity.mentionCount === 0 &&
                       activity.unreadCount > 0 && (
-                        <span className="habita-badge-notification">{activity.unreadCount}</span>
+                        <span style={unreadBadgeStyle}>{activity.unreadCount}</span>
                       )}
                     <button
                       type="button"
@@ -748,19 +748,6 @@ const threadListStyle = {
   gap: "1rem",
 };
 
-const listHeaderStyle = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.35rem",
-};
-
-const listTitleStyle = {
-  margin: 0,
-  fontSize: "1.1rem",
-  fontWeight: 600,
-  color: "var(--habita-text)",
-};
-
 const listHintStyle = {
   margin: 0,
   fontSize: "0.82rem",
@@ -884,6 +871,25 @@ const threadRowRightStyle = {
   gap: "0.4rem",
 };
 
+const mentionBadgeStyle = {
+  background: "#ff6b6b",
+  color: "#fff",
+  borderRadius: "999px",
+  padding: "0.05rem 0.55rem",
+  fontSize: "0.7rem",
+  fontWeight: 700,
+  boxShadow: "0 0 0 2px rgba(255,255,255,0.15)",
+};
+
+const unreadBadgeStyle = {
+  background: "var(--habita-accent)",
+  color: "var(--habita-button-text)",
+  borderRadius: "999px",
+  padding: "0.05rem 0.45rem",
+  fontSize: "0.7rem",
+  fontWeight: 600,
+};
+
 const muteToggleStyle = (muted) => ({
   border: "1px solid rgba(74,144,226,0.25)",
   background: muted ? "rgba(255,255,255,0.05)" : "rgba(74,144,226,0.12)",
@@ -904,16 +910,6 @@ const chatPaneStyle = {
   gap: "1rem",
   flex: 1,
   minHeight: 0,
-};
-
-const emptyChatStyle = {
-  flex: 1,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: "0.9rem",
-  color: "var(--habita-muted)",
-  textAlign: "center",
 };
 
 const chatHeaderStyle = {

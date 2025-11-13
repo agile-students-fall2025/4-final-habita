@@ -97,7 +97,9 @@ export function BillsProvider({ children }) {
 		}, [bills]);
 
 	return (
-		<BillsContext.Provider value={{ bills, addBill, updateBill, markPaid, stats }}>
+		<BillsContext.Provider
+			value={{ bills, addBill, updateBill, updateBillStatus, togglePayment, markPaid, stats }}
+		>
 			{children}
 		</BillsContext.Provider>
 	);

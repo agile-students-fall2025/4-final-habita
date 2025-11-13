@@ -1,16 +1,54 @@
 import { useMemo } from "react";
 
-export default function MiniCalendar({ monthDate = new Date(), eventsByISO = {}, onSelectDate, onExportICS }) {
+export default function MiniCalendar({
+  monthDate = new Date(),
+  eventsByISO = {},
+  onSelectDate,
+  onExportICS,
+  onMonthChange,
+  titlePrefix,
+}) {
   const { weeks, monthLabel } = useMemo(() => buildMonthGrid(monthDate), [monthDate]);
 
   return (
     <div style={containerStyle}>
       <div style={headerStyle}>
-        <h4 style={titleStyle}>{monthLabel}</h4>
+        <div>
+          {titlePrefix && <div style={titlePrefixStyle}>{titlePrefix}</div>}
+          <h4 style={titleStyle}>{monthLabel}</h4>
+        </div>
         <div style={actionsRowStyle}>
-          <button type="button" style={linkButtonStyle} onClick={() => onExportICS?.("apple")}>Export .ics</button>
+          <button
+            type="button"
+            style={navButtonStyle}
+            onClick={() => onMonthChange?.(-1)}
+            aria-label="Previous month"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            style={linkButtonStyle}
+            onClick={() => onExportICS?.("apple")}
+          >
+            Export .ics
+          </button>
           <span style={headerSeparatorStyle} />
-          <button type="button" style={linkButtonStyle} onClick={() => onExportICS?.("google")}>Add to Google</button>
+          <button
+            type="button"
+            style={linkButtonStyle}
+            onClick={() => onExportICS?.("google")}
+          >
+            Add to Google
+          </button>
+          <button
+            type="button"
+            style={navButtonStyle}
+            onClick={() => onMonthChange?.(1)}
+            aria-label="Next month"
+          >
+            ›
+          </button>
         </div>
       </div>
 
@@ -108,6 +146,14 @@ const titleStyle = {
   color: "var(--habita-text)",
 };
 
+const titlePrefixStyle = {
+  margin: 0,
+  fontSize: "0.75rem",
+  color: "var(--habita-muted)",
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+};
+
 const actionsRowStyle = {
   display: "flex",
   alignItems: "center",
@@ -128,6 +174,20 @@ const headerSeparatorStyle = {
   width: "1px",
   height: "14px",
   backgroundColor: "var(--habita-border)",
+};
+
+const navButtonStyle = {
+  border: "1px solid var(--habita-border)",
+  borderRadius: "50%",
+  width: "24px",
+  height: "24px",
+  background: "transparent",
+  color: "var(--habita-text)",
+  cursor: "pointer",
+  fontSize: "0.85rem",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
 };
 
 const monthGridStyle = {
