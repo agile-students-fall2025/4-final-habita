@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useChat } from "../context/ChatContext";
+import { useUser } from "../context/UserContext";
 
 const roommateProfiles = {
   Alex: { role: "Organizer", fun: "Keeps the house calendar in check." },
@@ -43,6 +44,8 @@ export default function Chat() {
   } = useChat();
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useUser();
+  const currentUserName = user?.name || "You";
 
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth <= 900 : false));
   const [viewMode, setViewMode] = useState(isMobile ? "list" : "chat");
@@ -148,6 +151,10 @@ export default function Chat() {
   }, [isMobile, activeThreadId, defaultThreadId]);
 
   const activeThread = activeThreadId ? threadMap[activeThreadId] : null;
+  const activePresentation = useMemo(
+    () => getThreadPresentation(activeThread, currentUserName),
+    [activeThread, currentUserName]
+  );
   const activeMessages = activeThread ? messagesByThread[activeThread.id] || [] : [];
 
   useEffect(() => {
@@ -196,24 +203,27 @@ export default function Chat() {
 
   const getThreadMatchInfo = useCallback(
     (thread) => {
+      const presentation = getThreadPresentation(thread, currentUserName);
+      const displayName = presentation.title.toLowerCase();
       const defaultPreview = thread.lastMessage
         ? `${thread.lastMessage.sender === "You" ? "You" : thread.lastMessage.sender}: ${
             thread.lastMessage.text
           }`
         : "No messages yet";
       if (!normalizedSearch) {
-        return { matches: true, snippet: defaultPreview };
+        return { matches: true, snippet: defaultPreview, presentation };
       }
-      const nameMatch = thread.name.toLowerCase().includes(normalizedSearch);
+      const nameMatch = displayName.includes(normalizedSearch);
       const lastMessageMatch =
         thread.lastMessage &&
         thread.lastMessage.text.toLowerCase().includes(normalizedSearch);
       return {
         matches: nameMatch || lastMessageMatch,
         snippet: lastMessageMatch ? defaultPreview : thread.lastMessage?.text || defaultPreview,
+        presentation,
       };
     },
-    [normalizedSearch]
+    [normalizedSearch, currentUserName]
   );
 
   const renderHighlighted = useCallback(
@@ -277,7 +287,7 @@ export default function Chat() {
       const filtered = section.threads
         .map((thread) => {
           const info = getThreadMatchInfo(thread);
-          return info.matches ? { thread, snippet: info.snippet } : null;
+          return info.matches ? { thread, snippet: info.snippet, presentation: info.presentation } : null;
         })
         .filter(Boolean);
       return { ...section, threads: filtered };
@@ -348,9 +358,12 @@ export default function Chat() {
             section.threads.map((entry) => {
               const thread = entry.thread || entry;
               const activity = deriveThreadActivity(thread);
+              const presentation =
+                entry.presentation || getThreadPresentation(thread, currentUserName);
+              const displayName = presentation.title;
               const nameContent = normalizedSearch
-                ? renderHighlighted(thread.name)
-                : thread.name;
+                ? renderHighlighted(displayName)
+                : displayName;
               const preview = thread.lastMessage
                 ? `${thread.lastMessage.sender === "You" ? "You" : thread.lastMessage.sender}: ${
                     entry.snippet || thread.lastMessage.text
@@ -381,6 +394,9 @@ export default function Chat() {
                       >
                         {nameContent}
                       </span>
+                      {presentation.subtitle && (
+                        <span style={threadSubtitleStyle}>{presentation.subtitle}</span>
+                      )}
                       <span
                         style={{
                           ...threadButtonPreviewStyle,
@@ -425,17 +441,7 @@ export default function Chat() {
   );
 
   const renderChatPane = () => {
-
-    const subtitle =
-      activeThread.contextType === "house"
-        ? activeThread.participants?.join(" • ")
-        : activeThread.contextType === "bill"
-        ? "Bill conversation"
-        : activeThread.contextType === "task"
-        ? "Task chat"
-        : activeThread.contextType === "direct"
-        ? `Direct message with ${activeThread.participants?.find((name) => name !== "You") || ""}`
-        : "";
+    const presentation = activePresentation;
 
     const mentionOptionsForThread = Array.from(
       new Set([...(activeThread.participants || []), ...mentionFallback])
@@ -445,12 +451,12 @@ export default function Chat() {
       <div style={chatPaneStyle}>
         {!isMobile && (
           <header style={chatHeaderStyle}>
-          <div>
-            <h2 style={chatTitleStyle}>{activeThread.name}</h2>
-            <p style={chatSubtitleStyle}>{subtitle}</p>
-          </div>
-        </header>
-      )}
+            <div>
+              <h2 style={chatTitleStyle}>{presentation.title}</h2>
+              {presentation.subtitle && <p style={chatSubtitleStyle}>{presentation.subtitle}</p>}
+            </div>
+          </header>
+        )}
 
         <div ref={scrollRef} style={messagesWrapperStyle}>
           {activeMessages.map((msg, index) => {
@@ -582,7 +588,7 @@ export default function Chat() {
                   }
                 }}
                 placeholder={
-                  activeThread.name ? `Message ${activeThread.name}` : "Type a message"
+                  presentation.title ? `Message ${presentation.title}` : "Type a message"
                 }
                 style={inputStyle}
               />
@@ -613,60 +619,77 @@ export default function Chat() {
     );
   };
 
+  const listHintCopy = status.loading
+    ? "Loading chat history..."
+    : hasAnyThread
+    ? "Pick someone to message."
+    : "No chats yet—start one from a task or bill.";
+
+  const renderMobileHeaderAction = () => {
+    if (viewMode !== "chat" || !activeThread) {
+      return null;
+    }
+    if (activeThread.contextType === "task") {
+      return (
+        <button
+          type="button"
+          style={topHeaderLinkButtonStyle}
+          onClick={() =>
+            navigate("/tasks", { state: { openChatForTaskId: activeThread.contextId } })
+          }
+        >
+          View task
+        </button>
+      );
+    }
+    if (activeThread.contextType === "bill") {
+      return (
+        <button
+          type="button"
+          style={topHeaderLinkButtonStyle}
+          onClick={() =>
+            navigate("/bills", { state: { openChatForBillId: activeThread.contextId } })
+          }
+        >
+          View bill
+        </button>
+      );
+    }
+    return null;
+  };
+
   return (
     <div style={pageStyle}>
       {isMobile && (
         <header style={topHeaderStyle}>
           <div style={topHeaderRowStyle}>
-            <h2 style={topHeaderTitleStyle}>
-              <button
-                type="button"
-                style={backButtonStyle}
-                onClick={() => {
-                  if (viewMode === "chat") {
-                    handleBackToList();
-                  } else {
-                    navigate("/home");
-                  }
-                }}
-              >
-                ←
-              </button>
-            
+            <button
+              type="button"
+              style={backButtonStyle}
+              onClick={() => {
+                if (viewMode === "chat") {
+                  handleBackToList();
+                } else {
+                  navigate("/home");
+                }
+              }}
+            >
+              ←
+            </button>
+            <div style={topHeaderTitleBlockStyle}>
+              <h2 style={topHeaderTitleStyle}>
+                {viewMode === "chat" ? activePresentation.title : "Chats"}
+              </h2>
               {viewMode === "chat" ? (
-                <>
-                  {activeThread?.contextType === "task" ? (
-                   <button
-                      type="button"
-                      style={openPageButtonStyle}
-                     onClick={() => navigate("/tasks", { state: { openChatForTaskId: activeThread?.contextId } })}
-                    >
-                      {activeThread.name}
-                    </button>
-                  ) : activeThread?.contextType === "bill" ? (
-                     <button
-                      type="button"
-                      style={openPageButtonStyle}
-                       onClick={() => navigate("/bills", { state: { openChatForBillId: activeThread?.contextId } })}
-                    >
-                      {activeThread.name}
-                    </button>
-                  ) : (
-                    <span>{activeThread?.name}</span>
-                  )}
-                </>
-              ) : "Chats"}
-            </h2>
+                activePresentation.subtitle ? (
+                  <p style={topHeaderSubtitleStyle}>{activePresentation.subtitle}</p>
+                ) : null
+              ) : (
+                <p style={topHeaderSubtitleStyle}>{listHintCopy}</p>
+              )}
+            </div>
+            {renderMobileHeaderAction()}
           </div>
-          {!activeThread && (
-          <p style={listHintStyle}>
-            {status.loading
-              ? "Loading chat history..."
-              : hasAnyThread
-              ? "Pick someone to message."
-              : "No chats yet—start one from a task or bill."}
-          </p>
-          )}
         </header>
       )}
       {isMobile ? (
@@ -692,6 +715,59 @@ function normalizeMentions(text, names = mentionFallback) {
   });
 }
 
+const sanitizeThreadName = (value = "") => value.replace(/^#\s*/, "").trim();
+
+function getThreadPresentation(thread, currentUser = "You") {
+  if (!thread) {
+      return {
+        title: "Conversation",
+        subtitle: "",
+        contextType: "other",
+      };
+  }
+  const cleanedName = sanitizeThreadName(thread.name || "");
+  const participants = Array.isArray(thread.participants) ? thread.participants : [];
+  const others = participants.filter((name) => name && name !== currentUser);
+  const roommateCount = participants.length;
+  const roommateSubtitle =
+    roommateCount > 0
+      ? `${roommateCount} roommate${roommateCount === 1 ? "" : "s"}`
+      : "";
+
+  switch (thread.contextType) {
+    case "house":
+      return {
+        title: cleanedName || "House",
+        subtitle: "",
+        contextType: "house",
+      };
+    case "task":
+      return {
+        title: cleanedName || "Task",
+        subtitle: "",
+        contextType: "task",
+      };
+    case "bill":
+      return {
+        title: cleanedName || "Bill",
+        subtitle: "",
+        contextType: "bill",
+      };
+    case "direct":
+      return {
+        title: others[0] || cleanedName || "Direct chat",
+        subtitle: "",
+        contextType: "direct",
+      };
+    default:
+      return {
+        title: cleanedName || "Chat",
+        subtitle: roommateSubtitle || "Conversation",
+        contextType: thread.contextType || "other",
+      };
+  }
+}
+
 const pageStyle = {
   display: "flex",
   flexDirection: "column",
@@ -704,32 +780,48 @@ const pageStyle = {
 };
 
 const topHeaderStyle = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "flex-start",
-  gap: "0.6rem",
-  backgroundColor: "var(--habita-card)",
-  padding: "1rem 1.5rem",
-  borderBottom: "1px solid var(--habita-border)",
   position: "sticky",
   top: 0,
   zIndex: 5,
-  margin: "-1rem -1rem 0 -1rem",
+  backgroundColor: "var(--habita-bg)",
+  padding: "0.4rem 0",
+};
+
+const topHeaderRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.5rem",
+  width: "100%",
+};
+
+const topHeaderTitleBlockStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.15rem",
+  flex: 1,
 };
 
 const topHeaderTitleStyle = {
   margin: 0,
   fontWeight: 600,
   color: "var(--habita-text)",
+  fontSize: "1rem",
 };
-const topHeaderRowStyle = {
-  position: "relative",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: "100%",
-  gap: "0.6rem",
-  fontSize: "1.1rem",
+
+const topHeaderSubtitleStyle = {
+  margin: 0,
+  fontSize: "0.8rem",
+  color: "var(--habita-muted)",
+};
+
+const topHeaderLinkButtonStyle = {
+  border: "none",
+  background: "rgba(74,144,226,0.12)",
+  color: "var(--habita-accent)",
+  borderRadius: "999px",
+  padding: "0.25rem 0.8rem",
+  fontSize: "0.75rem",
+  fontWeight: 600,
 };
 const splitLayoutStyle = {
   display: "grid",
@@ -746,12 +838,6 @@ const threadListStyle = {
   display: "flex",
   flexDirection: "column",
   gap: "1rem",
-};
-
-const listHintStyle = {
-  margin: 0,
-  fontSize: "0.82rem",
-  color: "var(--habita-muted)",
 };
 
 const searchWrapperStyle = {
@@ -796,6 +882,11 @@ const searchHighlightStyle = {
   borderRadius: 4,
   padding: "0 2px",
   fontWeight: 600,
+};
+
+const threadSubtitleStyle = {
+  fontSize: "0.72rem",
+  color: "var(--habita-muted)",
 };
 
 const threadSectionStyle = {
@@ -922,25 +1013,12 @@ const backButtonStyle = {
   border: "none",
   background: "transparent",
   color: "var(--habita-accent)",
-  fontSize: "inherit",
+  fontSize: "1.1rem",
   fontWeight: 600,
   cursor: "pointer",
   padding: 0,
-  position: "absolute",
-  left: "0rem",
-  top: "50%",
-  transform: "translateY(-50%)",
 };
 
-const openPageButtonStyle = {
-  border: "none",
-  background: "transparent",
-  color: "var(--habita-accent)",
-  fontSize: "inherit",
-  fontWeight: 600,
-  cursor: "pointer",
-  padding: 0,
-};
 const chatTitleStyle = {
   margin: 0,
   fontSize: "1.2rem",
