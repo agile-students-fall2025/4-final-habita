@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MoodTracker from "../components/MoodTracker";
 import MiniCalendar from "../components/MiniCalendar";
+import { useUser } from "../context/UserContext";
 
 export default function Home() {
   const navigate = useNavigate();
+  const { user } = useUser();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -75,19 +77,14 @@ export default function Home() {
     unpaid: billsSummary.stats?.unpaid ?? 0,
     paid: billsSummary.stats?.paid ?? 0,
   };
+  const nextTask = upcomingTasks[0] ?? null;
+  const nextBill = topUnpaidBills[0] ?? null;
+  const remainingBills =
+    outstandingBills.length > 0
+      ? Math.max(outstandingBills.length - (nextBill ? 1 : 0), 0)
+      : 0;
 
-  const userName = summary?.user && summary.user !== "You" ? summary.user : "roomie";
-  const headerTitle = useMemo(() => {
-    if (loading) return "Syncing your dashboard…";
-    if (error) return "Home";
-    return `Welcome back, ${userName}!`;
-  }, [loading, error, userName]);
-
-  const headerMessage = useMemo(() => {
-    if (loading) return "Fetching your personal snapshot…";
-    if (error) return error;
-    return "Your personal snapshot";
-  }, [loading, error]);
+  const userName = summary?.user || user?.name || "roomie";
 
   const renderStatCards = (items) => (
     <div style={statCardsWrapStyle}>
@@ -123,8 +120,14 @@ export default function Home() {
       <div style={contentStyle}>
         <div style={homeHeaderStyle}>
           <div>
-            <h2 style={homeTitleStyle}>{headerTitle}</h2>
-            <p style={homeSubtitleStyle}>{headerMessage}</p>
+            <h2 style={homeTitleStyle}>Home</h2>
+            <p style={homeSubtitleStyle}>
+              {loading
+                ? "Syncing your dashboard…"
+                : error
+                ? error
+                : `Welcome back, ${userName}!`}
+            </p>
           </div>
         </div>
 
@@ -158,47 +161,35 @@ export default function Home() {
               {
                 label: "Due today",
                 value: dueTodayCount,
-                hint: "Tasks scheduled for today",
+                hint: "Today's focus",
                 onClick: () => goToTasks({ dueFilter: "due-today" }),
               },
               {
                 label: "Overdue",
                 value: overdueCount,
-                hint: "Past-due tasks",
+                hint: "Needs attention",
                 onClick: () => goToTasks({ dueFilter: "overdue" }),
-              },
-              {
-                label: "Pending",
-                value: pendingCount,
-                onClick: () => goToTasks({ filter: "pending" }),
-              },
-              {
-                label: "In progress",
-                value: inProgressCount,
-                onClick: () => goToTasks({ filter: "in-progress" }),
-              },
-              {
-                label: "Completed",
-                value: myCompletedCount,
-                onClick: () => goToTasks({ filter: "completed" }),
               },
             ])}
             <div style={cardDividerStyle} />
             <div>
-              <p style={cardSubheadingStyle}>Upcoming</p>
-              {upcomingTasks.length === 0 ? (
+              <p style={cardSubheadingStyle}>Next task</p>
+              {!nextTask ? (
                 <p style={textStyle}>Everything is wrapped up.</p>
               ) : (
-                <ul style={taskListStyle}>
-                  {upcomingTasks.map((task) => (
-                    <li key={task.id} style={taskListItemStyle}>
-                      <span>{task.title}</span>
-                      <span style={taskListMetaStyle}>
-                        {formatDueLabel(task.due)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div style={singleListItemStyle}>
+                  <div style={singleListTitleStyle}>{nextTask.title}</div>
+                  <div style={singleListMetaStyle}>
+                    {formatDueLabel(nextTask.due)} •{" "}
+                    {nextTask.assignee || "You"}
+                  </div>
+                </div>
+              )}
+              {pendingCount + inProgressCount + myCompletedCount > 0 && (
+                <p style={miniMetaStyle}>
+                  + {pendingCount + inProgressCount + myCompletedCount} more tasks
+                  in your queue
+                </p>
               )}
             </div>
           </div>
@@ -236,42 +227,23 @@ export default function Home() {
                 value: `$${myShareDue.toFixed(2)}`,
                 hint: "Outstanding split",
               },
-              {
-                label: "Unpaid",
-                value: myBillStats.unpaid,
-                onClick: () => goToBills({ filter: "unpaid", mine: true }),
-              },
-              {
-                label: "Paid",
-                value: myBillStats.paid,
-                onClick: () => goToBills({ filter: "paid", mine: true }),
-              },
             ])}
-            {outstandingBills.length > 0 ? (
+            {nextBill ? (
               <>
                 <div style={cardDividerStyle} />
                 <div>
-                  <p style={cardSubheadingStyle}>Coming due</p>
-                  <ul style={billListStyle}>
-                    {topUnpaidBills.map((bill) => {
-                      const share =
-                        Array.isArray(bill.splitBetween) && bill.splitBetween.length
-                          ? bill.amount / bill.splitBetween.length
-                          : bill.amount;
-                      return (
-                        <li key={bill.id} style={billListItemStyle}>
-                          <span>{bill.title}</span>
-                          <span style={billMetaStyle}>
-                            {formatDueLabel(bill.dueDate)} • ${share.toFixed(2)}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  {outstandingBills.length > topUnpaidBills.length && (
-                    <span style={billMetaStyle}>
-                      + {outstandingBills.length - topUnpaidBills.length} more waiting
-                    </span>
+                  <p style={cardSubheadingStyle}>Next bill</p>
+                  <div style={singleListItemStyle}>
+                    <div style={singleListTitleStyle}>{nextBill.title}</div>
+                    <div style={singleListMetaStyle}>
+                      {formatDueLabel(nextBill.dueDate)} • $
+                      {calculateShare(nextBill).toFixed(2)}
+                    </div>
+                  </div>
+                  {(remainingBills > 0 || myBillStats.unpaid > 1) && (
+                    <p style={miniMetaStyle}>
+                      + {remainingBills || myBillStats.unpaid - 1} more bills waiting
+                    </p>
                   )}
                 </div>
               </>
@@ -382,6 +354,14 @@ function generateICS(tasksData = [], billsData = []) {
   return body;
 }
 
+function calculateShare(bill) {
+  if (!bill) return 0;
+  if (Array.isArray(bill.splitBetween) && bill.splitBetween.length) {
+    return bill.amount / bill.splitBetween.length;
+  }
+  return bill.amount ?? 0;
+}
+
 function escapeICS(text) {
   return String(text)
     .replace(/\\/g, "\\\\")
@@ -394,11 +374,11 @@ const cardStyle = {
   backgroundColor: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
-  padding: "1rem 1.2rem",
+  padding: "0.85rem 1rem",
   textAlign: "left",
   display: "flex",
   flexDirection: "column",
-  gap: "0.4rem",
+  gap: "0.35rem",
 };
 
 const cardHeaderRowStyle = {
@@ -443,18 +423,18 @@ const cardIconButtonStyle = {
 const statCardsWrapStyle = {
   display: "flex",
   flexWrap: "wrap",
-  gap: "0.75rem",
+  gap: "0.6rem",
 };
 
 const statCardStyle = {
   background: "var(--habita-card)",
   border: "1px solid rgba(74,144,226,0.25)",
   borderRadius: "16px",
-  padding: "0.7rem 0.8rem",
+  padding: "0.55rem 0.65rem",
   display: "flex",
   flexDirection: "column",
   gap: "0.2rem",
-  minWidth: "120px",
+  minWidth: "110px",
   cursor: "pointer",
   alignItems: "flex-start",
 };
@@ -484,7 +464,7 @@ const cardDividerStyle = {
 };
 
 const pageStyle = {
-  padding: "1.25rem",
+  padding: "1rem",
   backgroundColor: "var(--habita-bg)",
   minHeight: "100vh",
 };
@@ -510,12 +490,19 @@ const homeSubtitleStyle = {
   color: "var(--habita-muted)",
 };
 
+const homeSecondarySubtitleStyle = {
+  margin: "0.15rem 0 0",
+  fontSize: "0.85rem",
+  color: "var(--habita-text)",
+  fontWeight: 600,
+};
+
 const contentStyle = {
-  maxWidth: "720px",
+  maxWidth: "680px",
   margin: "0 auto",
   display: "flex",
   flexDirection: "column",
-  gap: "1.5rem",
+  gap: "1.2rem",
 };
 
 const singleCardSectionStyle = {
@@ -525,9 +512,9 @@ const singleCardSectionStyle = {
 };
 
 const cardsRowStyle = {
-  display: "flex",
-  gap: "1.25rem",
-  flexWrap: "wrap",
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gap: "0.9rem",
   alignItems: "stretch",
 };
 
@@ -537,8 +524,8 @@ const cardColumnStyle = {
 };
 
 const titleStyle = {
-  margin: "0 0 0.3rem 0",
-  fontSize: "1rem",
+  margin: "0 0 0.15rem 0",
+  fontSize: "0.95rem",
   color: "var(--habita-text)",
 };
 
@@ -549,8 +536,8 @@ const textStyle = {
 };
 
 const cardSubheadingStyle = {
-  margin: "0 0 0.35rem 0",
-  fontSize: "0.85rem",
+  margin: "0 0 0.2rem 0",
+  fontSize: "0.82rem",
   fontWeight: 600,
   color: "var(--habita-text)",
 };
@@ -566,44 +553,28 @@ const formatDueLabel = (value) => {
   });
 };
 
-const taskListStyle = {
-  listStyle: "none",
-  padding: 0,
-  margin: "0.6rem 0 0",
+const singleListItemStyle = {
   display: "flex",
   flexDirection: "column",
-  gap: "0.4rem",
+  gap: "0.1rem",
+  padding: "0.5rem 0.65rem",
+  borderRadius: "10px",
+  backgroundColor: "rgba(74,144,226,0.08)",
 };
 
-const taskListItemStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  fontSize: "0.85rem",
+const singleListTitleStyle = {
+  fontSize: "0.9rem",
+  fontWeight: 600,
   color: "var(--habita-text)",
 };
 
-const taskListMetaStyle = {
+const singleListMetaStyle = {
   fontSize: "0.75rem",
   color: "var(--habita-muted)",
 };
 
-const billListStyle = {
-  listStyle: "none",
-  padding: 0,
-  margin: "0.4rem 0 0",
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.35rem",
-};
-
-const billListItemStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  fontSize: "0.85rem",
-  color: "var(--habita-text)",
-};
-
-const billMetaStyle = {
-  fontSize: "0.75rem",
+const miniMetaStyle = {
+  fontSize: "0.72rem",
   color: "var(--habita-muted)",
+  marginTop: "0.3rem",
 };

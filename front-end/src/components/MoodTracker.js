@@ -15,17 +15,17 @@ const roommates = [
 ];
 
 const encouragements = {
-  Happy: { message: "Keep spreading the good vibes! 💫", centered: true },
+  Happy: { message: "Keep the good vibes going!", centered: true },
   Neutral: {
-    message: "Steady pace today—take a mindful moment for yourself.",
+    message: "Take a tiny pause for yourself.",
     centered: false,
   },
   Sad: {
-    message: "It's okay to feel low. Reach out to a roommate if you need support.",
+    message: "Go easy on yourself and reach out if you need support.",
     centered: false,
   },
   Frustrated: {
-    message: "Deep breath—you've got this. Maybe share a chore to lighten the load.",
+    message: "Deep breath—you've totally got this.",
     centered: false,
   },
 };
@@ -64,7 +64,7 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
     moodCounts[mood.label] += 1;
   }
 
-  const showStats = Boolean(mood);
+  const showStats = Boolean(mood) && !isCompact;
   const totalCount = Object.values(moodCounts).reduce(
     (sum, value) => sum + value,
     0
@@ -126,7 +126,7 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
     <div
       style={{
         ...cardStyle,
-        padding: isCompact ? "0.75rem 0.85rem" : cardStyle.padding,
+        padding: isCompact ? "0.65rem 0.75rem" : cardStyle.padding,
         textAlign: isCompact ? "left" : cardStyle.textAlign,
       }}
     >
@@ -144,7 +144,7 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
           style={{
             ...moodContainer,
             justifyContent: isCompact ? "flex-start" : moodContainer.justifyContent,
-            marginBottom: isCompact ? "0.45rem" : moodContainer.marginBottom,
+            marginBottom: isCompact ? "0.35rem" : moodContainer.marginBottom,
           }}
         >
           {moods.map((m) => (
@@ -166,8 +166,8 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
                   mood?.label === m.label
                     ? moodAccentStyles[m.label].fg
                     : "var(--habita-border)",
-                fontSize: isCompact ? "1.05rem" : moodButton.fontSize,
-                padding: isCompact ? "0.45rem 0.55rem" : moodButton.padding,
+                fontSize: isCompact ? "0.95rem" : moodButton.fontSize,
+                padding: isCompact ? "0.35rem 0.4rem" : moodButton.padding,
               }}
             >
               {m.emoji}
@@ -179,66 +179,96 @@ export default function MoodTracker({ variant = "default", onMoodChange }) {
         <div
           style={{
             ...selectedMoodWrapper,
+            ...(isCompact ? compactSelectedMoodWrapper : {}),
             backgroundColor: moodAccentStyles[mood.label].bg,
             border: `1px solid ${moodAccentStyles[mood.label].fg}`,
-            marginTop: isCompact ? "0.3rem" : selectedMoodWrapper.marginTop,
-            padding: isCompact ? "0.6rem 0.7rem" : selectedMoodWrapper.padding,
+            marginTop: isCompact ? "0.25rem" : selectedMoodWrapper.marginTop,
+            padding: isCompact ? "0.5rem 0.6rem" : selectedMoodWrapper.padding,
           }}
-          onDoubleClick={isLocked ? handleUnlock : undefined}
-          title={isLocked ? "Double-click to change your mood" : undefined}
+          onDoubleClick={!isCompact && isLocked ? handleUnlock : undefined}
+          title={
+            !isCompact && isLocked ? "Double-click to change your mood" : undefined
+          }
         >
-          <div
-            style={{
-              ...selectedMoodRow,
-              alignItems: isCompact ? "flex-start" : selectedMoodRow.alignItems,
-              gap: isCompact ? "0.5rem" : selectedMoodRow.gap,
-            }}
-          >
-            <span
-              style={{
-                ...selectedMoodEmoji,
-                color: moodAccentStyles[mood.label].fg,
-                fontSize: isCompact ? "1.5rem" : selectedMoodEmoji.fontSize,
-              }}
-            >
-              {mood.emoji}
-            </span>
-            <div>
-              <p
+          {isCompact ? (
+            <div style={compactMoodRow}>
+              <div style={compactMoodInfo}>
+                <span
                   style={{
-                    ...textStyle,
-                    textAlign: encouragement?.centered ? "center" : "left",
-                    fontSize: isCompact ? "0.84rem" : textStyle.fontSize,
+                    ...selectedMoodEmoji,
+                    ...compactMoodEmoji,
+                    color: moodAccentStyles[mood.label].fg,
                   }}
                 >
-                  You’re feeling <strong>{mood.label}</strong>{" "}
-                  {mood.label === "Happy" ? "today!" : "today."}
-                </p>
-              {encouragement && (
-                <p
-                  style={{
-                    ...encouragementText,
-                    textAlign: encouragement.centered ? "center" : "left",
-                    fontSize: isCompact ? "0.78rem" : encouragementText.fontSize,
-                    margin: isCompact ? "0.25rem 0 0" : encouragementText.margin,
-                  }}
+                  {mood.emoji}
+                </span>
+                <div style={compactMoodTextGroup}>
+                  <p style={compactMoodTitle}>
+                    Feeling <strong>{mood.label}</strong>
+                  </p>
+                  {encouragement && (
+                    <p style={compactEncouragement}>{encouragement.message}</p>
+                  )}
+                </div>
+              </div>
+              {isLocked && (
+                <button
+                  type="button"
+                  style={compactChangeButton}
+                  onClick={handleUnlock}
                 >
-                  {encouragement.message}
-                </p>
+                  Change
+                </button>
               )}
             </div>
-          </div>
-          {isLocked && (
-            <button
-              type="button"
-              style={{
-                ...changeMoodButtonStyle,
-                marginTop: isCompact ? "0.45rem" : changeMoodButtonStyle.marginTop,
-              }}
-              onClick={handleUnlock}
-            >
-              Change mood
-            </button>
+          ) : (
+            <>
+              <div
+                style={{
+                  ...selectedMoodRow,
+                  alignItems: selectedMoodRow.alignItems,
+                }}
+              >
+                <span
+                  style={{
+                    ...selectedMoodEmoji,
+                    color: moodAccentStyles[mood.label].fg,
+                  }}
+                >
+                  {mood.emoji}
+                </span>
+                <div>
+                  <p
+                    style={{
+                      ...textStyle,
+                      textAlign: encouragement?.centered ? "center" : "left",
+                    }}
+                  >
+                    You’re feeling <strong>{mood.label}</strong>{" "}
+                    {mood.label === "Happy" ? "today!" : "today."}
+                  </p>
+                  {encouragement && (
+                    <p
+                      style={{
+                        ...encouragementText,
+                        textAlign: encouragement.centered ? "center" : "left",
+                      }}
+                    >
+                      {encouragement.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {isLocked && (
+                <button
+                  type="button"
+                  style={changeMoodButtonStyle}
+                  onClick={handleUnlock}
+                >
+                  Change mood
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
@@ -437,4 +467,56 @@ const barInner = {
   height: "100%",
   borderRadius: "999px",
   transition: "width 0.25s ease",
+};
+
+const compactSelectedMoodWrapper = {
+  borderRadius: "12px",
+};
+
+const compactMoodRow = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "0.75rem",
+  flexWrap: "wrap",
+};
+
+const compactMoodInfo = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.55rem",
+  flex: 1,
+};
+
+const compactMoodEmoji = {
+  fontSize: "1.4rem",
+};
+
+const compactMoodTextGroup = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.15rem",
+};
+
+const compactMoodTitle = {
+  margin: 0,
+  fontSize: "0.85rem",
+  color: "var(--habita-text)",
+};
+
+const compactEncouragement = {
+  margin: 0,
+  fontSize: "0.72rem",
+  color: "var(--habita-muted)",
+};
+
+const compactChangeButton = {
+  background: "transparent",
+  border: "1px solid var(--habita-accent)",
+  borderRadius: "999px",
+  padding: "0.2rem 0.65rem",
+  color: "var(--habita-accent)",
+  fontSize: "0.75rem",
+  fontWeight: 600,
+  cursor: "pointer",
 };
