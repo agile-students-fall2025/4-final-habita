@@ -39,6 +39,12 @@ function Navbar() {
         Bills
       </Link>
       <Link
+        to="/calendar"
+        style={{ color: active("/calendar"), textDecoration: "none", fontWeight: 600 }}
+      >
+        Calendar
+      </Link>
+      <Link
         to="/profile"
         style={{ color: active("/profile"), textDecoration: "none", fontWeight: 600 }}
       >

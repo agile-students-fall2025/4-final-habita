@@ -6,6 +6,7 @@ import Tasks from "./pages/Tasks";
 import Bills from "./pages/Bills";
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
+import Calendar from "./pages/Calendar";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
@@ -39,6 +40,7 @@ function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/bills" element={<Bills />} />
+          <Route path="/calendar" element={<Calendar />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/edit" element={<EditProfile />} />
