@@ -582,7 +582,7 @@ export default function Bills() {
                         color: "var(--habita-accent)",
                       }}
                     >
-                      Chat 💬
+                      Chat
                     </button>
 
                   </div>
