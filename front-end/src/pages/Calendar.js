@@ -3,6 +3,23 @@ import { useTasks } from "../context/TasksContext";
 import { useBills } from "../context/BillsContext";
 import { useNavigate } from "react-router-dom";
 
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 export default function Calendar() {
   const { tasks } = useTasks();
   const { bills } = useBills();
@@ -150,21 +167,6 @@ export default function Calendar() {
     return days;
   }, [firstDayOfMonth, daysInMonth]);
 
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
   const handleEventClick = useCallback((event) => {
     if (event.type === "task") {
       navigate("/tasks");
@@ -172,6 +174,32 @@ export default function Calendar() {
       navigate("/bills");
     }
   }, [navigate]);
+
+  const handleAddEvent = useCallback((e) => {
+    e.preventDefault();
+    if (!newEventTitle.trim() || !newEventDate) return;
+
+    setCustomEvents((prev) => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}`,
+        type: "event",
+        title: newEventTitle.trim(),
+        date: newEventDate,
+        status: "upcoming",
+      },
+    ]);
+
+    setNewEventTitle("");
+    setNewEventDate("");
+    setShowAddEvent(false);
+  }, [newEventTitle, newEventDate]);
+
+  const handleCancelAddEvent = useCallback(() => {
+    setShowAddEvent(false);
+    setNewEventTitle("");
+    setNewEventDate("");
+  }, []);
 
   return (
     <div style={pageStyle}>
@@ -193,7 +221,7 @@ export default function Calendar() {
             ‹
           </button>
           <h3 style={monthYearStyle}>
-            {monthNames[month]} {year}
+            {MONTH_NAMES[month]} {year}
           </h3>
           <button
             type="button"
@@ -216,25 +244,7 @@ export default function Calendar() {
             </button>
           ) : (
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!newEventTitle.trim() || !newEventDate) return;
-
-                setCustomEvents((prev) => [
-                  ...prev,
-                  {
-                    id: `custom-${Date.now()}`,
-                    type: "event",
-                    title: newEventTitle.trim(),
-                    date: newEventDate,
-                    status: "upcoming",
-                  },
-                ]);
-
-                setNewEventTitle("");
-                setNewEventDate("");
-                setShowAddEvent(false);
-              }}
+              onSubmit={handleAddEvent}
               style={addEventFormStyle}
             >
               <input
@@ -256,11 +266,7 @@ export default function Calendar() {
               <button
                 type="button"
                 style={addEventCancelButtonStyle}
-                onClick={() => {
-                  setShowAddEvent(false);
-                  setNewEventTitle("");
-                  setNewEventDate("");
-                }}
+                onClick={handleCancelAddEvent}
               >
                 Cancel
               </button>
@@ -269,7 +275,7 @@ export default function Calendar() {
         </div>
 
         <div style={weekdaysStyle}>
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+          {WEEKDAY_NAMES.map((day) => (
             <div key={day} style={weekdayStyle}>
               {day}
             </div>
