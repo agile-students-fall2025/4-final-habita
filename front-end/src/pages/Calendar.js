@@ -21,6 +21,23 @@ const formatDateLabel = (iso) => {
   });
 };
 
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 export default function Calendar() {
   const { tasks } = useTasks();
   const { bills } = useBills();
@@ -133,6 +150,32 @@ export default function Calendar() {
       state: { fromCalendarDate: activeISO },
     });
   }, [navigate, activeISO]);
+
+  const handleAddEvent = useCallback((e) => {
+    e.preventDefault();
+    if (!newEventTitle.trim() || !newEventDate) return;
+
+    setCustomEvents((prev) => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}`,
+        type: "event",
+        title: newEventTitle.trim(),
+        date: newEventDate,
+        status: "upcoming",
+      },
+    ]);
+
+    setNewEventTitle("");
+    setNewEventDate("");
+    setShowAddEvent(false);
+  }, [newEventTitle, newEventDate]);
+
+  const handleCancelAddEvent = useCallback(() => {
+    setShowAddEvent(false);
+    setNewEventTitle("");
+    setNewEventDate("");
+  }, []);
 
   return (
     <div style={pageStyle}>
