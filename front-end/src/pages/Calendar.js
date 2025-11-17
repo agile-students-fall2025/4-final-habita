@@ -3,6 +3,21 @@ import { useTasks } from "../context/TasksContext";
 import { useBills } from "../context/BillsContext";
 import { useNavigate } from "react-router-dom";
 
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
 export default function Calendar() {
   const { tasks } = useTasks();
   const { bills } = useBills();
@@ -134,21 +149,6 @@ export default function Calendar() {
     return days;
   }, [firstDayOfMonth, daysInMonth]);
 
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
   const handleEventClick = useCallback((event) => {
     if (event.type === "task") {
       navigate("/tasks");
@@ -177,7 +177,7 @@ export default function Calendar() {
             ‹
           </button>
           <h3 style={monthYearStyle}>
-            {monthNames[month]} {year}
+            {MONTH_NAMES[month]} {year}
           </h3>
           <button
             type="button"
