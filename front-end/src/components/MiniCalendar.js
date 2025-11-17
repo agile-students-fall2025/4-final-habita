@@ -8,6 +8,7 @@ export default function MiniCalendar({
   onExportICS,
   onMonthChange,
   titlePrefix,
+  indicatorMode = "count",
 }) {
   const { weeks, monthLabel } = useMemo(() => buildMonthGrid(monthDate), [monthDate]);
 
@@ -59,10 +60,13 @@ export default function MiniCalendar({
         ))}
         {weeks.flat().map((cell) => {
           const iso = cell.iso;
-          const count = eventsByISO[iso]?.length || 0;
+          const events = eventsByISO[iso] || [];
+          const typeCounts = indicatorMode === "types" ? bucketEventsByType(events) : null;
+          const indicatorSegments =
+            indicatorMode === "types" && typeCounts ? buildIndicatorSegments(typeCounts) : null;
           const moodSwatches = getMoodSwatches(moodEntriesByISO[iso]);
           const isToday = iso === new Date().toISOString().slice(0, 10);
-          const hasEvents = count > 0;
+          const hasEvents = events.length > 0;
           return (
             <button
               key={iso}
@@ -73,11 +77,32 @@ export default function MiniCalendar({
                 ...(cell.inMonth ? {} : outOfMonthStyle),
                 ...(isToday ? todayStyle : {}),
               }}
-              aria-label={`${iso}${hasEvents ? `, ${count} items` : ""}`}
+              aria-label={`${iso}${hasEvents ? `, ${events.length} items` : ""}`}
             >
               <span style={dayNumberStyle}>{cell.day}</span>
-              {hasEvents ? (
-                <span style={countBadgeStyle}>{count}</span>
+              {indicatorMode === "types" ? (
+                <div style={indicatorRowStyle}>
+                  {hasEvents ? (
+                    indicatorSegments && indicatorSegments.length > 0 ? (
+                      indicatorSegments.map((segment, index) => (
+                        <span
+                          key={`${iso}-segment-${index}`}
+                          style={{
+                            ...indicatorSegmentStyle,
+                            width: segment.width,
+                            background: segment.color,
+                          }}
+                        />
+                      ))
+                    ) : (
+                      <span style={indicatorPlaceholderStyle} />
+                    )
+                  ) : (
+                    <span style={indicatorPlaceholderStyle} />
+                  )}
+                </div>
+              ) : hasEvents ? (
+                <span style={countBadgeStyle}>{events.length}</span>
               ) : (
                 <span style={eventPlaceholderStyle} />
               )}
@@ -141,6 +166,58 @@ function toISO(d) {
   const m = `${d.getMonth() + 1}`.padStart(2, "0");
   const day = `${d.getDate()}`.padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function bucketEventsByType(events = []) {
+  return events.reduce(
+    (acc, event) => {
+      if (event?.type === "task") acc.tasks += 1;
+      else if (event?.type === "bill") acc.bills += 1;
+      else acc.reminders += 1;
+      return acc;
+    },
+    { tasks: 0, bills: 0, reminders: 0 }
+  );
+}
+
+function buildIndicatorSegments(counts = { tasks: 0, bills: 0, reminders: 0 }) {
+  const total = counts.tasks + counts.bills + counts.reminders;
+  if (total === 0) return [];
+
+  const entries = [
+    { key: "tasks", color: taskIndicatorColor },
+    { key: "bills", color: billIndicatorColor },
+    { key: "reminders", color: reminderIndicatorColor },
+  ].filter((entry) => counts[entry.key] > 0);
+
+  if (entries.length === 0) return [];
+
+  let segments = entries.map((entry) => ({
+    color: entry.color,
+    width: Math.max(
+      INDICATOR_MIN_WIDTH,
+      (counts[entry.key] / total) * INDICATOR_TOTAL_WIDTH
+    ),
+  }));
+
+  let currentWidth = segments.reduce((sum, segment) => sum + segment.width, 0);
+  const difference = INDICATOR_TOTAL_WIDTH - currentWidth;
+  if (Math.abs(difference) > 0.5) {
+    const adjustIndex = segments.reduce(
+      (bestIndex, segment, index) =>
+        segment.width > segments[bestIndex].width ? index : bestIndex,
+      0
+    );
+    segments[adjustIndex].width = Math.max(
+      INDICATOR_MIN_WIDTH,
+      segments[adjustIndex].width + difference
+    );
+  }
+
+  return segments.map((segment) => ({
+    color: segment.color,
+    width: `${Math.max(INDICATOR_MIN_WIDTH, segment.width).toFixed(0)}px`,
+  }));
 }
 
 function getMoodSwatches(entries = []) {
@@ -274,7 +351,7 @@ const dayCellStyle = {
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  gap: "0.2rem",
+  gap: "0.15rem",
   color: "var(--habita-text)",
   fontSize: "0.8rem",
   cursor: "pointer",
@@ -296,9 +373,36 @@ const dayNumberStyle = {
   fontWeight: 600,
 };
 
+const indicatorRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "0.15rem",
+  minHeight: "6px",
+};
+
+const indicatorSegmentStyle = {
+  height: "4px",
+  borderRadius: "999px",
+  display: "inline-block",
+};
+
+const indicatorPlaceholderStyle = {
+  width: "20px",
+  height: "4px",
+  borderRadius: "999px",
+  background: "rgba(107, 114, 128, 0.2)",
+};
+
+const taskIndicatorColor = "#3f9da5";
+const billIndicatorColor = "#4a90e2";
+const reminderIndicatorColor = "#9b9b9b";
+const INDICATOR_TOTAL_WIDTH = 20;
+const INDICATOR_MIN_WIDTH = 6;
+
 const eventPlaceholderStyle = {
-  width: "5px",
-  height: "5px",
+  width: "6px",
+  height: "6px",
 };
 
 const countBadgeStyle = {
