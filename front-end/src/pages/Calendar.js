@@ -8,6 +8,11 @@ export default function Calendar() {
   const { bills } = useBills();
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [customEvents, setCustomEvents] = useState([]);
+  const [newEventTitle, setNewEventTitle] = useState("");
+  const [newEventDate, setNewEventDate] = useState("");
+  const [showAddEvent, setShowAddEvent] = useState(false);
+
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -28,9 +33,7 @@ export default function Calendar() {
 
     tasks.forEach((task) => {
       const date = task.due;
-      if (!grouped[date]) {
-        grouped[date] = [];
-      }
+      if (!grouped[date]) grouped[date] = [];
       grouped[date].push({
         id: `task-${task.id}`,
         type: "task",
@@ -43,9 +46,7 @@ export default function Calendar() {
 
     bills.forEach((bill) => {
       const date = bill.due;
-      if (!grouped[date]) {
-        grouped[date] = [];
-      }
+      if (!grouped[date]) grouped[date] = [];
       grouped[date].push({
         id: `bill-${bill.id}`,
         type: "bill",
@@ -56,10 +57,18 @@ export default function Calendar() {
       });
     });
 
-    return grouped;
-  }, [tasks, bills]);
+    //custom calendar-only events
+    customEvents.forEach((evt) => {
+      const date = evt.date;
+      if (!grouped[date]) grouped[date] = [];
+      grouped[date].push(evt);
+    });
 
-  const upcomingEvents = useMemo(() => {
+    return grouped;
+  }, [tasks, bills, customEvents]);
+
+
+    const upcomingEvents = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     const allEvents = [];
@@ -92,10 +101,17 @@ export default function Calendar() {
       }
     });
 
+    customEvents.forEach((evt) => {
+      const evtDate = new Date(evt.date);
+      if (evtDate >= now) {
+        allEvents.push(evt);
+      }
+    });
+
     return allEvents
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 10);
-  }, [tasks, bills]);
+  }, [tasks, bills, customEvents]);
 
   const todayInfo = useMemo(() => {
     const today = new Date();
@@ -189,6 +205,69 @@ export default function Calendar() {
           </button>
         </div>
 
+        <div style={addEventToggleRowStyle}>
+          {!showAddEvent ? (
+            <button
+              type="button"
+              style={addEventToggleButtonStyle}
+              onClick={() => setShowAddEvent(true)}
+            >
+              + Add event
+            </button>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newEventTitle.trim() || !newEventDate) return;
+
+                setCustomEvents((prev) => [
+                  ...prev,
+                  {
+                    id: `custom-${Date.now()}`,
+                    type: "event",
+                    title: newEventTitle.trim(),
+                    date: newEventDate,
+                    status: "upcoming",
+                  },
+                ]);
+
+                setNewEventTitle("");
+                setNewEventDate("");
+                setShowAddEvent(false);
+              }}
+              style={addEventFormStyle}
+            >
+              <input
+                type="text"
+                value={newEventTitle}
+                onChange={(e) => setNewEventTitle(e.target.value)}
+                placeholder="Event title"
+                style={addEventInputStyle}
+              />
+              <input
+                type="date"
+                value={newEventDate}
+                onChange={(e) => setNewEventDate(e.target.value)}
+                style={addEventDateStyle}
+              />
+              <button type="submit" style={addEventSaveButtonStyle}>
+                Save
+              </button>
+              <button
+                type="button"
+                style={addEventCancelButtonStyle}
+                onClick={() => {
+                  setShowAddEvent(false);
+                  setNewEventTitle("");
+                  setNewEventDate("");
+                }}
+              >
+                Cancel
+              </button>
+            </form>
+          )}
+        </div>
+
         <div style={weekdaysStyle}>
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
             <div key={day} style={weekdayStyle}>
@@ -229,7 +308,9 @@ export default function Calendar() {
                             ...eventBadgeStyle,
                             ...(event.type === "task"
                               ? taskEventStyle
-                              : billEventStyle),
+                              : event.type === "bill"
+                              ? billEventStyle
+                              : customEventStyle),
                           }}
                           onClick={() => handleEventClick(event)}
                           title={`${event.title}${
@@ -239,7 +320,11 @@ export default function Calendar() {
                           }`}
                         >
                           <span style={eventIconStyle}>
-                            {event.type === "task" ? "✓" : "$"}
+                            {event.type === "task"
+                              ? "✓"
+                              : event.type === "bill"
+                              ? "$"
+                              : "•"}
                           </span>
                           <span style={eventTitleStyle}>{event.title}</span>
                         </div>
@@ -273,10 +358,16 @@ export default function Calendar() {
                       ...upcomingIconStyle,
                       ...(event.type === "task"
                         ? taskIconColorStyle
-                        : billIconColorStyle),
+                        : event.type === "bill"
+                        ? billIconColorStyle
+                        : eventIconGeneralColorStyle),
                     }}
                   >
-                    {event.type === "task" ? "✓" : "$"}
+                    {event.type === "task"
+                      ? "✓"
+                      : event.type === "bill"
+                      ? "$"
+                      : "•"}
                   </span>
                   <div>
                     <div style={upcomingTitleStyle}>{event.title}</div>
@@ -313,7 +404,10 @@ export default function Calendar() {
                     ? "In Progress"
                     : event.status === "unpaid"
                     ? "Unpaid"
+                    : event.status === "upcoming"
+                    ? "Upcoming"
                     : "Pending"}
+
                 </span>
               </div>
             ))}
@@ -596,3 +690,81 @@ const pendingBadgeStyle = {
   backgroundColor: "rgba(37, 99, 235, 0.16)",
   color: "#2563eb",
 };
+
+const addEventToggleRowStyle = {
+  display: "flex",
+  justifyContent: "flex-end",
+  marginBottom: "0.5rem",
+};
+
+const addEventToggleButtonStyle = {
+  border: "1px solid var(--habita-border)",
+  background: "var(--habita-chip)",
+  color: "var(--habita-text)",
+  borderRadius: "999px",
+  padding: "0.25rem 0.8rem",
+  fontSize: "0.8rem",
+  cursor: "pointer",
+};
+
+const addEventFormStyle = {
+  display: "flex",
+  gap: "0.4rem",
+  flexWrap: "wrap",
+  alignItems: "center",
+  width: "100%",
+};
+
+const addEventInputStyle = {
+  flex: 2,
+  minWidth: "140px",
+  borderRadius: "8px",
+  border: "1px solid var(--habita-border)",
+  padding: "0.35rem 0.5rem",
+  fontSize: "0.8rem",
+  background: "var(--habita-input)",
+  color: "var(--habita-text)",
+};
+
+const addEventDateStyle = {
+  flex: 1,
+  minWidth: "120px",
+  borderRadius: "8px",
+  border: "1px solid var(--habita-border)",
+  padding: "0.35rem 0.5rem",
+  fontSize: "0.8rem",
+  background: "var(--habita-input)",
+  color: "var(--habita-text)",
+};
+
+const addEventSaveButtonStyle = {
+  background: "var(--habita-accent)",
+  color: "var(--habita-button-text)",
+  border: "none",
+  borderRadius: "999px",
+  padding: "0.35rem 0.9rem",
+  fontSize: "0.8rem",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const addEventCancelButtonStyle = {
+  background: "transparent",
+  color: "var(--habita-muted)",
+  border: "none",
+  borderRadius: "999px",
+  padding: "0.35rem 0.6rem",
+  fontSize: "0.8rem",
+  cursor: "pointer",
+};
+
+const customEventStyle = {
+  background: "rgba(234,179,8,0.18)", // amber-ish
+  color: "#b45309",
+};
+
+const eventIconGeneralColorStyle = {
+  background: "rgba(234,179,8,0.18)",
+  color: "#b45309",
+};
+
