@@ -1,7 +1,25 @@
-import { useMemo, useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTasks } from "../context/TasksContext";
 import { useBills } from "../context/BillsContext";
 import { useNavigate } from "react-router-dom";
+import MiniCalendar from "../components/MiniCalendar";
+
+const toISO = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateLabel = (iso) => {
+  if (!iso) return "";
+  const parsed = new Date(iso);
+  return parsed.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+};
 
 const MONTH_NAMES = [
   "January",
@@ -24,156 +42,114 @@ export default function Calendar() {
   const { tasks } = useTasks();
   const { bills } = useBills();
   const navigate = useNavigate();
-  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const [monthDate, setMonthDate] = useState(new Date());
   const [customEvents, setCustomEvents] = useState([]);
   const [newEventTitle, setNewEventTitle] = useState("");
   const [newEventDate, setNewEventDate] = useState("");
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [selectedDateISO, setSelectedDateISO] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
+  const todayISO = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return toISO(now);
+  }, []);
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfMonth = new Date(year, month, 1).getDay();
-
-  const previousMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
-  };
-
-  const nextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
-  };
-
-  const eventsByDate = useMemo(() => {
+  const eventsByISO = useMemo(() => {
     const grouped = {};
 
-    tasks.forEach((task) => {
-      const date = task.due;
-      if (!grouped[date]) grouped[date] = [];
-      grouped[date].push({
+    const addEvent = (event) => {
+      if (!event?.date) return;
+      const iso = event.date.slice(0, 10);
+      if (!grouped[iso]) grouped[iso] = [];
+      grouped[iso].push(event);
+    };
+
+    tasks.forEach((task) =>
+      addEvent({
         id: `task-${task.id}`,
         type: "task",
         title: task.title,
         date: task.due,
         status: task.status,
         assignees: task.assignees,
-      });
-    });
+      })
+    );
 
-    bills.forEach((bill) => {
-      const date = bill.due;
-      if (!grouped[date]) grouped[date] = [];
-      grouped[date].push({
+    bills.forEach((bill) =>
+      addEvent({
         id: `bill-${bill.id}`,
         type: "bill",
         title: bill.title,
         date: bill.due,
         status: bill.status,
         amount: bill.amount,
-      });
-    });
+      })
+    );
 
-    //custom calendar-only events
-    customEvents.forEach((evt) => {
-      const date = evt.date;
-      if (!grouped[date]) grouped[date] = [];
-      grouped[date].push(evt);
-    });
+    customEvents.forEach((event) => addEvent(event));
 
     return grouped;
   }, [tasks, bills, customEvents]);
 
-
-    const upcomingEvents = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const allEvents = [];
-
-    tasks.forEach((task) => {
-      const taskDate = new Date(task.due);
-      if (taskDate >= now) {
-        allEvents.push({
-          id: `task-${task.id}`,
-          type: "task",
-          title: task.title,
-          date: task.due,
-          status: task.status,
-          assignees: task.assignees,
-        });
-      }
-    });
-
-    bills.forEach((bill) => {
-      const billDate = new Date(bill.due);
-      if (billDate >= now) {
-        allEvents.push({
-          id: `bill-${bill.id}`,
-          type: "bill",
-          title: bill.title,
-          date: bill.due,
-          status: bill.status,
-          amount: bill.amount,
-        });
-      }
-    });
-
-    customEvents.forEach((evt) => {
-      const evtDate = new Date(evt.date);
-      if (evtDate >= now) {
-        allEvents.push(evt);
-      }
-    });
-
-    return allEvents
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .slice(0, 10);
-  }, [tasks, bills, customEvents]);
-
-  const todayInfo = useMemo(() => {
-    const today = new Date();
-    return {
-      day: today.getDate(),
-      month: today.getMonth(),
-      year: today.getFullYear(),
-    };
+  const handleSelectDate = useCallback((iso) => {
+    setSelectedDateISO(iso);
+    setNewEventDate(iso);
+    setDetailsOpen(true);
   }, []);
 
-  const isToday = (day) => {
-    return (
-      day === todayInfo.day &&
-      month === todayInfo.month &&
-      year === todayInfo.year
-    );
-  };
+  const activeISO = selectedDateISO || todayISO;
+  const activeEvents = eventsByISO[activeISO] || [];
+  const activeLabel = formatDateLabel(activeISO);
+  const detailsSubtitle = selectedDateISO ? "Household plan" : "Today's routine";
 
-  const getEventsForDay = useMemo(() => {
-    return (day) => {
-      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(
-        day
-      ).padStart(2, "0")}`;
-      return eventsByDate[dateStr] || [];
-    };
-  }, [year, month, eventsByDate]);
+  const handleEventClick = useCallback(
+    (event) => {
+      if (event.type === "task") {
+        navigate("/tasks");
+      } else if (event.type === "bill") {
+        navigate("/bills");
+      }
+    },
+    [navigate]
+  );
 
-  const calendarDays = useMemo(() => {
-    const days = [];
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(null);
-    }
-    for (let day = 1; day <= daysInMonth; day++) {
-      days.push(day);
-    }
-    return days;
-  }, [firstDayOfMonth, daysInMonth]);
+  const handleAddEventSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+      if (!newEventTitle.trim() || !newEventDate) return;
 
-  const handleEventClick = useCallback((event) => {
-    if (event.type === "task") {
-      navigate("/tasks");
-    } else if (event.type === "bill") {
-      navigate("/bills");
-    }
-  }, [navigate]);
+      setCustomEvents((prev) => [
+        ...prev,
+        {
+          id: `custom-${Date.now()}`,
+          type: "event",
+          title: newEventTitle.trim(),
+          date: newEventDate,
+          status: "upcoming",
+        },
+      ]);
+
+      setNewEventTitle("");
+      setNewEventDate(activeISO);
+      setShowAddEvent(false);
+    },
+    [newEventTitle, newEventDate, activeISO]
+  );
+
+  const handleOpenTasks = useCallback(() => {
+    navigate("/tasks", {
+      state: { dueFilter: { type: "date", value: activeISO }, date: activeISO },
+    });
+  }, [navigate, activeISO]);
+
+  const handleOpenBills = useCallback(() => {
+    navigate("/bills", {
+      state: { fromCalendarDate: activeISO },
+    });
+  }, [navigate, activeISO]);
 
   const handleAddEvent = useCallback((e) => {
     e.preventDefault();
@@ -206,219 +182,158 @@ export default function Calendar() {
       <section style={headerSectionStyle}>
         <h2 style={titleStyle}>Shared Calendar</h2>
         <p style={subtitleStyle}>
-          View all upcoming tasks and bills for your household
+          A compact look at your household schedule. Tap a date to expand
+          today's plan.
         </p>
       </section>
 
-      <section style={calendarCardStyle}>
-        <div style={calendarHeaderStyle}>
-          <button
-            type="button"
-            style={navButtonStyle}
-            onClick={previousMonth}
-            aria-label="Previous month"
-          >
-            ‹
-          </button>
-          <h3 style={monthYearStyle}>
-            {MONTH_NAMES[month]} {year}
-          </h3>
-          <button
-            type="button"
-            style={navButtonStyle}
-            onClick={nextMonth}
-            aria-label="Next month"
-          >
-            ›
-          </button>
-        </div>
+      <div style={cardsLayoutStyle}>
+        <section style={thumbnailCardStyle}>
+          <MiniCalendar
+            titlePrefix="Household"
+            monthDate={monthDate}
+            eventsByISO={eventsByISO}
+            indicatorMode="types"
+            onSelectDate={handleSelectDate}
+            onMonthChange={(direction) =>
+              setMonthDate((prev) => {
+                const next = new Date(prev);
+                next.setMonth(prev.getMonth() + direction);
+                return next;
+              })
+            }
+          />
+        </section>
 
-        <div style={addEventToggleRowStyle}>
-          {!showAddEvent ? (
-            <button
-              type="button"
-              style={addEventToggleButtonStyle}
-              onClick={() => setShowAddEvent(true)}
-            >
-              + Add event
-            </button>
-          ) : (
-            <form
-              onSubmit={handleAddEvent}
-              style={addEventFormStyle}
-            >
-              <input
-                type="text"
-                value={newEventTitle}
-                onChange={(e) => setNewEventTitle(e.target.value)}
-                placeholder="Event title"
-                style={addEventInputStyle}
-              />
-              <input
-                type="date"
-                value={newEventDate}
-                onChange={(e) => setNewEventDate(e.target.value)}
-                style={addEventDateStyle}
-              />
-              <button type="submit" style={addEventSaveButtonStyle}>
-                Save
+        <section style={detailCardStyle}>
+        <button
+          type="button"
+          style={detailToggleButtonStyle}
+          onClick={() => setDetailsOpen((prev) => !prev)}
+        >
+          <div>
+            <p style={detailToggleLabelStyle}>{detailsSubtitle}</p>
+            <p style={detailToggleDateStyle}>{activeLabel}</p>
+          </div>
+          <span
+            style={{
+              ...detailToggleChipStyle,
+              ...(detailsOpen ? detailToggleChipActiveStyle : {}),
+            }}
+          >
+            {detailsOpen ? "Close" : "Open"}
+          </span>
+        </button>
+
+        {detailsOpen && (
+          <>
+            <div style={detailListStyle}>
+              {activeEvents.length === 0 ? (
+                <p style={detailEmptyStyle}>
+                  Nothing on the books for this day. Enjoy the downtime!
+                </p>
+              ) : (
+                activeEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    style={detailItemStyle}
+                    onClick={() => handleEventClick(event)}
+                  >
+                    <span
+                      style={{
+                        ...detailIconStyle,
+                        ...(event.type === "task"
+                          ? taskIconStyle
+                          : event.type === "bill"
+                          ? billIconStyle
+                          : customIconStyle),
+                      }}
+                    >
+                      {event.type === "task"
+                        ? "✓"
+                        : event.type === "bill"
+                        ? "$"
+                        : "•"}
+                    </span>
+                    <div style={detailTextStyle}>
+                      <p style={detailTitleStyle}>{event.title}</p>
+                      <p style={detailMetaStyle}>
+                        {event.type === "task" && event.assignees?.length
+                          ? `Assigned to ${event.assignees.join(", ")}`
+                          : event.type === "bill" && event.amount
+                          ? `$${event.amount.toFixed(2)}`
+                          : "Custom reminder"}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div style={detailActionsStyle}>
+              <button
+                type="button"
+                style={detailPrimaryButtonStyle}
+                onClick={handleOpenTasks}
+              >
+                Open this day in Tasks
               </button>
               <button
                 type="button"
-                style={addEventCancelButtonStyle}
-                onClick={handleCancelAddEvent}
+                style={detailSecondaryButtonStyle}
+                onClick={handleOpenBills}
               >
-                Cancel
+                Review bills on this day
               </button>
-            </form>
-          )}
-        </div>
-
-        <div style={weekdaysStyle}>
-          {WEEKDAY_NAMES.map((day) => (
-            <div key={day} style={weekdayStyle}>
-              {day}
-            </div>
-          ))}
-        </div>
-
-        <div style={daysGridStyle}>
-          {calendarDays.map((day, index) => {
-            const dayEvents = day ? getEventsForDay(day) : [];
-            const today = day && isToday(day);
-
-            return (
-              <div
-                key={index}
-                style={{
-                  ...dayCell,
-                  ...(day ? {} : emptyCellStyle),
-                  ...(today ? todayCellStyle : {}),
-                }}
-              >
-                {day && (
-                  <>
-                    <div
-                      style={{
-                        ...dayNumberStyle,
-                        ...(today ? todayNumberStyle : {}),
+              {showAddEvent ? (
+                <form style={addEventFormStyle} onSubmit={handleAddEventSubmit}>
+                  <input
+                    type="text"
+                    placeholder="Reminder title"
+                    value={newEventTitle}
+                    onChange={(event) => setNewEventTitle(event.target.value)}
+                    style={addEventInputStyle}
+                  />
+                  <input
+                    type="date"
+                    value={newEventDate}
+                    onChange={(event) => setNewEventDate(event.target.value)}
+                    style={addEventDateInputStyle}
+                  />
+                  <div style={addEventButtonRowStyle}>
+                    <button type="submit" style={addEventSaveStyle}>
+                      Save event
+                    </button>
+                    <button
+                      type="button"
+                      style={addEventCancelStyle}
+                      onClick={() => {
+                        setShowAddEvent(false);
+                        setNewEventTitle("");
+                        setNewEventDate(activeISO);
                       }}
                     >
-                      {day}
-                    </div>
-                    <div style={eventsContainerStyle}>
-                      {dayEvents.slice(0, 3).map((event) => (
-                        <div
-                          key={event.id}
-                          style={{
-                            ...eventBadgeStyle,
-                            ...(event.type === "task"
-                              ? taskEventStyle
-                              : event.type === "bill"
-                              ? billEventStyle
-                              : customEventStyle),
-                          }}
-                          onClick={() => handleEventClick(event)}
-                          title={`${event.title}${
-                            event.type === "bill"
-                              ? ` - $${event.amount.toFixed(2)}`
-                              : ""
-                          }`}
-                        >
-                          <span style={eventIconStyle}>
-                            {event.type === "task"
-                              ? "✓"
-                              : event.type === "bill"
-                              ? "$"
-                              : "•"}
-                          </span>
-                          <span style={eventTitleStyle}>{event.title}</span>
-                        </div>
-                      ))}
-                      {dayEvents.length > 3 && (
-                        <div style={moreEventsStyle}>
-                          +{dayEvents.length - 3} more
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section style={upcomingCardStyle}>
-        <h3 style={sectionTitleStyle}>Upcoming Deadlines</h3>
-        <div style={upcomingListStyle}>
-          {upcomingEvents.map((event) => (
-              <div
-                key={event.id}
-                style={upcomingItemStyle}
-                onClick={() => handleEventClick(event)}
-              >
-                <div style={upcomingLeftStyle}>
-                  <span
-                    style={{
-                      ...upcomingIconStyle,
-                      ...(event.type === "task"
-                        ? taskIconColorStyle
-                        : event.type === "bill"
-                        ? billIconColorStyle
-                        : eventIconGeneralColorStyle),
-                    }}
-                  >
-                    {event.type === "task"
-                      ? "✓"
-                      : event.type === "bill"
-                      ? "$"
-                      : "•"}
-                  </span>
-                  <div>
-                    <div style={upcomingTitleStyle}>{event.title}</div>
-                    <div style={upcomingMetaStyle}>
-                      {new Date(event.date).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                      {event.type === "task" && event.assignees && (
-                        <span> • {event.assignees.join(", ")}</span>
-                      )}
-                      {event.type === "bill" && (
-                        <span> • ${event.amount.toFixed(2)}</span>
-                      )}
-                    </div>
+                      Cancel
+                    </button>
                   </div>
-                </div>
-                <span
-                  style={{
-                    ...statusBadgeStyle,
-                    ...(event.status === "completed" || event.status === "paid"
-                      ? completedBadgeStyle
-                      : event.status === "in-progress"
-                      ? inProgressBadgeStyle
-                      : pendingBadgeStyle),
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  style={detailGhostButtonStyle}
+                  onClick={() => {
+                    setShowAddEvent(true);
+                    setNewEventDate(activeISO);
                   }}
                 >
-                  {event.status === "completed"
-                    ? "Completed"
-                    : event.status === "paid"
-                    ? "Paid"
-                    : event.status === "in-progress"
-                    ? "In Progress"
-                    : event.status === "unpaid"
-                    ? "Unpaid"
-                    : event.status === "upcoming"
-                    ? "Upcoming"
-                    : "Pending"}
-
-                </span>
-              </div>
-            ))}
-        </div>
-      </section>
+                  + Add quick reminder
+                </button>
+              )}
+            </div>
+          </>
+        )}
+        </section>
+      </div>
     </div>
   );
 }
@@ -436,230 +351,133 @@ const pageStyle = {
 const headerSectionStyle = {
   display: "flex",
   flexDirection: "column",
-  gap: "0.25rem",
+  gap: "0.35rem",
 };
 
 const titleStyle = {
   margin: 0,
-  fontSize: "1.5rem",
+  fontSize: "1.6rem",
   fontWeight: 700,
-  color: "var(--habita-text)",
 };
 
 const subtitleStyle = {
   margin: 0,
-  fontSize: "0.9rem",
+  fontSize: "0.95rem",
   color: "var(--habita-muted)",
 };
 
-const calendarCardStyle = {
-  background: "var(--habita-card)",
+const cardBaseStyle = {
+  backgroundColor: "var(--habita-card)",
   borderRadius: "12px",
   border: "1px solid rgba(74,144,226,0.25)",
-  padding: "1rem",
+  padding: "0.9rem 1rem",
   display: "flex",
   flexDirection: "column",
+  gap: "0.6rem",
+};
+
+const cardsLayoutStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gap: "1rem",
+  alignItems: "start",
+};
+
+const thumbnailCardStyle = {
+  ...cardBaseStyle,
+};
+
+const detailCardStyle = {
+  ...cardBaseStyle,
   gap: "1rem",
 };
 
-const calendarHeaderStyle = {
+const detailToggleButtonStyle = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  paddingBottom: "0.5rem",
-  borderBottom: "1px solid var(--habita-border)",
-};
-
-const navButtonStyle = {
-  background: "var(--habita-accent)",
-  color: "var(--habita-button-text)",
-  border: "none",
-  borderRadius: "8px",
-  width: "36px",
-  height: "36px",
-  fontSize: "1.5rem",
+  border: "1px solid var(--habita-border)",
+  borderRadius: "10px",
+  background: "var(--habita-chip)",
+  padding: "0.7rem 0.85rem",
   cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontWeight: 600,
 };
 
-const monthYearStyle = {
+const detailToggleLabelStyle = {
+  margin: 0,
+  fontSize: "0.75rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "var(--habita-muted)",
+};
+
+const detailToggleDateStyle = {
   margin: 0,
   fontSize: "1.1rem",
   fontWeight: 600,
   color: "var(--habita-text)",
 };
 
-const weekdaysStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(7, 1fr)",
-  gap: "0.5rem",
-};
-
-const weekdayStyle = {
-  textAlign: "center",
-  fontSize: "0.75rem",
+const detailToggleChipStyle = {
+  fontSize: "0.8rem",
   fontWeight: 600,
-  color: "var(--habita-muted)",
-  padding: "0.5rem 0",
-};
-
-const daysGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(7, 1fr)",
-  gap: "0.5rem",
-};
-
-const dayCell = {
-  minHeight: "80px",
-  padding: "0.5rem",
-  background: "var(--habita-chip)",
-  borderRadius: "8px",
+  borderRadius: "999px",
   border: "1px solid var(--habita-border)",
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.25rem",
-};
-
-const emptyCellStyle = {
+  padding: "0.2rem 0.85rem",
+  color: "var(--habita-text)",
   background: "transparent",
-  border: "none",
 };
 
-const todayCellStyle = {
-  border: "2px solid var(--habita-accent)",
-  background: "rgba(74,144,226,0.08)",
+const detailToggleChipActiveStyle = {
+  borderColor: "transparent",
+  background: "var(--habita-accent)",
+  color: "var(--habita-button-text)",
 };
 
-const dayNumberStyle = {
-  fontSize: "0.85rem",
-  fontWeight: 600,
-  color: "var(--habita-text)",
-};
-
-const todayNumberStyle = {
-  color: "var(--habita-accent)",
-  fontWeight: 700,
-};
-
-const eventsContainerStyle = {
+const detailListStyle = {
   display: "flex",
   flexDirection: "column",
-  gap: "0.25rem",
-  flex: 1,
+  gap: "0.65rem",
 };
 
-const eventBadgeStyle = {
-  fontSize: "0.65rem",
-  padding: "0.2rem 0.4rem",
-  borderRadius: "4px",
-  display: "flex",
-  alignItems: "center",
-  gap: "0.25rem",
-  cursor: "pointer",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
-
-const taskEventStyle = {
-  background: "rgba(63, 157, 165, 0.18)",
-  color: "#3f9da5",
-};
-
-const billEventStyle = {
-  background: "rgba(74, 144, 226, 0.18)",
-  color: "#4a90e2",
-};
-
-const eventIconStyle = {
-  fontSize: "0.7rem",
-  flexShrink: 0,
-};
-
-const eventTitleStyle = {
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-  fontWeight: 600,
-};
-
-const moreEventsStyle = {
-  fontSize: "0.65rem",
-  color: "var(--habita-muted)",
-  fontStyle: "italic",
-  paddingLeft: "0.4rem",
-};
-
-const upcomingCardStyle = {
-  background: "var(--habita-card)",
-  borderRadius: "12px",
-  border: "1px solid rgba(74,144,226,0.25)",
-  padding: "1rem",
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.8rem",
-};
-
-const sectionTitleStyle = {
+const detailEmptyStyle = {
   margin: 0,
-  fontSize: "1rem",
-  fontWeight: 600,
-  color: "var(--habita-text)",
+  color: "var(--habita-muted)",
+  fontSize: "0.95rem",
+  textAlign: "center",
+  padding: "0.4rem 0",
 };
 
-const upcomingListStyle = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.6rem",
-};
-
-const upcomingItemStyle = {
+const detailItemStyle = {
   display: "flex",
   alignItems: "center",
-  justifyContent: "space-between",
   gap: "0.8rem",
-  padding: "0.7rem 0.9rem",
-  background: "var(--habita-chip)",
-  borderRadius: "8px",
+  borderRadius: "12px",
   border: "1px solid var(--habita-border)",
+  padding: "0.65rem 0.8rem",
   cursor: "pointer",
+  background: "var(--habita-chip)",
 };
 
-const upcomingLeftStyle = {
+const detailIconStyle = {
+  width: "40px",
+  height: "40px",
+  borderRadius: "12px",
   display: "flex",
   alignItems: "center",
-  gap: "0.8rem",
+  justifyContent: "center",
+  fontWeight: 700,
+  fontSize: "1rem",
+};
+
+const detailTextStyle = {
   flex: 1,
   minWidth: 0,
 };
 
-const upcomingIconStyle = {
-  width: "32px",
-  height: "32px",
-  borderRadius: "50%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: "1rem",
-  fontWeight: 600,
-  flexShrink: 0,
-};
-
-const taskIconColorStyle = {
-  background: "rgba(63, 157, 165, 0.18)",
-  color: "#3f9da5",
-};
-
-const billIconColorStyle = {
-  background: "rgba(74, 144, 226, 0.18)",
-  color: "#4a90e2",
-};
-
-const upcomingTitleStyle = {
-  fontSize: "0.9rem",
+const detailTitleStyle = {
+  margin: 0,
+  fontSize: "0.95rem",
   fontWeight: 600,
   color: "var(--habita-text)",
   overflow: "hidden",
@@ -667,110 +485,113 @@ const upcomingTitleStyle = {
   whiteSpace: "nowrap",
 };
 
-const upcomingMetaStyle = {
-  fontSize: "0.75rem",
-  color: "var(--habita-muted)",
-  marginTop: "0.2rem",
-};
-
-const statusBadgeStyle = {
-  fontSize: "0.7rem",
-  fontWeight: 600,
-  padding: "0.25rem 0.6rem",
-  borderRadius: "999px",
-  whiteSpace: "nowrap",
-  flexShrink: 0,
-};
-
-const completedBadgeStyle = {
-  backgroundColor: "rgba(30, 58, 138, 0.16)",
-  color: "#1e3a8a",
-};
-
-const inProgressBadgeStyle = {
-  backgroundColor: "rgba(63, 157, 165, 0.18)",
-  color: "#3f9da5",
-};
-
-const pendingBadgeStyle = {
-  backgroundColor: "rgba(37, 99, 235, 0.16)",
-  color: "#2563eb",
-};
-
-const addEventToggleRowStyle = {
-  display: "flex",
-  justifyContent: "flex-end",
-  marginBottom: "0.5rem",
-};
-
-const addEventToggleButtonStyle = {
-  border: "1px solid var(--habita-border)",
-  background: "var(--habita-chip)",
-  color: "var(--habita-text)",
-  borderRadius: "999px",
-  padding: "0.25rem 0.8rem",
+const detailMetaStyle = {
+  margin: "0.2rem 0 0",
   fontSize: "0.8rem",
+  color: "var(--habita-muted)",
+};
+
+const detailActionsStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.9rem",
+};
+
+const detailPrimaryButtonStyle = {
+  border: "none",
+  borderRadius: "999px",
+  padding: "0.5rem 0.9rem",
+  fontWeight: 600,
+  fontSize: "0.85rem",
+  background: "var(--habita-accent)",
+  color: "var(--habita-button-text)",
   cursor: "pointer",
+};
+
+const detailSecondaryButtonStyle = {
+  border: "1px solid var(--habita-border)",
+  borderRadius: "999px",
+  padding: "0.5rem 0.9rem",
+  fontWeight: 600,
+  fontSize: "0.85rem",
+  cursor: "pointer",
+  background: "transparent",
+  color: "var(--habita-text)",
+};
+
+const detailGhostButtonStyle = {
+  border: "none",
+  borderRadius: "999px",
+  padding: "0.5rem 0.9rem",
+  fontWeight: 600,
+  fontSize: "0.85rem",
+  cursor: "pointer",
+  background: "rgba(74, 144, 226, 0.08)",
+  color: "var(--habita-accent)",
 };
 
 const addEventFormStyle = {
   display: "flex",
-  gap: "0.4rem",
-  flexWrap: "wrap",
-  alignItems: "center",
-  width: "100%",
+  flexDirection: "column",
+  gap: "0.6rem",
+  border: "1px solid var(--habita-border)",
+  borderRadius: "10px",
+  padding: "0.85rem",
+  background: "var(--habita-chip)",
 };
 
 const addEventInputStyle = {
-  flex: 2,
-  minWidth: "140px",
-  borderRadius: "8px",
   border: "1px solid var(--habita-border)",
-  padding: "0.35rem 0.5rem",
-  fontSize: "0.8rem",
+  borderRadius: "10px",
+  padding: "0.6rem 0.75rem",
+  fontSize: "0.95rem",
   background: "var(--habita-input)",
   color: "var(--habita-text)",
 };
 
-const addEventDateStyle = {
+const addEventDateInputStyle = {
+  ...addEventInputStyle,
+};
+
+const addEventButtonRowStyle = {
+  display: "flex",
+  gap: "0.6rem",
+  flexWrap: "wrap",
+};
+
+const addEventSaveStyle = {
   flex: 1,
-  minWidth: "120px",
-  borderRadius: "8px",
-  border: "1px solid var(--habita-border)",
-  padding: "0.35rem 0.5rem",
-  fontSize: "0.8rem",
-  background: "var(--habita-input)",
-  color: "var(--habita-text)",
-};
-
-const addEventSaveButtonStyle = {
+  border: "none",
+  borderRadius: "10px",
+  padding: "0.6rem",
   background: "var(--habita-accent)",
   color: "var(--habita-button-text)",
-  border: "none",
-  borderRadius: "999px",
-  padding: "0.35rem 0.9rem",
-  fontSize: "0.8rem",
   fontWeight: 600,
   cursor: "pointer",
 };
 
-const addEventCancelButtonStyle = {
+const addEventCancelStyle = {
+  flex: 1,
+  borderRadius: "10px",
+  border: "1px solid var(--habita-border)",
+  padding: "0.6rem",
   background: "transparent",
-  color: "var(--habita-muted)",
-  border: "none",
-  borderRadius: "999px",
-  padding: "0.35rem 0.6rem",
-  fontSize: "0.8rem",
+  color: "var(--habita-text)",
+  fontWeight: 600,
   cursor: "pointer",
 };
 
-const customEventStyle = {
-  background: "rgba(234,179,8,0.18)", // amber-ish
-  color: "#b45309",
+const taskIconStyle = {
+  background: "rgba(63, 157, 165, 0.2)",
+  color: "#3f9da5",
 };
 
-const eventIconGeneralColorStyle = {
-  background: "rgba(234,179,8,0.18)",
-  color: "#b45309",
+const billIconStyle = {
+  background: "rgba(74, 144, 226, 0.2)",
+  color: "#4a90e2",
 };
 
+const customIconStyle = {
+  background: "rgba(107, 114, 128, 0.2)",
+  color: "#6b7280",
+};

@@ -396,9 +396,6 @@ export default function Home() {
                     : "No mood logs yet"}
                 </span>
               </div>
-              <button type="button" style={moodSheetCloseButtonStyle} onClick={() => setSelectedMoodISO(null)}>
-                ×
-              </button>
             </div>
             {selectedMoodEntries.length === 0 ? (
               <p style={textStyle}>No one has logged a mood for this day yet.</p>
@@ -440,7 +437,7 @@ export default function Home() {
               </button>
               <button
                 type="button"
-                style={{ ...moodSheetActionButtonStyle, background: "transparent", border: "1px solid var(--habita-border)" }}
+                style={moodSheetGhostButtonStyle}
                 onClick={() => setSelectedMoodISO(null)}
               >
                 Close
@@ -814,14 +811,6 @@ const moodSheetSubtitleStyle = {
   color: "var(--habita-muted)",
 };
 
-const moodSheetCloseButtonStyle = {
-  border: "none",
-  background: "transparent",
-  color: "var(--habita-muted)",
-  fontSize: "1.1rem",
-  cursor: "pointer",
-};
-
 const moodSheetListStyle = {
   listStyle: "none",
   margin: 0,
@@ -862,6 +851,17 @@ const moodSheetActionButtonStyle = {
   border: "none",
   background: "var(--habita-accent)",
   color: "var(--habita-button-text)",
+  borderRadius: "999px",
+  padding: "0.45rem 0.85rem",
+  fontSize: "0.8rem",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const moodSheetGhostButtonStyle = {
+  border: "1px solid var(--habita-border)",
+  background: "transparent",
+  color: "var(--habita-text)",
   borderRadius: "999px",
   padding: "0.45rem 0.85rem",
   fontSize: "0.8rem",
