@@ -382,14 +382,30 @@ export default function Chat() {
               const nameContent = normalizedSearch
                 ? renderHighlighted(displayName)
                 : displayName;
-              const preview = thread.lastMessage
-                ? `${thread.lastMessage.sender === "You" ? "You" : thread.lastMessage.sender}: ${
-                    entry.snippet || thread.lastMessage.text
-                  }`
-                : entry.snippet || "No messages yet";
-              const previewContent = normalizedSearch
-                ? renderHighlighted(preview)
-                : preview;
+              const threadMessages = messagesByThread[thread.id] || [];
+const lastFromMessages =
+  threadMessages.length > 0
+    ? threadMessages[threadMessages.length - 1]
+    : null;
+
+// Prefer the "live" last message from messagesByThread,
+// fall back to thread.lastMessage, then to any search snippet.
+          const last = lastFromMessages || thread.lastMessage || null;
+
+          let preview;
+          if (last) {
+            const senderLabel = last.sender === "You" ? "You" : last.sender;
+            const baseText = entry.snippet || last.text || "";
+            preview = `${senderLabel}: ${baseText}`;
+          } else if (entry.snippet) {
+            preview = entry.snippet;
+          } else {
+            preview = "No messages yet";
+          }
+
+          const previewContent = normalizedSearch
+            ? renderHighlighted(preview)
+            : preview;
               return (
                 <button
                   key={thread.id}
@@ -459,11 +475,31 @@ export default function Chat() {
   );
 
   const renderChatPane = () => {
+    if (!activeThread) {
+      return (
+        <div style={chatPaneStyle}>
+          <div
+            style={{
+              margin: "auto",
+              textAlign: "center",
+              color: "var(--habita-muted)",
+              padding: "2rem",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "0.9rem" }}>
+              Select a chat from the list to start messaging.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     const presentation = activePresentation;
 
     const mentionOptionsForThread = Array.from(
       new Set([...(activeThread.participants || []), ...mentionFallback])
     );
+
 
     return (
       <div style={chatPaneStyle}>
