@@ -1,15 +1,21 @@
 const path = require("path")
 const express = require("express")
+const passport = require("passport")
+const configureJwtStrategy = require("./config/jwt-config")
 const notificationsRouter = require("./routes/notifications")
 const chatRouter = require("./routes/chat")
 const homeRouter = require("./routes/home")
 const billsRouter = require("./routes/bills")
 const tasksRouter = require("./routes/tasks")
+const authenticationRouter = require("./routes/authentication")
+const protectedContentRoutes = require("./routes/protected-content")
 
 const app = express()
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
+configureJwtStrategy(passport)
+app.use(passport.initialize())
 
 const publicDir = path.join(__dirname, "public")
 app.use(express.static(publicDir))
@@ -27,6 +33,8 @@ app.use("/api/chat", chatRouter)
 app.use("/api/home", homeRouter)
 app.use("/api/bills", billsRouter)
 app.use("/api/tasks", tasksRouter)
+app.use("/api/auth", authenticationRouter)
+app.use("/api/protected", protectedContentRoutes(passport))
 
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "Not found" })
