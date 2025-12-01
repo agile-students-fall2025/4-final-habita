@@ -1,12 +1,16 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const avatarOptions = ["🌿", "🎧", "🚀", "🐾", "🌈", "🍜"];
 
-const defaultUser = {
-  name: "Mavis Liu",
-  email: "mavisliu@example.com",
+const blankUser = {
+  name: "",
+  email: "",
+  username: "",
   avatar: avatarOptions[0],
 };
+
+const AUTH_USER_KEY = "habita:auth:user";
+const AUTH_TOKEN_KEY = "habita:auth:token";
 
 const themes = {
   light: {
@@ -42,7 +46,27 @@ const THEME_STORAGE_KEY = "habita:theme";
 const UserContext = createContext(null);
 
 export function UserProvider({ children }) {
-  const [user, setUser] = useState(defaultUser);
+  const [user, setUser] = useState(() => {
+    if (typeof window === "undefined") return blankUser;
+    try {
+      const stored = window.localStorage.getItem(AUTH_USER_KEY);
+      return stored ? JSON.parse(stored) : blankUser;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to load stored user", err);
+      return blankUser;
+    }
+  });
+  const [authToken, setAuthToken] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem(AUTH_TOKEN_KEY);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to load stored token", err);
+      return null;
+    }
+  });
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(THEME_STORAGE_KEY) === "dark";
@@ -51,6 +75,35 @@ export function UserProvider({ children }) {
   const palette = useMemo(
     () => (darkMode ? themes.dark : themes.light),
     [darkMode]
+  );
+
+  const persistUser = useCallback((nextUser) => {
+    setUser(nextUser);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(AUTH_USER_KEY, JSON.stringify(nextUser));
+    }
+  }, []);
+
+  const persistToken = useCallback((token) => {
+    setAuthToken(token);
+    if (typeof window !== "undefined") {
+      if (token) {
+        window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+      } else {
+        window.localStorage.removeItem(AUTH_TOKEN_KEY);
+      }
+    }
+  }, []);
+
+  const normalizeUser = useCallback(
+    (username, name) => ({
+      ...blankUser,
+      username: username?.toLowerCase() || "",
+      email: username || "",
+      name: name || username || "",
+      avatar: user?.avatar || blankUser.avatar,
+    }),
+    [user?.avatar]
   );
 
   useEffect(() => {
@@ -82,9 +135,83 @@ export function UserProvider({ children }) {
     }
   }, [palette, darkMode]);
 
-  const updateUser = (updates) => {
-    setUser((prev) => ({ ...prev, ...updates }));
-  };
+  const updateUser = useCallback(
+    (updates) => {
+      setUser((prev) => {
+        const merged = { ...prev, ...updates };
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(AUTH_USER_KEY, JSON.stringify(merged));
+        }
+        return merged;
+      });
+    },
+    []
+  );
+
+  const logout = useCallback(() => {
+    persistUser(blankUser);
+    persistToken(null);
+  }, [persistToken, persistUser]);
+
+  const callAuthEndpoint = useCallback(async (path, payload) => {
+    const response = await fetch(`/api/auth/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      data = {};
+    }
+
+    if (!response.ok || data?.success === false) {
+      const message = data?.message || data?.errors?.[0]?.msg || "Authentication failed.";
+      throw new Error(message);
+    }
+
+    return data;
+  }, []);
+
+  const login = useCallback(
+    async ({ username, password }) => {
+      const normalizedUsername = username?.trim();
+      if (!normalizedUsername || !password) {
+        throw new Error("Username and password are required.");
+      }
+      const payload = await callAuthEndpoint("login", {
+        username: normalizedUsername,
+        password,
+      });
+
+      const userProfile = normalizeUser(payload.username || normalizedUsername);
+      persistUser(userProfile);
+      persistToken(payload.token);
+      return userProfile;
+    },
+    [callAuthEndpoint, normalizeUser, persistToken, persistUser]
+  );
+
+  const register = useCallback(
+    async ({ username, password, name }) => {
+      const normalizedUsername = username?.trim();
+      if (!normalizedUsername || !password) {
+        throw new Error("Username and password are required.");
+      }
+      const payload = await callAuthEndpoint("signup", {
+        username: normalizedUsername,
+        password,
+      });
+
+      const userProfile = normalizeUser(payload.username || normalizedUsername, name);
+      persistUser(userProfile);
+      persistToken(payload.token);
+      return userProfile;
+    },
+    [callAuthEndpoint, normalizeUser, persistToken, persistUser]
+  );
 
   const cycleAvatar = () => {
     let nextAvatar = avatarOptions[0];
@@ -105,10 +232,17 @@ export function UserProvider({ children }) {
     setDarkMode(Boolean(value));
   };
 
+  const isAuthenticated = Boolean(authToken);
+
   return (
     <UserContext.Provider
       value={{
         user,
+        token: authToken,
+        isAuthenticated,
+        login,
+        register,
+        logout,
         updateUser,
         cycleAvatar,
         avatarOptions,

@@ -54,6 +54,12 @@ const authenticationRouter = () => {
         })
       } catch (err) {
         console.error(`Failed to save user: ${err}`)
+        if (err?.code === 11000) {
+          return res.status(409).json({
+            success: false,
+            message: "User already exists.",
+          })
+        }
         return res.status(500).json({
           success: false,
           message: "Error saving user to database.",
