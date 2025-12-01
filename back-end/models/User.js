@@ -22,17 +22,17 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
-UserSchema.pre("save", async function (next) {
+UserSchema.pre("save", function (next) {
   const user = this
   if (!user.isModified("password")) return next()
 
-  try {
-    const hash = await bcrypt.hash(user.password, 10)
-    user.password = hash
-    next()
-  } catch (err) {
-    next(err)
-  }
+  bcrypt
+    .hash(user.password, 10)
+    .then((hash) => {
+      user.password = hash
+      next()
+    })
+    .catch((err) => next(err))
 })
 
 UserSchema.methods.validPassword = function (password) {
