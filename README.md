@@ -56,12 +56,14 @@ If you’d like to suggest improvements or report issues, please open a new Issu
 cd back-end
 npm install
 
-# Start the Express server on http://localhost:3000
+# Start the Express server on http://localhost:4000
 npm start
 
 # Run mocha/chai unit tests with c8 coverage
 npm test
 ```
+
+Create a `back-end/.env` (see `back-end/.env.example`) with your `MONGODB_URI`, `JWT_SECRET`, optional `PORT`, and `JWT_EXP_DAYS`. The server loads these via `dotenv` at startup.
 
 Key routes currently implemented with mock JSON data:
 

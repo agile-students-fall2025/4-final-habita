@@ -1,3 +1,5 @@
+require("dotenv").config()
+
 const path = require("path")
 const express = require("express")
 const passport = require("passport")
@@ -8,6 +10,7 @@ const homeRouter = require("./routes/home")
 const billsRouter = require("./routes/bills")
 const tasksRouter = require("./routes/tasks")
 const authenticationRouter = require("./routes/authentication")
+const cookieRouter = require("./routes/cookie-routes")
 const protectedContentRoutes = require("./routes/protected-content")
 
 const app = express()
@@ -33,7 +36,8 @@ app.use("/api/chat", chatRouter)
 app.use("/api/home", homeRouter)
 app.use("/api/bills", billsRouter)
 app.use("/api/tasks", tasksRouter)
-app.use("/api/auth", authenticationRouter)
+app.use("/api/auth", authenticationRouter())
+app.use("/api/cookies", cookieRouter())
 app.use("/api/protected", protectedContentRoutes(passport))
 
 app.use("/api", (_req, res) => {
