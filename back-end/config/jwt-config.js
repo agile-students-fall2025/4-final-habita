@@ -3,15 +3,12 @@ const mongoose = require("mongoose")
 const User = require("../models/User")
 
 const jwtOptions = {
-  // 1. FIX: Change to 'fromAuthHeaderAsBearerToken' to match Frontend's "Bearer" scheme
-  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(), 
-  
-  // 2. FIX: Add the fallback to match User.js exactly
-  secretOrKey: process.env.JWT_SECRET || "dev_local_jwt_secret",
+  jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme("jwt"), // Authorization: JWT <token>
+  secretOrKey: process.env.JWT_SECRET, // must be set in .env
 }
 
 const jwtVerifyToken = async (jwtPayload, done) => {
-  // extra expiry guard
+  // extra expiry guard (passport-jwt also checks exp)
   if (jwtPayload.exp && new Date(jwtPayload.exp * 1000) < new Date()) {
     return done(null, false, { message: "JWT token has expired." })
   }
@@ -19,7 +16,6 @@ const jwtVerifyToken = async (jwtPayload, done) => {
   try {
     const userId = new mongoose.Types.ObjectId(jwtPayload.id)
     const user = await User.findOne({ _id: userId }).select("username")
-    
     if (!user) {
       return done(null, false, { message: "User not found" })
     }

@@ -1,103 +1,60 @@
-const Bill = require("../models/Bill")
+const { billsData } = require("../data/bills")
 
 class BillsStore {
-  async list(userId) {
-    if (!userId) return []
-    return await Bill.find({ userId }).sort({ createdAt: -1 }).lean()
+  constructor({ bills = billsData } = {}) {
+    // keep an in-memory copy
+    this.bills = bills.map((b) => ({ ...b }))
   }
 
-  async get(userId, billId) {
-    if (!userId || !billId) return null
-    return await Bill.findOne({ _id: billId, userId }).lean()
+  _findIndex(id) {
+    return this.bills.findIndex((b) => String(b.id) === String(id))
   }
 
-  async create(userId, payload) {
-    if (!userId) throw new Error("User ID required")
-    
-    const bill = new Bill({
-      userId,
-      title: payload.title || "Untitled bill",
-      amount: payload.amount || 0,
-      dueDate: payload.dueDate || new Date().toISOString().slice(0, 10),
-      payer: payload.payer || "You",
-      splitBetween: payload.splitBetween || ["You"],
-      splitType: payload.splitType || "even",
-      customSplitAmounts: payload.customSplitAmounts || {},
-      paymentDirection: payload.paymentDirection || "none",
-      payments: payload.payments || {},
-      status: payload.status || "unpaid",
-      description: payload.description || "",
-    })
-
-    await bill.save()
-    return bill.toObject()
+  list() {
+    return this.bills
   }
 
-  async update(userId, billId, updates) {
-    if (!userId || !billId) return null
-    
-    const bill = await Bill.findOneAndUpdate(
-      { _id: billId, userId },
-      { $set: updates },
-      { new: true, runValidators: true }
+  get(id) {
+    return this.bills.find((b) => String(b.id) === String(id)) || null
+  }
+
+  create(payload) {
+    const nextId = this.bills.length ? Math.max(...this.bills.map((b) => Number(b.id))) + 1 : 1
+    const bill = Object.assign(
+      {
+        id: nextId,
+        title: "Untitled bill",
+        amount: 0,
+        dueDate: new Date().toISOString().slice(0, 10),
+        payer: "You",
+        splitBetween: ["You"],
+        description: "",
+        status: "unpaid",
+        payments: {},
+        createdAt: new Date().toISOString(),
+      },
+      payload
     )
-    
-    return bill ? bill.toObject() : null
+    this.bills.unshift(bill)
+    return bill
   }
 
-  async delete(userId, billId) {
-    if (!userId || !billId) return null
-    
-    const bill = await Bill.findOneAndDelete({ _id: billId, userId })
-    return bill ? bill.toObject() : null
+  update(id, updates) {
+    const idx = this._findIndex(id)
+    if (idx === -1) return null
+    this.bills[idx] = Object.assign({}, this.bills[idx], updates)
+    return this.bills[idx]
   }
 
-  async togglePayment(userId, billId, person) {
-    if (!userId || !billId) return null
-    
-    const bill = await Bill.findOne({ _id: billId, userId })
+  togglePayment(id, person) {
+    const bill = this.get(id)
     if (!bill) return null
-
-    const payments = bill.payments || new Map()
-    payments.set(person, !payments.get(person))
-    
-    const allPaid = bill.splitBetween.every((p) => payments.get(p))
+    const payments = Object.assign({}, bill.payments || {})
+    if (person) payments[person] = !payments[person]
+    const allPaid = Array.isArray(bill.splitBetween) && bill.splitBetween.every((p) => payments[p])
     bill.payments = payments
-    bill.status = allPaid ? "paid" : "unpaid"
-    
-    await bill.save()
-    return bill.toObject()
-  }
-
-  async updateStatus(userId, billId, newStatus) {
-    if (!userId || !billId) return null
-    
-    const bill = await Bill.findOne({ _id: billId, userId })
-    if (!bill) return null
-
-    bill.status = newStatus
-    
-    if (newStatus === "paid") {
-      const payments = new Map()
-      bill.splitBetween.forEach((person) => payments.set(person, true))
-      bill.payments = payments
-    }
-    
-    await bill.save()
-    return bill.toObject()
-  }
-
-  async getStats(userId) {
-    if (!userId) return { total: 0, unpaid: 0, paid: 0, totalAmount: 0 }
-    
-    const bills = await this.list(userId)
-    
-    return {
-      total: bills.length,
-      unpaid: bills.filter((b) => b.status === "unpaid").length,
-      paid: bills.filter((b) => b.status === "paid").length,
-      totalAmount: bills.reduce((sum, b) => sum + b.amount, 0),
-    }
+    bill.status = allPaid ? "paid" : bill.status
+    return bill
   }
 }
 

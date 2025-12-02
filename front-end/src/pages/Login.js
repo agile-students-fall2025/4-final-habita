@@ -1,44 +1,16 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useCallback, useEffect, useState } from "react";
-import { useUser } from "../context/UserContext";
+import { Link, useNavigate } from "react-router-dom";
+import { useCallback } from "react";
 
 export default function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { login, isAuthenticated } = useUser();
-  const [form, setForm] = useState({ username: "", password: "" });
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const redirectPath = location.state?.from?.pathname || "/home";
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(redirectPath, { replace: true });
-    }
-  }, [isAuthenticated, navigate, redirectPath]);
 
   const handleSubmit = useCallback(
-    async (event) => {
+    (event) => {
       event.preventDefault();
-      setError("");
-      setSubmitting(true);
-      try {
-        await login({ username: form.username, password: form.password });
-        navigate(redirectPath, { replace: true });
-      } catch (err) {
-        setError(err.message || "Unable to log in. Please try again.");
-      } finally {
-        setSubmitting(false);
-      }
+      navigate("/home");
     },
-    [form.password, form.username, login, navigate, redirectPath]
+    [navigate]
   );
-
-  const handleChange = useCallback((field) => (event) => {
-    const value = event.target.value;
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }, []);
 
   return (
     <div style={pageStyle}>
@@ -53,32 +25,15 @@ export default function Login() {
 
         <form style={formStyle} onSubmit={handleSubmit}>
           <label style={fieldStyle}>
-            <span style={labelStyle}>Username</span>
-            <input
-              style={inputStyle}
-              type="text"
-              placeholder="you@example.com"
-              value={form.username}
-              onChange={handleChange("username")}
-              required
-              autoComplete="username"
-            />
+            <span style={labelStyle}>Email</span>
+            <input style={inputStyle} type="email" placeholder="you@example.com" required />
           </label>
           <label style={fieldStyle}>
             <span style={labelStyle}>Password</span>
-            <input
-              style={inputStyle}
-              type="password"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={handleChange("password")}
-              required
-              autoComplete="current-password"
-            />
+            <input style={inputStyle} type="password" placeholder="••••••••" required />
           </label>
-          {error && <div style={errorStyle}>{error}</div>}
-          <button style={submitButtonStyle} type="submit" disabled={submitting}>
-            {submitting ? "Signing In..." : "Log In"}
+          <button style={submitButtonStyle} type="submit">
+            Log In
           </button>
         </form>
 
@@ -171,15 +126,6 @@ const inputStyle = {
   background: "var(--habita-input)",
   color: "var(--habita-text)",
   outline: "none",
-};
-
-const errorStyle = {
-  background: "rgba(255, 99, 71, 0.15)",
-  border: "1px solid rgba(255, 99, 71, 0.35)",
-  color: "#ff5c5c",
-  borderRadius: "10px",
-  padding: "0.75rem 0.9rem",
-  fontSize: "0.9rem",
 };
 
 const submitButtonStyle = {
