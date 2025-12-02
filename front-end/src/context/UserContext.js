@@ -154,17 +154,26 @@ export function UserProvider({ children }) {
   }, [persistToken, persistUser]);
 
   const callAuthEndpoint = useCallback(async (path, payload) => {
-    const response = await fetch(`/api/auth/${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    let response;
+    try {
+      response = await fetch(`/api/auth/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (networkErr) {
+      throw new Error(networkErr.message || "Unable to reach authentication service.");
+    }
 
     let data;
     try {
       data = await response.json();
     } catch (err) {
-      data = {};
+      const fallbackText = await response.text().catch(() => "");
+      if (!response.ok) {
+        throw new Error(fallbackText || "Authentication failed.");
+      }
+      throw new Error("Authentication failed.");
     }
 
     if (!response.ok || data?.success === false) {
