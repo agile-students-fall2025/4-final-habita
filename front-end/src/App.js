@@ -14,38 +14,41 @@ import { TasksProvider } from "./context/TasksContext";
 import { UserProvider } from "./context/UserContext";
 import { BillsProvider } from "./context/BillsContext";
 import { ChatProvider } from "./context/ChatContext";
+import RequireAuth from "./components/RequireAuth";
 
 
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+      <UserProvider>
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        <Route
-          element={
-            <UserProvider>
-              <ChatProvider>
-                <TasksProvider>
-                  <BillsProvider>
-                    <Dashboard />
-                  </BillsProvider>
-                </TasksProvider>
-              </ChatProvider>
-            </UserProvider>
-          }
-        >
-          <Route path="/home" element={<Home />} />
-          <Route path="/tasks" element={<Tasks />} />
-          <Route path="/bills" element={<Bills />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/profile/edit" element={<EditProfile />} />
-        </Route>
-      </Routes>
+          <Route
+            element={
+              <RequireAuth>
+                <ChatProvider>
+                  <TasksProvider>
+                    <BillsProvider>
+                      <Dashboard />
+                    </BillsProvider>
+                  </TasksProvider>
+                </ChatProvider>
+              </RequireAuth>
+            }
+          >
+            <Route path="/home" element={<Home />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/bills" element={<Bills />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/edit" element={<EditProfile />} />
+          </Route>
+        </Routes>
+      </UserProvider>
     </Router>
   );
 }
