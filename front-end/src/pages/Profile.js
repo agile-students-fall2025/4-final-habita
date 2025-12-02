@@ -18,7 +18,7 @@ const roommateProfiles = {
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, cycleAvatar, darkMode, toggleDarkMode, updateUser } = useUser();
+  const { user, cycleAvatar, darkMode, toggleDarkMode, updateUser, logout } = useUser();
   const { tasks } = useTasks();
   const [inviteCode] = useState("HBT-92F7");
   const [showInvite, setShowInvite] = useState(false);
@@ -296,8 +296,8 @@ export default function Profile() {
         type="button"
         style={logoutButtonStyle}
         onClick={() => {
-          updateUser({ avatar: "🌿", name: "Mavis Liu", email: "mavisliu@example.com" });
-          navigate("/login");
+          logout();
+          navigate("/login", { replace: true });
         }}
       >
         Log out
