@@ -34,6 +34,7 @@ const encouragements = {
 const STORAGE_KEY = "habita:mood";
 const HISTORY_KEY = "habita:mood-history";
 const REACTIONS_KEY = "habita:mood-reactions";
+const API_BASE = "/api/moods";
 const reactionOptions = ["👍", "🍪", "❤️"];
 const moodAccentStyles = {
   Happy: { bg: "rgba(245,166,35,0.2)", fg: "#a87012" },
@@ -55,6 +56,7 @@ export default function MoodTracker({
   const [showSnapshot, setShowSnapshot] = useState(!isCompact);
   const [moodHistory, setMoodHistory] = useState(() => loadMoodHistory());
   const [reactionLedger, setReactionLedger] = useState(() => loadReactionLedger());
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const todayKey = new Date().toISOString().slice(0, 10);
 
@@ -109,6 +111,95 @@ export default function MoodTracker({
     }
   }, [reactionLedger]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const fetchMoods = async () => {
+      setIsSyncing(true);
+      try {
+        const params = new URLSearchParams();
+        if (currentUserName) params.set("userName", currentUserName);
+        const response = await fetch(`${API_BASE}?${params.toString()}`);
+        if (!response.ok) throw new Error("Unable to load moods");
+        const payload = await response.json();
+        const entries = Array.isArray(payload.data)
+          ? payload.data.map((entry) => ({
+              ...entry,
+              id: entry._id || entry.id || `mood-${entry.date}-${entry.userName}`,
+              reactions: entry.reactions || {},
+            }))
+          : [];
+        if (!cancelled) {
+          setMoodHistory(entries);
+          const todayEntry = entries.find(
+            (item) => item.userName === currentUserName && item.date === todayKey
+          );
+          const existingMood = moods.find((m) => m.label === todayEntry?.label);
+          if (existingMood) {
+            setMood(existingMood);
+            setIsLocked(true);
+          }
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to fetch mood history", err);
+      } finally {
+        if (!cancelled) setIsSyncing(false);
+      }
+    };
+
+    fetchMoods();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserName, todayKey]);
+
+  const persistMoodLocally = (selectedMood) => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ label: selectedMood.label, date: todayKey })
+      );
+    }
+  };
+
+  const saveMoodToServer = async (entry) => {
+    try {
+      const response = await fetch(API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userName: entry.userName,
+          label: entry.label,
+          emoji: entry.emoji,
+          date: entry.date,
+          timestamp: entry.timestamp,
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to save mood");
+      const payload = await response.json();
+      const saved = payload.data;
+      setMoodHistory((prev) =>
+        prev.map((item) => (item.id === entry.id ? { ...item, id: saved._id || item.id } : item))
+      );
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to sync mood", err);
+    }
+  };
+
+  const deleteMoodFromServer = async () => {
+    try {
+      await fetch(API_BASE, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userName: currentUserName, date: todayKey }),
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to delete mood", err);
+    }
+  };
+
   const handleSelectMood = (selectedMood) => {
     setMood(selectedMood);
     setIsLocked(true);
@@ -127,12 +218,8 @@ export default function MoodTracker({
       );
       return [entry, ...filtered];
     });
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ label: selectedMood.label, date: todayKey })
-      );
-    }
+    persistMoodLocally(selectedMood);
+    saveMoodToServer(entry);
   };
 
   const handleUnlock = () => {
@@ -144,6 +231,7 @@ export default function MoodTracker({
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
+    deleteMoodFromServer();
     if (typeof onMoodChange === "function") {
       onMoodChange(null);
     }

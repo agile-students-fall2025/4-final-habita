@@ -9,17 +9,21 @@ const chatRouter = require("./routes/chat")
 const homeRouter = require("./routes/home")
 const billsRouter = require("./routes/bills")
 const tasksRouter = require("./routes/tasks")
+const moodsRouter = require("./routes/moods")
 const authenticationRouter = require("./routes/authentication")
 const cookieRouter = require("./routes/cookie-routes")
 const protectedContentRoutes = require("./routes/protected-content")
-const cors = require("cors") 
+const cors = require("cors")
 
 const app = express()
 
-app.use(cors({
-  origin: "http://localhost:3000", 
-  credentials: true
-}))
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000"
+app.use(
+  cors({
+    origin: corsOrigin,
+    credentials: true,
+  })
+)
 
 
 app.use(express.json())
@@ -44,6 +48,7 @@ app.use("/api/chat", chatRouter)
 app.use("/api/home", homeRouter)
 app.use("/api/bills", billsRouter)
 app.use("/api/tasks", tasksRouter)
+app.use("/api/moods", moodsRouter)
 app.use("/api/auth", authenticationRouter())
 app.use("/api/cookies", cookieRouter())
 app.use("/api/protected", protectedContentRoutes(passport))
