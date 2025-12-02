@@ -12,15 +12,8 @@ const tasksRouter = require("./routes/tasks")
 const authenticationRouter = require("./routes/authentication")
 const cookieRouter = require("./routes/cookie-routes")
 const protectedContentRoutes = require("./routes/protected-content")
-const cors = require("cors") 
 
 const app = express()
-
-app.use(cors({
-  origin: "http://localhost:3000", 
-  credentials: true
-}))
-
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
@@ -38,7 +31,6 @@ app.get("/api/health", (_req, res) => {
   })
 })
 
-// Routes
 app.use("/api/notifications", notificationsRouter)
 app.use("/api/chat", chatRouter)
 app.use("/api/home", homeRouter)
