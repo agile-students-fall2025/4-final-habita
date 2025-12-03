@@ -18,6 +18,15 @@ const UserSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
     },
+    householdId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Household',
+      default: null,
+    },
+    displayName: {
+      type: String,
+      trim: true,
+    },
   },
   { timestamps: true }
 )

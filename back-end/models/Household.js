@@ -29,7 +29,6 @@ const householdSchema = new mongoose.Schema({
   }],
   inviteCode: {
     type: String,
-    unique: true,
     sparse: true
   },
   inviteCodeExpires: {

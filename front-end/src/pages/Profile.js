@@ -60,6 +60,13 @@ export default function Profile() {
           <button
             type="button"
             style={secondaryButtonStyle}
+            onClick={() => navigate("/household")}
+          >
+            Manage Household
+          </button>
+          <button
+            type="button"
+            style={secondaryButtonStyle}
             onClick={() => navigate("/profile/edit")}
           >
             Edit Profile
