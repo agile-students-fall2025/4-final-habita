@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useBills } from "../context/BillsContext";
+
+// format ISO 'YYYY-MM-DD' to local label w/o timezone shift
+const formatISODate = (iso, options) => {
+  const token = typeof iso === "string" ? iso.slice(0, 10) : "";
+  const m = token.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso || "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString(undefined, options);
+};
 import ChatThread from "../components/ChatThread";
 
 
@@ -623,7 +632,7 @@ export default function Bills() {
                 </div>
                 
                 <div style={billInfoContainerStyle}>
-                  <p style={billInfoStyle}>Due: {new Date(bill.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                  <p style={billInfoStyle}>Due: {formatISODate(bill.dueDate, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                   <p style={billInfoStyle}>
                     {bill.paymentDirection === "incoming" 
                       ? "Paid by" 

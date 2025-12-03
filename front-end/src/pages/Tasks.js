@@ -54,15 +54,29 @@ const statusDisplay = {
   },
 };
 
-const formatDueLabel = (value) => {
-  const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) {
-    return value;
-  }
-  return new Date(parsed).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
+// format ISO 'YYYY-MM-DD' to local short label
+const formatDueLabel = (iso) => {
+  const token = typeof iso === "string" ? iso.slice(0, 10) : "";
+  const m = token.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso || "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
+
+// get today's local ISO 'YYYY-MM-DD'
+const getTodayISO = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+// compare ISO 'YYYY-MM-DD' strings by calendar day
+const compareISODate = (a, b) => {
+  const na = Number((a || "").slice(0, 10).replace(/-/g, "")) || 0;
+  const nb = Number((b || "").slice(0, 10).replace(/-/g, "")) || 0;
+  return na - nb;
 };
 
 const ensureRepeat = (value) => {
@@ -89,7 +103,7 @@ const formatRepeatLabel = (repeat) => {
 };
 
 export default function Tasks() {
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = getTodayISO();
   const { tasks, addTask, updateTask, toggleTaskStatus, stats } = useTasks();
   const [filter, setFilter] = useState("all");
   const [showMineOnly, setShowMineOnly] = useState(false);
@@ -227,21 +241,16 @@ export default function Tasks() {
         );
       }
       if (dueFilter === "overdue") {
-        const todayValue = Date.parse(todayISO);
-        return list.filter((task) => {
-          const parsed = Date.parse(task.due);
-          return !Number.isNaN(parsed) && parsed < todayValue;
-        });
+        return list.filter(
+          (task) => typeof task?.due === "string" && compareISODate(task.due, todayISO) < 0
+        );
       }
       return list;
     };
 
     const withDueApplied = applyDueFilter(mineOnlyList);
 
-    const dueValue = (value) => {
-      const parsed = Date.parse(value);
-      return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
-    };
+    const dueValue = (value) => compareISODate(value, "9999-12-31");
 
     return [...withDueApplied].sort(
       (a, b) => dueValue(a.due) - dueValue(b.due)
