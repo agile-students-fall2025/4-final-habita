@@ -10,10 +10,12 @@ import Calendar from "./pages/Calendar";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
+import HouseholdManagement from "./pages/HouseholdManagement";
 import { TasksProvider } from "./context/TasksContext";
 import { UserProvider } from "./context/UserContext";
 import { BillsProvider } from "./context/BillsContext";
 import { ChatProvider } from "./context/ChatContext";
+import { HouseholdProvider } from "./context/HouseholdContext";
 import RequireAuth from "./components/RequireAuth";
 
 
@@ -29,13 +31,15 @@ function App() {
           <Route
             element={
               <RequireAuth>
-                <ChatProvider>
-                  <TasksProvider>
-                    <BillsProvider>
-                      <Dashboard />
-                    </BillsProvider>
-                  </TasksProvider>
-                </ChatProvider>
+                <HouseholdProvider>
+                  <ChatProvider>
+                    <TasksProvider>
+                      <BillsProvider>
+                        <Dashboard />
+                      </BillsProvider>
+                    </TasksProvider>
+                  </ChatProvider>
+                </HouseholdProvider>
               </RequireAuth>
             }
           >
@@ -46,6 +50,7 @@ function App() {
             <Route path="/chat" element={<Chat />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/edit" element={<EditProfile />} />
+            <Route path="/household" element={<HouseholdManagement />} />
           </Route>
         </Routes>
       </UserProvider>
