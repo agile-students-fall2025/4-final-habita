@@ -11,6 +11,14 @@ export default function MiniCalendar({
   indicatorMode = "count",
 }) {
   const { weeks, monthLabel } = useMemo(() => buildMonthGrid(monthDate), [monthDate]);
+  // Get today's local ISO 'YYYY-MM-DD' (no timezone shift)
+  const todayISO = (() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  })();
 
   return (
     <div style={containerStyle}>
@@ -65,7 +73,7 @@ export default function MiniCalendar({
           const indicatorSegments =
             indicatorMode === "types" && typeCounts ? buildIndicatorSegments(typeCounts) : null;
           const moodSwatches = getMoodSwatches(moodEntriesByISO[iso]);
-          const isToday = iso === new Date().toISOString().slice(0, 10);
+          const isToday = iso === todayISO;
           const hasEvents = events.length > 0;
           return (
             <button
