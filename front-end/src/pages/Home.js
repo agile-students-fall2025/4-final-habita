@@ -472,11 +472,8 @@ function generateICS(tasksData = [], billsData = [], moodsData = []) {
   // Create ICS VCALENDAR with VEVENTS for tasks and bills
   const pad = (n) => String(n).padStart(2, "0");
   const toICSDate = (iso) => {
-    const d = new Date(iso);
-    const y = d.getFullYear();
-    const m = pad(d.getMonth() + 1);
-    const day = pad(d.getDate());
-    return `${y}${m}${day}`;
+    const token = typeof iso === "string" ? iso.slice(0, 10) : "";
+    return /^\d{4}-\d{2}-\d{2}$/.test(token) ? token.replace(/-/g, "") : "";
   };
   let tasks = tasksData;
   let bills = billsData;
@@ -716,22 +713,20 @@ const cardSubheadingStyle = {
   color: "var(--habita-text)",
 };
 
-const formatDueLabel = (value) => {
-  const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) {
-    return value;
-  }
-  return new Date(parsed).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
+const formatDueLabel = (iso) => {
+  const token = typeof iso === "string" ? iso.slice(0, 10) : "";
+  const m = token.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso || "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 
 const formatFullDate = (iso) => {
-  if (!iso) return "";
-  const parsed = Date.parse(iso);
-  if (Number.isNaN(parsed)) return iso;
-  return new Date(parsed).toLocaleDateString(undefined, {
+  const token = typeof iso === "string" ? iso.slice(0, 10) : "";
+  const m = token.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso || "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",

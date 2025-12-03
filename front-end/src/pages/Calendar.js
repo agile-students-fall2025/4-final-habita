@@ -13,8 +13,11 @@ const toISO = (date) => {
 
 const formatDateLabel = (iso) => {
   if (!iso) return "";
-  const parsed = new Date(iso);
-  return parsed.toLocaleDateString(undefined, {
+  const token = iso.slice(0, 10);
+  const m = token.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",

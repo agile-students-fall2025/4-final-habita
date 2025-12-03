@@ -1,26 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-const STORAGE_KEY = "habita:tasks";
-
-const addDays = (days) => {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
-};
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000/api";
 
 const normalizeRepeat = (value) => {
-  if (!value) {
-    return { type: "none", interval: 1, unit: "weeks" };
-  }
-  if (typeof value === "string") {
-    return { type: value, interval: 1, unit: "weeks" };
-  }
+  if (!value) return { type: "none", interval: 1, unit: "weeks" };
+  if (typeof value === "string") return { type: value, interval: 1, unit: "weeks" };
   return {
     type: value.type || "none",
     interval:
-      typeof value.interval === "number" && value.interval > 0
-        ? value.interval
-        : 1,
+      typeof value.interval === "number" && value.interval > 0 ? value.interval : 1,
     unit: value.unit || "weeks",
   };
 };
@@ -32,95 +20,139 @@ const normalizeTask = (task, fallbackId) => {
     ? [task.assignee]
     : ["Unassigned"];
   const validStatuses = ["pending", "in-progress", "completed"];
+  const id = task._id || task.id || fallbackId || String(Date.now());
   return {
-    id: task.id ?? fallbackId ?? Date.now(),
+    id,
     title: task.title ?? "Untitled task",
-    due: task.due ?? addDays(0),
+    due: task.due ?? new Date().toISOString().slice(0, 10),
     assignees: normalizedAssignees,
     status: validStatuses.includes(task.status) ? task.status : "pending",
     repeat: normalizeRepeat(task.repeat),
   };
 };
 
-const defaultTasks = [
-  {
-    title: "Take Out Trash",
-    due: addDays(0),
-    assignees: ["You"],
-    status: "pending",
-  },
-  {
-    title: "Clean Bathroom",
-    due: addDays(2),
-    assignees: ["Sam"],
-    status: "in-progress",
-  },
-  {
-    title: "Pay Electricity Bill",
-    due: addDays(5),
-    assignees: ["Alex"],
-    status: "completed",
-  },
-  {
-    title: "Restock Paper Towels",
-    due: addDays(1),
-    assignees: ["Jordan"],
-    status: "pending",
-  },
-].map((task, index) => normalizeTask(task, index + 1));
-
 const TasksContext = createContext(null);
 
-const cycleStatus = (status) => {
-  if (status === "pending") return "in-progress";
-  if (status === "in-progress") return "completed";
-  return "pending";
-};
-
 export function TasksProvider({ children }) {
-  const [tasks, setTasks] = useState(() => {
-    if (typeof window === "undefined") {
-      return defaultTasks;
-    }
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length) {
-          return parsed.map((task, index) => normalizeTask(task, index + 1));
-        }
-      }
-    } catch (error) {
-      // ignore storage issues and fall back to defaults
-    }
-    return defaultTasks;
-  });
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  const getAuthToken = () => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem("habita:auth:token");
+  };
+
+  // Fetch tasks on mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    const fetchTasks = async () => {
+      try {
+        setLoading(true);
+        const token = getAuthToken();
+        if (!token) {
+          setTasks([]);
+          setLoading(false);
+          return;
+        }
+        const res = await fetch(`${API_URL}/tasks`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Failed to fetch tasks");
+        const data = await res.json();
+        const list = Array.isArray(data?.data) ? data.data : [];
+        setTasks(list.map((t, i) => normalizeTask(t, i + 1)));
+        setError(null);
+      } catch (err) {
+        setError(err.message);
+        setTasks([]);
+        // eslint-disable-next-line no-console
+        console.error("Error fetching tasks:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const addTask = async (task) => {
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error("Not authenticated");
+      const payload = {
+        title: task.title,
+        due: task.due,
+        assignees: Array.isArray(task.assignees) ? task.assignees : ["Unassigned"],
+        status: task.status || "pending",
+        repeat: normalizeRepeat(task.repeat),
+      };
+      const res = await fetch(`${API_URL}/tasks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Failed to create task");
+      const data = await res.json();
+      const created = normalizeTask(data.data);
+      setTasks((prev) => [created, ...prev]);
+      return created;
+    } catch (err) {
+      setError(err.message);
+      // eslint-disable-next-line no-console
+      console.error("Error adding task:", err);
+      throw err;
     }
-  }, [tasks]);
+  };
 
-  const addTask = (task) => {
-    const next = normalizeTask({ status: "pending", ...task })
-    setTasks((prev) => [next, ...prev])
-  }
+  const updateTask = async (taskId, updates) => {
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error("Not authenticated");
+      const body = { ...updates };
+      if (updates?.repeat) body.repeat = normalizeRepeat(updates.repeat);
+      const res = await fetch(`${API_URL}/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Failed to update task");
+      const data = await res.json();
+      const updated = normalizeTask(data.data);
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+      return updated;
+    } catch (err) {
+      setError(err.message);
+      // eslint-disable-next-line no-console
+      console.error("Error updating task:", err);
+      throw err;
+    }
+  };
 
-  const updateTask = (taskId, updates) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? normalizeTask({ ...task, ...updates }, task.id) : task
-      )
-    )
-  }
-
-  const toggleTaskStatus = (taskId) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, status: cycleStatus(task.status) } : task
-      )
-    );
+  const toggleTaskStatus = async (taskId) => {
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error("Not authenticated");
+      const res = await fetch(`${API_URL}/tasks/${taskId}/cycle`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to toggle task status");
+      const data = await res.json();
+      const updated = normalizeTask(data.data);
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+      return updated;
+    } catch (err) {
+      setError(err.message);
+      // eslint-disable-next-line no-console
+      console.error("Error toggling task status:", err);
+      throw err;
+    }
   };
 
   const stats = useMemo(() => {
@@ -129,18 +161,14 @@ export function TasksProvider({ children }) {
     const pending = tasks.filter((task) => task.status !== "completed").length;
     const mine = tasks.filter((task) => {
       if (task.status === "completed") return false;
-      if (Array.isArray(task.assignees)) {
-        return task.assignees.includes("You");
-      }
+      if (Array.isArray(task.assignees)) return task.assignees.includes("You");
       return task.assignees === "You";
     }).length;
     return { total, completed, pending, mine };
   }, [tasks]);
 
   return (
-    <TasksContext.Provider
-      value={{ tasks, addTask, updateTask, toggleTaskStatus, stats }}
-    >
+    <TasksContext.Provider value={{ tasks, addTask, updateTask, toggleTaskStatus, stats, loading, error }}>
       {children}
     </TasksContext.Provider>
   );
@@ -148,8 +176,6 @@ export function TasksProvider({ children }) {
 
 export function useTasks() {
   const context = useContext(TasksContext);
-  if (!context) {
-    throw new Error("useTasks must be used within a TasksProvider");
-  }
+  if (!context) throw new Error("useTasks must be used within a TasksProvider");
   return context;
 }
