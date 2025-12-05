@@ -195,7 +195,7 @@ export function UserProvider({ children }) {
   );
 
   const register = useCallback(
-    async ({ username, password, name }) => {
+    async ({ username, password, name, householdId }) => {
       const normalizedUsername = username?.trim();
       if (!normalizedUsername || !password) {
         throw new Error("Username and password are required.");
@@ -203,6 +203,7 @@ export function UserProvider({ children }) {
       const payload = await callAuthEndpoint("signup", {
         username: normalizedUsername,
         password,
+        householdId: householdId?.trim() || undefined,
       });
 
       const userProfile = normalizeUser(payload.username || normalizedUsername, name);

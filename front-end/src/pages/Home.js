@@ -32,6 +32,8 @@ export default function Home() {
     [navigate]
   );
 
+  const goToCalendarPage = useCallback(() => navigate("/calendar"), [navigate]);
+
   const handleMoodHistoryChange = useCallback((history) => {
     setMoodHistory(history || []);
   }, []);
@@ -230,7 +232,23 @@ export default function Home() {
         </section>
 
         <section style={cardsRowStyle}>
-          <div style={{ ...cardStyle, ...cardColumnStyle, gap: "1rem" }}>
+          <div
+            style={{ ...cardStyle, ...cardColumnStyle, gap: "1rem", cursor: "pointer" }}
+            onClick={(e) => {
+              // ignore clicks on nested buttons to preserve their actions
+              if (e.target.closest("button")) return;
+              goToTasks();
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                goToTasks();
+              }
+            }}
+            aria-label="Open tasks"
+          >
             <div style={cardHeaderRowStyle}>
               <h3 style={titleStyle}>My Tasks</h3>
               <div style={cardHeaderActionsStyle}>
@@ -293,7 +311,22 @@ export default function Home() {
             </div>
           </div>
 
-          <div style={{ ...cardStyle, ...cardColumnStyle, gap: "1rem" }}>
+          <div
+            style={{ ...cardStyle, ...cardColumnStyle, gap: "1rem", cursor: "pointer" }}
+            onClick={(e) => {
+              if (e.target.closest("button")) return;
+              goToBills();
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                goToBills();
+              }
+            }}
+            aria-label="Open bills"
+          >
             <div style={cardHeaderRowStyle}>
               <h3 style={titleStyle}>My Bills</h3>
               <div style={cardHeaderActionsStyle}>
@@ -366,7 +399,22 @@ export default function Home() {
           </div>
         </section>
 
-        <div style={{ ...cardStyle, marginTop: "1rem" }}>
+        <div
+          style={{ ...cardStyle, marginTop: "1rem", cursor: "pointer" }}
+          onClick={(e) => {
+            if (e.target.closest("button")) return;
+            goToCalendarPage();
+          }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              goToCalendarPage();
+            }
+          }}
+          aria-label="Open calendar"
+        >
           <MiniCalendar
             titlePrefix="Calendar"
             monthDate={calendarDate}

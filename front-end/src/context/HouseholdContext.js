@@ -36,7 +36,16 @@ export function HouseholdProvider({ children }) {
         return;
       }
 
-      if (!response.ok) throw new Error("Failed to fetch household");
+      if (!response.ok) {
+        let detail = "Failed to fetch household";
+        try {
+          const data = await response.json();
+          detail = data?.error || detail;
+        } catch (_) {
+          /* noop */
+        }
+        throw new Error(detail);
+      }
 
       const data = await response.json();
       setHousehold(data.data);
@@ -67,10 +76,20 @@ export function HouseholdProvider({ children }) {
         body: JSON.stringify({ name }),
       });
 
-      if (!response.ok) throw new Error("Failed to create household");
+      if (!response.ok) {
+        let detail = "Failed to create household";
+        try {
+          const data = await response.json();
+          detail = data?.error || detail;
+        } catch (_) {
+          /* noop */
+        }
+        throw new Error(detail);
+      }
 
       const data = await response.json();
-      setHousehold(data.data);
+      // Fetch populated household (with member user data) after creation
+      await fetchHousehold();
       return data.data;
     } catch (err) {
       setError(err.message);
@@ -99,7 +118,8 @@ export function HouseholdProvider({ children }) {
       }
 
       const data = await response.json();
-      setHousehold(data.data);
+      // Refresh to get populated members with usernames/displayNames
+      await fetchHousehold();
       return data.data;
     } catch (err) {
       setError(err.message);

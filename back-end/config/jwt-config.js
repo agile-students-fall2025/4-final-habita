@@ -18,7 +18,7 @@ const jwtVerifyToken = async (jwtPayload, done) => {
 
   try {
     const userId = new mongoose.Types.ObjectId(jwtPayload.id)
-    const user = await User.findOne({ _id: userId }).select("username")
+    const user = await User.findOne({ _id: userId }).select("username householdId")
     
     if (!user) {
       return done(null, false, { message: "User not found" })

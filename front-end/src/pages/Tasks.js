@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTasks } from "../context/TasksContext";
 import ChatThread from "../components/ChatThread";
+import { useHousehold } from "../context/HouseholdContext";
+import { useUser } from "../context/UserContext";
 
 
-const roommates = ["Alex", "Sam", "Jordan"];
-const peopleOptions = ["You", ...roommates];
+const fallbackPeople = ["You"];
 
 const repeatOptions = [
   { id: "none", label: "Never" },
@@ -104,6 +105,17 @@ const formatRepeatLabel = (repeat) => {
 
 export default function Tasks() {
   const todayISO = getTodayISO();
+  const { user } = useUser();
+  const { household } = useHousehold();
+  const myName = user?.name || user?.username || "You";
+  const peopleOptions = useMemo(() => {
+    const names = new Set([myName, "You"]);
+    (household?.members || []).forEach((member) => {
+      const name = member.userId?.displayName || member.userId?.username;
+      if (name) names.add(name);
+    });
+    return Array.from(names);
+  }, [household?.members, myName]);
   const { tasks, addTask, updateTask, toggleTaskStatus, stats } = useTasks();
   const [filter, setFilter] = useState("all");
   const [showMineOnly, setShowMineOnly] = useState(false);
@@ -115,10 +127,10 @@ export default function Tasks() {
     () => ({
       title: "",
       due: todayISO,
-      assignees: ["You"],
+      assignees: [myName],
       repeat: ensureRepeat(),
     }),
-    [todayISO]
+    [todayISO, myName]
   );
   const [form, setForm] = useState(() => createDefaultForm());
   const [editDraft, setEditDraft] = useState(null);
@@ -209,6 +221,17 @@ export default function Tasks() {
     }
   }, [location.state, navigate, createDefaultForm, tasks]);
 
+  const isAssignedToMe = useCallback(
+    (assignees) => {
+      const mine = new Set(["You", myName]);
+      if (Array.isArray(assignees)) {
+        return assignees.some((person) => mine.has(person));
+      }
+      return mine.has(assignees);
+    },
+    [myName]
+  );
+
   const filteredTasks = useMemo(() => {
     const byFilter =
       filter === "all"
@@ -217,10 +240,7 @@ export default function Tasks() {
 
     const mineOnlyList = showMineOnly
       ? byFilter.filter(
-          (task) =>
-            (Array.isArray(task.assignees) &&
-              task.assignees.some((person) => person === "You")) ||
-            task.assignees === "You"
+          (task) => isAssignedToMe(task.assignees)
         )
       : byFilter;
 

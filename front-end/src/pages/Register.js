@@ -6,7 +6,7 @@ export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
   const { register, isAuthenticated } = useUser();
-  const [form, setForm] = useState({ name: "", username: "", password: "" });
+  const [form, setForm] = useState({ name: "", username: "", password: "", householdId: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -33,6 +33,7 @@ export default function Register() {
           username: form.username,
           password: form.password,
           name: form.name,
+          householdId: form.householdId,
         });
         navigate(redirectPath, { replace: true });
       } catch (err) {
@@ -88,6 +89,20 @@ export default function Register() {
               autoComplete="new-password"
               minLength={6}
             />
+          </label>
+          <label style={field}>
+            <span style={label}>Household ID (optional)</span>
+            <input
+              style={input}
+              type="text"
+              placeholder="24-char ObjectId (leave blank to auto-create)"
+              value={form.householdId}
+              onChange={handleChange("householdId")}
+              autoComplete="off"
+            />
+            <span style={hint}>
+              Must be a valid Mongo ObjectId (24 hex chars); leave empty to create a new household.
+            </span>
           </label>
           {error && <div style={errorStyle}>{error}</div>}
           <button style={button} type="submit" disabled={submitting}>
@@ -178,6 +193,12 @@ const input = {
   background: "var(--habita-input)",
   color: "var(--habita-text)",
   outline: "none",
+};
+
+const hint = {
+  fontSize: "0.8rem",
+  color: "var(--habita-muted)",
+  lineHeight: 1.3,
 };
 
 const button = {

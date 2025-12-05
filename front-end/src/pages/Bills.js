@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useBills } from "../context/BillsContext";
+import { useHousehold } from "../context/HouseholdContext";
+import { useUser } from "../context/UserContext";
+import ChatThread from "../components/ChatThread";
 
 // format ISO 'YYYY-MM-DD' to local label w/o timezone shift
 const formatISODate = (iso, options) => {
@@ -10,8 +13,6 @@ const formatISODate = (iso, options) => {
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return d.toLocaleDateString(undefined, options);
 };
-import ChatThread from "../components/ChatThread";
-
 
 const filterOptions = [
   { id: "all", label: "All" },
@@ -22,26 +23,14 @@ const filterOptions = [
   { id: "oweTo", label: "Owe to Someone" },
 ];
 
-const roommates = ["You", "Alex", "Sam", "Jordan"];
-
 const statusDisplay = {
   unpaid: { label: "Unpaid", fg: "#d42626", bg: "rgba(212, 38, 38, 0.15)" },
   paid: { label: "Paid", fg: "#389e0d", bg: "rgba(88, 204, 2, 0.18)" },
 };
 
-const initialBillState = {
-  title: "",
-  amount: "",
-  dueDate: "",
-  payer: "You",
-  splitBetween: ["You"],
-  splitType: "even",
-  customSplitAmounts: {},
-  paymentDirection: "none",
-  description: "",
-};
-
 export default function Bills() {
+  const { household } = useHousehold();
+  const { user } = useUser();
   const location = useLocation();
   const navigate = useNavigate();
   const { bills, addBill, updateBillStatus, togglePayment, updateBill, stats } = useBills();
@@ -49,7 +38,32 @@ export default function Bills() {
   const [editingBill, setEditingBill] = useState(null);
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
-  const [newBill, setNewBill] = useState(initialBillState);
+  const memberOptions = useMemo(() => {
+    const mine = user?.name || user?.username || "You";
+    const names = new Set([mine, "You"]);
+    (household?.members || []).forEach((member) => {
+      const name = member.userId?.displayName || member.userId?.username;
+      if (name) names.add(name);
+    });
+    return Array.from(names);
+  }, [household?.members, user?.name, user?.username]);
+
+  const createInitialBillState = useCallback(
+    () => ({
+      title: "",
+      amount: "",
+      dueDate: "",
+      payer: memberOptions[0] || "You",
+      splitBetween: [memberOptions[0] || "You"],
+      splitType: "even",
+      customSplitAmounts: {},
+      paymentDirection: "none",
+      description: "",
+    }),
+    [memberOptions]
+  );
+
+  const [newBill, setNewBill] = useState(() => createInitialBillState());
   const [splitAmountError, setSplitAmountError] = useState("");
   const [formError, setFormError] = useState("");
 
@@ -98,8 +112,10 @@ export default function Bills() {
         paymentDirection: editingBill.paymentDirection || "none",
         description: editingBill.description || "",
       });
+    } else {
+      setNewBill(createInitialBillState());
     }
-  }, [editingBill]);
+  }, [editingBill, createInitialBillState]);
 
   const filteredBills = bills.filter((bill) => {
     if (filter === "all") return true;
@@ -173,14 +189,14 @@ export default function Bills() {
     }
     
     setShowForm(false);
-    setNewBill(initialBillState);
+    setNewBill(createInitialBillState());
     setSplitAmountError("");
   };
 
   const handleCancel = () => {
     setShowForm(false);
     setEditingBill(null);
-    setNewBill(initialBillState);
+    setNewBill(createInitialBillState());
     setSplitAmountError("");
     setFormError("");
   };
@@ -376,26 +392,26 @@ export default function Bills() {
             </p>
 
             <div style={splitButtonsContainer}>
-              {roommates.map((roommate) => {
-                const shouldShow = newBill.paymentDirection === "none" || roommate !== "You";
+              {memberOptions.map((person) => {
+                const shouldShow = newBill.paymentDirection === "none" || person !== "You";
                 if (!shouldShow) return null;
-                
+
                 return (
                   <button
-                    key={roommate}
+                    key={person}
                     type="button"
-                    onClick={() => handleSplitToggle(roommate)}
+                    onClick={() => handleSplitToggle(person)}
                     style={{
                       ...splitPersonButtonStyle,
-                      backgroundColor: newBill.splitBetween.includes(roommate)
+                      backgroundColor: newBill.splitBetween.includes(person)
                         ? "var(--habita-accent)"
                         : "var(--habita-chip)",
-                      color: newBill.splitBetween.includes(roommate)
+                      color: newBill.splitBetween.includes(person)
                         ? "#ffffff"
                         : "var(--habita-text)",
                     }}
                   >
-                    {roommate}
+                    {person}
                   </button>
                 );
               })}
