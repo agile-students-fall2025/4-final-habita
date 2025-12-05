@@ -31,36 +31,36 @@ const statusDisplay = {
 export default function Bills() {
   const { household } = useHousehold();
   const { user } = useUser();
+  const myName = user?.name || user?.username || "";
   const location = useLocation();
   const navigate = useNavigate();
-  const { bills, addBill, updateBillStatus, togglePayment, updateBill, stats } = useBills();
+  const { bills, addBill, updateBillStatus, togglePayment, updateBill, deleteBill, stats } = useBills();
   const [chatOpen, setChatOpen] = useState(null);
   const [editingBill, setEditingBill] = useState(null);
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const memberOptions = useMemo(() => {
-    const mine = user?.name || user?.username || "You";
-    const names = new Set([mine, "You"]);
+    const names = new Set([myName]);
     (household?.members || []).forEach((member) => {
       const name = member.userId?.displayName || member.userId?.username;
       if (name) names.add(name);
     });
     return Array.from(names);
-  }, [household?.members, user?.name, user?.username]);
+  }, [household?.members, myName]);
 
   const createInitialBillState = useCallback(
     () => ({
       title: "",
       amount: "",
       dueDate: "",
-      payer: memberOptions[0] || "You",
-      splitBetween: [memberOptions[0] || "You"],
+      payer: memberOptions[0] || myName,
+      splitBetween: [memberOptions[0] || myName],
       splitType: "even",
       customSplitAmounts: {},
       paymentDirection: "none",
       description: "",
     }),
-    [memberOptions]
+    [memberOptions, myName]
   );
 
   const [newBill, setNewBill] = useState(() => createInitialBillState());
@@ -106,7 +106,7 @@ export default function Bills() {
         amount: editingBill.amount.toString(),
         dueDate: editingBill.dueDate,
         payer: editingBill.payer,
-        splitBetween: editingBill.splitBetween || ["You"],
+        splitBetween: editingBill.splitBetween || [myName],
         splitType: editingBill.splitType || "even",
         customSplitAmounts: editingBill.customSplitAmounts || {},
         paymentDirection: editingBill.paymentDirection || "none",
@@ -221,7 +221,7 @@ export default function Bills() {
 
   const calculateYourShare = (bill) => {
     if (bill.splitType === "custom" && bill.customSplitAmounts) {
-      const yourAmount = bill.customSplitAmounts["You"];
+      const yourAmount = bill.customSplitAmounts[myName];
       return yourAmount ? parseFloat(yourAmount) : 0;
     }
     return bill.amount / bill.splitBetween.length;
@@ -335,9 +335,9 @@ export default function Bills() {
                   setNewBill(prev => ({
                     ...prev,
                     paymentDirection: "none",
-                    splitBetween: ["You"],
+                    splitBetween: [myName],
                     splitType: "even",
-                    payer: "You"
+                    payer: myName
                   }));
                 }}
               >
@@ -358,7 +358,7 @@ export default function Bills() {
                   ...prev,
                   paymentDirection: "outgoing",
                   splitBetween: [],
-                  payer: "You"
+                  payer: myName
                 }))}
               >
                 I Need to Pay Someone
@@ -378,7 +378,7 @@ export default function Bills() {
                   ...prev,
                   paymentDirection: "incoming",
                   splitBetween: [],
-                  payer: "You"
+                  payer: myName
                 }))}
               >
                 Someone Owes Me
@@ -393,7 +393,7 @@ export default function Bills() {
 
             <div style={splitButtonsContainer}>
               {memberOptions.map((person) => {
-                const shouldShow = newBill.paymentDirection === "none" || person !== "You";
+                const shouldShow = newBill.paymentDirection === "none" || person !== myName;
                 if (!shouldShow) return null;
 
                 return (
@@ -600,6 +600,16 @@ export default function Bills() {
                       {statusDisplay[bill.status]?.label ?? bill.status ?? "Unknown"}
                     </button>
                     <button
+                      onClick={() => {
+                        const ok = window.confirm("Delete this bill?");
+                        if (!ok) return;
+                        deleteBill(bill.id);
+                      }}
+                      style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
+                    >
+                      Delete
+                    </button>
+                    <button
                       onClick={() => setChatOpen(bill.id)}
                       style={{
                         ...editButtonStyle,
@@ -672,18 +682,16 @@ export default function Bills() {
                     <div style={paymentChipsContainer}>
                       {bill.paymentDirection === "outgoing" ? (
                         <button
-                          onClick={() => togglePayment(bill.id, "You")}
+                          onClick={() => togglePayment(bill.id, myName)}
                           style={{
                             ...paymentChipStyle,
-                            backgroundColor: (bill.payments && bill.payments["You"])
+                            backgroundColor: bill.payments?.[myName]
                               ? "rgba(88, 204, 2, 0.18)"
                               : "rgba(212, 38, 38, 0.15)",
-                            color: (bill.payments && bill.payments["You"])
-                              ? "#389e0d"
-                              : "#d42626",
+                            color: bill.payments?.[myName] ? "#389e0d" : "#d42626",
                           }}
                         >
-                          You {(bill.payments && bill.payments["You"]) ? "✓" : "✗"}
+                          {myName} {bill.payments?.[myName] ? "✓" : "✗"}
                         </button>
                       ) : (
                         bill.splitBetween.map((person) => (
@@ -747,7 +755,8 @@ export default function Bills() {
               contextType="bill"
               contextId={chatOpen}
               title={`Bill Chat: ${bills.find(b => b.id === chatOpen)?.title}`}
-              participants={["Alex", "Sam", "Jordan", "You"]}
+              participants={memberOptions}
+              currentUserName={myName}
               onAfterSend={(threadId) => {
                 setChatOpen(null);
                 navigate("/chat", { state: { openThreadId: threadId } });

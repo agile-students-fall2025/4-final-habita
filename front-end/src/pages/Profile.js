@@ -44,12 +44,13 @@ export default function Profile() {
   }, [household?.members]);
 
   const myTasks = useMemo(() => {
+    const me = user?.name || user?.username || "";
     return tasks.filter((task) =>
       (Array.isArray(task.assignees) &&
-        task.assignees.some((person) => person === "You")) ||
-      task.assignees === "You"
+        task.assignees.some((person) => person === me)) ||
+      task.assignees === me
     );
-  }, [tasks]);
+  }, [tasks, user?.name, user?.username]);
 
   return (
     <div style={pageStyle}>
@@ -213,7 +214,24 @@ export default function Profile() {
               <button
                 type="button"
                 style={secondaryButtonStyle}
-                onClick={() => navigator.clipboard?.writeText(household.inviteCode)}
+                onClick={() => {
+                  try {
+                    if (navigator?.clipboard?.writeText) {
+                      navigator.clipboard.writeText(household.inviteCode);
+                    } else {
+                      const input = document.createElement("input");
+                      input.value = household.inviteCode;
+                      document.body.appendChild(input);
+                      input.select();
+                      document.execCommand("copy");
+                      document.body.removeChild(input);
+                    }
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.warn("Failed to copy invite code", err);
+                    alert("Copy failed. Please copy the code manually.");
+                  }
+                }}
               >
                 Copy Code
               </button>

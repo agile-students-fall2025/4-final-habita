@@ -5,9 +5,6 @@ import ChatThread from "../components/ChatThread";
 import { useHousehold } from "../context/HouseholdContext";
 import { useUser } from "../context/UserContext";
 
-
-const fallbackPeople = ["You"];
-
 const repeatOptions = [
   { id: "none", label: "Never" },
   { id: "daily", label: "Daily" },
@@ -107,16 +104,16 @@ export default function Tasks() {
   const todayISO = getTodayISO();
   const { user } = useUser();
   const { household } = useHousehold();
-  const myName = user?.name || user?.username || "You";
+  const myName = user?.name || user?.username || "";
   const peopleOptions = useMemo(() => {
-    const names = new Set([myName, "You"]);
+    const names = new Set([myName]);
     (household?.members || []).forEach((member) => {
       const name = member.userId?.displayName || member.userId?.username;
       if (name) names.add(name);
     });
     return Array.from(names);
   }, [household?.members, myName]);
-  const { tasks, addTask, updateTask, toggleTaskStatus, stats } = useTasks();
+  const { tasks, addTask, updateTask, toggleTaskStatus, deleteTask, stats } = useTasks();
   const [filter, setFilter] = useState("all");
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -223,7 +220,7 @@ export default function Tasks() {
 
   const isAssignedToMe = useCallback(
     (assignees) => {
-      const mine = new Set(["You", myName]);
+      const mine = new Set([myName]);
       if (Array.isArray(assignees)) {
         return assignees.some((person) => mine.has(person));
       }
@@ -645,6 +642,17 @@ const helperText =
                 >
                   Edit
                 </button>
+                <button
+                  type="button"
+                  style={editButtonStyle}
+                  onClick={() => {
+                    const confirmDelete = window.confirm("Delete this task?");
+                    if (!confirmDelete) return;
+                    deleteTask(task.id);
+                  }}
+                >
+                  Delete
+                </button>
               </div>
               {editingId === task.id && editDraft && (
                 <form
@@ -863,7 +871,8 @@ const helperText =
               contextType="task"
               contextId={chatOpen}
               title={`Task Chat: ${tasks.find(t => t.id === chatOpen)?.title}`}
-              participants={["Alex", "Sam", "Jordan", "You"]}
+              participants={peopleOptions}
+              currentUserName={myName}
               onAfterSend={(threadId) => {
                 setChatOpen(null);
                 navigate("/chat", { state: { openThreadId: threadId } });

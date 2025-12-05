@@ -9,8 +9,9 @@ const MOOD_HISTORY_STORAGE_KEY = "habita:mood-history";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { user, token } = useUser();
   const { tasks } = useTasks();
+  const myName = user?.name || user?.username || "";
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -47,12 +48,12 @@ export default function Home() {
             contextType: "direct",
             contextId: entry.userName,
             name: entry.userName,
-            participants: ["You", entry.userName],
+            participants: [myName, entry.userName],
           },
         },
       });
     },
-    [navigate]
+    [navigate, myName]
   );
 
   useEffect(() => {
@@ -61,9 +62,13 @@ export default function Home() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/home/summary");
+        const authToken = token;
+        const response = await fetch("/api/home/summary", {
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        });
         if (!response.ok) {
-          throw new Error("Failed to load home summary");
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to load home summary");
         }
         const payload = await response.json();
         if (!cancelled) {
@@ -81,7 +86,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?.token]);
 
   const tasksSummary = summary?.tasks ?? {
     stats: { dueToday: 0, overdue: 0, pending: 0, inProgress: 0, completed: 0 },
@@ -298,7 +303,7 @@ export default function Home() {
                   <div style={singleListTitleStyle}>{nextTask.title}</div>
                   <div style={singleListMetaStyle}>
                     {formatDueLabel(nextTask.due)} •{" "}
-                    {nextTask.assignee || "You"}
+                    {nextTask.assignee || myName}
                   </div>
                 </button>
               )}

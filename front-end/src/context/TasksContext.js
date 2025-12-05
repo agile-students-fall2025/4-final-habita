@@ -33,6 +33,19 @@ const normalizeTask = (task, fallbackId) => {
 
 const TasksContext = createContext(null);
 
+const getCurrentUserName = () => {
+  try {
+    const stored = localStorage.getItem("habita:auth:user");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed.name || parsed.username || "";
+    }
+  } catch (_err) {
+    /* ignore */
+  }
+  return "";
+};
+
 export function TasksProvider({ children }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -155,20 +168,41 @@ export function TasksProvider({ children }) {
     }
   };
 
+  const deleteTask = async (taskId) => {
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error("Not authenticated");
+      const res = await fetch(`${API_URL}/tasks/${taskId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to delete task");
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    } catch (err) {
+      setError(err.message);
+      // eslint-disable-next-line no-console
+      console.error("Error deleting task:", err);
+      throw err;
+    }
+  };
+
   const stats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter((task) => task.status === "completed").length;
     const pending = tasks.filter((task) => task.status !== "completed").length;
+    const me = getCurrentUserName();
     const mine = tasks.filter((task) => {
       if (task.status === "completed") return false;
-      if (Array.isArray(task.assignees)) return task.assignees.includes("You");
-      return task.assignees === "You";
+      if (Array.isArray(task.assignees)) return task.assignees.includes(me);
+      return task.assignees === me;
     }).length;
     return { total, completed, pending, mine };
   }, [tasks]);
 
   return (
-    <TasksContext.Provider value={{ tasks, addTask, updateTask, toggleTaskStatus, stats, loading, error }}>
+    <TasksContext.Provider value={{ tasks, addTask, updateTask, toggleTaskStatus, deleteTask, stats, loading, error }}>
       {children}
     </TasksContext.Provider>
   );

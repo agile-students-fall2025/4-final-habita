@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import { useTasks } from "../context/TasksContext";
 import { useBills } from "../context/BillsContext";
 import { useChat } from "../context/ChatContext";
+import { useUser } from "../context/UserContext";
 
 function Dashboard({ children }) {
   const { tasks } = useTasks();
   const { stats } = useBills();
   const { threads } = useChat();
+  const { user } = useUser();
+  const myName = user?.name || user?.username || "";
   const location = useLocation();
   const isChat = location.pathname === "/chat";
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth <= 900 : false));
@@ -29,8 +32,8 @@ function Dashboard({ children }) {
 
   const myTasks = tasks.filter((task) =>
     Array.isArray(task.assignees)
-      ? task.assignees.includes("You")
-      : task.assignees === "You"
+      ? task.assignees.includes(myName)
+      : task.assignees === myName
   );
   const openForMe = myTasks.filter((task) => task.status !== "completed").length;
 

@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useHousehold } from "./HouseholdContext";
+import { useUser } from "./UserContext";
 
 const ChatContext = createContext(null);
 const API_BASE = "/api/chat";
@@ -14,6 +16,51 @@ export function ChatProvider({ children }) {
   const [threads, setThreads] = useState([]);
   const [messagesByThread, setMessagesByThread] = useState({});
   const [status, setStatus] = useState({ loading: false, error: null });
+  const { household } = useHousehold();
+  const { user } = useUser();
+
+  const defaultParticipants = useMemo(() => {
+    const names = new Set([user?.name || user?.username || "Anonymous"]);
+    (household?.members || []).forEach((member) => {
+      const name = member.userId?.displayName || member.userId?.username;
+      if (name) names.add(name);
+    });
+    return Array.from(names);
+  }, [household?.members, user?.name, user?.username]);
+
+  const ensureThread = useCallback(
+    async ({ threadId, contextType, contextId, name, participants }) => {
+      if (!contextType && !threadId) return null;
+      const mergedParticipants =
+        Array.isArray(participants) && participants.length > 0
+          ? participants
+          : defaultParticipants;
+      const response = await fetch(`${API_BASE}/threads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          threadId,
+          contextType,
+          contextId,
+          name,
+          participants: mergedParticipants,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to ensure chat thread");
+      }
+      const payload = await response.json();
+      setThreads((prev) => {
+        const exists = prev.find((item) => item.id === payload.data.id);
+        if (exists) {
+          return prev.map((item) => (item.id === payload.data.id ? payload.data : item));
+        }
+        return [payload.data, ...prev];
+      });
+      return payload.data;
+    },
+    [defaultParticipants]
+  );
 
   const fetchThreads = useCallback(async () => {
     setStatus((prev) => ({ ...prev, loading: true }));
@@ -23,39 +70,34 @@ export function ChatProvider({ children }) {
         throw new Error(`Failed to load chat threads (${response.status})`);
       }
       const payload = await response.json();
-      setThreads(payload.data || []);
+      const normalized = (payload.data || []).map((thread) => {
+        if (!Array.isArray(thread.participants) || thread.participants.length === 0) {
+          return { ...thread, participants: defaultParticipants };
+        }
+        return thread;
+      });
+      setThreads(normalized);
       setStatus({ loading: false, error: null });
-      return payload.data || [];
+      return normalized;
     } catch (error) {
       setStatus({ loading: false, error: error.message || "Unable to load chats" });
       return [];
     }
-  }, []);
+  }, [defaultParticipants]);
 
   useEffect(() => {
     fetchThreads();
   }, [fetchThreads]);
 
-  const ensureThread = useCallback(async ({ threadId, contextType, contextId, name, participants }) => {
-    if (!contextType && !threadId) return null;
-    const response = await fetch(`${API_BASE}/threads`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ threadId, contextType, contextId, name, participants }),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to ensure chat thread");
-    }
-    const payload = await response.json();
-    setThreads((prev) => {
-      const exists = prev.find((item) => item.id === payload.data.id);
-      if (exists) {
-        return prev.map((item) => (item.id === payload.data.id ? payload.data : item));
-      }
-      return [payload.data, ...prev];
-    });
-    return payload.data;
-  }, []);
+  useEffect(() => {
+    if (!household) return;
+    ensureThread({
+      contextType: "house",
+      contextId: household.id || household._id || "house",
+      name: household.name || "House",
+      participants: defaultParticipants,
+    }).catch(() => {});
+  }, [household, ensureThread, defaultParticipants]);
 
   const loadMessages = useCallback(
     async ({ threadId, contextType, contextId, name, participants }) => {
@@ -75,7 +117,13 @@ export function ChatProvider({ children }) {
         return [];
       }
       try {
-        await ensureThread({ threadId, contextType, contextId, name, participants });
+        await ensureThread({
+          threadId,
+          contextType,
+          contextId,
+          name,
+          participants: participants && participants.length ? participants : defaultParticipants,
+        });
         const response = await fetch(`${API_BASE}/messages?${params.toString()}`);
         if (!response.ok) {
           throw new Error("Failed to fetch chat messages");
@@ -100,6 +148,9 @@ export function ChatProvider({ children }) {
     async ({ threadId, contextType, contextId, sender, text, name, participants, metadata }) => {
       const trimmed = text?.trim();
       if (!trimmed) return null;
+      const mergedParticipants = Array.isArray(participants) && participants.length > 0
+        ? participants
+        : defaultParticipants;
       const response = await fetch(`${API_BASE}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,7 +161,7 @@ export function ChatProvider({ children }) {
           sender,
           text: trimmed,
           name,
-          participants,
+          participants: mergedParticipants,
           metadata,
         }),
       });
@@ -131,7 +182,7 @@ export function ChatProvider({ children }) {
       );
       return formatted;
     },
-    []
+    [defaultParticipants]
   );
 
   const markThreadRead = useCallback(async (threadId) => {
