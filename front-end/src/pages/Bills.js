@@ -39,14 +39,17 @@ export default function Bills() {
   const [editingBill, setEditingBill] = useState(null);
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
+
   const memberOptions = useMemo(() => {
     const names = new Set([myName]);
-    (household?.members || []).forEach((member) => {
-      const name = member.userId?.displayName || member.userId?.username;
-      if (name) names.add(name);
-    });
+    if (household && household.members) {
+      household.members.forEach((member) => {
+        const name = member.userId?.displayName || member.userId?.username;
+        if (name) names.add(name);
+      });
+    }
     return Array.from(names);
-  }, [household?.members, myName]);
+  }, [household, myName]);
 
   const createInitialBillState = useCallback(
     () => ({
@@ -88,7 +91,9 @@ export default function Bills() {
       const targetId = `bill-card-${openChatForBillId}`;
       const scrollToTarget = () => {
         const el = document.getElementById(targetId);
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
       };
       window.requestAnimationFrame(scrollToTarget);
       shouldReplace = true;
@@ -255,19 +260,46 @@ export default function Bills() {
     <div style={pageStyle}>
       <div style={headerStyle}>
         <h2 style={titleStyle}>Bills & Expenses</h2>
+        
         <button
           onClick={() => {
+            if (!household) {
+                alert("You must join a household before creating bills.");
+                return;
+            }
             if (showForm || editingBill) {
               handleCancel();
             } else {
               setShowForm(true);
             }
           }}
-          style={addButtonStyle}
+          style={{
+            ...addButtonStyle,
+            opacity: !household ? 0.5 : 1,
+            cursor: !household ? "not-allowed" : "pointer"
+          }}
+          disabled={!household}
+          title={!household ? "Join a household to add bills" : "Add Bill"}
         >
           {showForm || editingBill ? "✕" : "+"}
         </button>
       </div>
+
+      {!household && (
+        <div style={{
+            backgroundColor: "rgba(255, 107, 107, 0.1)",
+            border: "1px solid rgba(255, 107, 107, 0.3)",
+            color: "#d63031",
+            padding: "1rem",
+            borderRadius: "12px",
+            marginBottom: "1.5rem",
+            textAlign: "center",
+            fontSize: "0.95rem"
+        }}>
+            <strong>Missing Household:</strong> You are not currently part of a household. 
+            <br/>Please create or join a household in your settings to manage bills.
+        </div>
+      )}
 
       <div style={statsContainerStyle}>
         <div style={statItemStyle}>
@@ -395,7 +427,7 @@ export default function Bills() {
               {memberOptions.map((person) => {
                 const shouldShow = newBill.paymentDirection === "none" || person !== myName;
                 if (!shouldShow) return null;
-
+                
                 return (
                   <button
                     key={person}
@@ -760,10 +792,7 @@ export default function Bills() {
               title={`Bill Chat: ${bills.find(b => b.id === chatOpen)?.title}`}
               participants={memberOptions}
               currentUserName={myName}
-              onAfterSend={(threadId) => {
-                setChatOpen(null);
-                navigate("/chat", { state: { openThreadId: threadId } });
-              }}
+              onAfterSend={() => {}} 
             />
           </div>
         </div>
