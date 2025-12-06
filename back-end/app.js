@@ -18,10 +18,12 @@ const cors = require("cors")
 
 const app = express()
 
-const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000"
+const rawCorsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000"
+const normalizedOrigin = rawCorsOrigin.endsWith("/") ? rawCorsOrigin.slice(0, -1) : rawCorsOrigin
+const corsOrigins = [normalizedOrigin, `${normalizedOrigin}/`]
 app.use(
   cors({
-    origin: corsOrigin,
+    origin: corsOrigins,
     credentials: true,
   })
 )

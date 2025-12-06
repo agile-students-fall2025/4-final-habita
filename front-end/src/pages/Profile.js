@@ -2,12 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { useTasks } from "../context/TasksContext";
-
-const roommates = [
-  { id: 1, name: "Alex", initials: "A", role: "Organizer" },
-  { id: 2, name: "Sam", initials: "S", role: "Bills" },
-  { id: 3, name: "Jordan", initials: "J", role: "Cleaning" },
-];
+import { useHousehold } from "../context/HouseholdContext";
 
 const languages = ["English", "Spanish", "Mandarin"];
 const roommateProfiles = {
@@ -20,7 +15,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const { user, cycleAvatar, darkMode, toggleDarkMode, updateUser, logout } = useUser();
   const { tasks } = useTasks();
-  const [inviteCode] = useState("HBT-92F7");
+  const { household, refetch: refetchHousehold, loading: householdLoading } = useHousehold();
   const [showInvite, setShowInvite] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState({
@@ -29,15 +24,33 @@ export default function Profile() {
   });
   const [hoveredRoommate, setHoveredRoommate] = useState(null);
 
-  const groupedRoommates = useMemo(() => [...roommates], []);
+  const groupedRoommates = useMemo(() => {
+    if (!household?.members?.length) {
+      return []
+    }
+    return household.members.map((member) => {
+      const userRef = member.userId || {}
+      const name = userRef.displayName || userRef.username || "Member"
+      const initials =
+        (name && name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()) ||
+        (typeof userRef === "string" ? userRef[0]?.toUpperCase() : "?")
+      return {
+        id: userRef._id || member._id || name,
+        name,
+        initials: initials || "?",
+        role: member.role || "Member",
+      }
+    })
+  }, [household?.members]);
 
   const myTasks = useMemo(() => {
+    const me = user?.name || user?.username || "";
     return tasks.filter((task) =>
       (Array.isArray(task.assignees) &&
-        task.assignees.some((person) => person === "You")) ||
-      task.assignees === "You"
+        task.assignees.some((person) => person === me)) ||
+      task.assignees === me
     );
-  }, [tasks]);
+  }, [tasks, user?.name, user?.username]);
 
   return (
     <div style={pageStyle}>
@@ -140,59 +153,97 @@ export default function Profile() {
             {showInvite ? "Hide Invite" : "Invite Roommate"}
           </button>
         </header>
-        <div style={roommateGridStyle}>
-          {groupedRoommates.map((roommate) => (
-            <div
-              key={roommate.id}
-              style={roommateChipStyle}
-              onMouseEnter={() => setHoveredRoommate(roommate)}
-              onMouseLeave={() => setHoveredRoommate(null)}
-            >
-              <div style={chipAvatarStyle}>{roommate.initials}</div>
-              <div>
-                <span style={chipNameStyle}>{roommate.name}</span>
-                <span style={chipRoleStyle}>{roommate.role}</span>
-              </div>
-              {hoveredRoommate?.id === roommate.id && (
-                <div style={tooltipStyle}>
-                  <strong style={tooltipTitleStyle}>{roommate.name}</strong>
-                  <span style={tooltipMetaStyle}>
-                    {roommateProfiles[roommate.name]?.role ?? "Roommate"}
-                  </span>
-                  <span style={tooltipFunStyle}>
-                    {roommateProfiles[roommate.name]?.fun ??
-                      "Teamwork makes the dream work."}
-                  </span>
+        {householdLoading ? (
+          <p style={emptyTasksStyle}>Loading household...</p>
+        ) : !household ? (
+          <p style={emptyTasksStyle}>
+            No household yet. Create one or join with an invite code.
+          </p>
+        ) : groupedRoommates.length === 0 ? (
+          <p style={emptyTasksStyle}>No members yet.</p>
+        ) : (
+          <div style={roommateGridStyle}>
+            {groupedRoommates.map((roommate) => (
+              <div
+                key={roommate.id}
+                style={roommateChipStyle}
+                onMouseEnter={() => setHoveredRoommate(roommate)}
+                onMouseLeave={() => setHoveredRoommate(null)}
+              >
+                <div style={chipAvatarStyle}>{roommate.initials}</div>
+                <div>
+                  <span style={chipNameStyle}>{roommate.name}</span>
+                  <span style={chipRoleStyle}>{roommate.role}</span>
                 </div>
-              )}
-            </div>
-          ))}
-          <button
-            type="button"
-            style={addMemberButtonStyle}
-            onClick={() => setShowInvite(true)}
-            aria-label="Invite roommate"
-          >
-            +
-          </button>
-        </div>
+                {hoveredRoommate?.id === roommate.id && (
+                  <div style={tooltipStyle}>
+                    <strong style={tooltipTitleStyle}>{roommate.name}</strong>
+                    <span style={tooltipMetaStyle}>{roommate.role || "Roommate"}</span>
+                    <span style={tooltipFunStyle}>
+                      {roommateProfiles[roommate.name]?.fun || "Teamwork makes the dream work."}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              style={addMemberButtonStyle}
+              onClick={() => setShowInvite(true)}
+              aria-label="Invite roommate"
+            >
+              +
+            </button>
+          </div>
+        )}
       </section>
 
       {showInvite && (
         <section style={inviteCardStyle}>
           <h3 style={sectionTitleStyle}>Invite Roommates</h3>
           <p style={sectionHintStyle}>
-            Share this code so your roommates can join your household.
+            {householdLoading
+              ? "Loading your invite code..."
+              : household?.inviteCode
+              ? "Share this code so your roommates can join your household."
+              : "Create a household to get an invite code."}
           </p>
-          <div style={codeRowStyle}>
-            <span style={codeBadgeStyle}>{inviteCode}</span>
-            <button type="button" style={secondaryButtonStyle}>
-              Copy Code
-            </button>
-            <button type="button" style={secondaryButtonStyle}>
-              Share Link
-            </button>
-          </div>
+          {household?.inviteCode && (
+            <div style={codeRowStyle}>
+              <span style={codeBadgeStyle}>{household.inviteCode}</span>
+              <button
+                type="button"
+                style={secondaryButtonStyle}
+                onClick={() => {
+                  try {
+                    if (navigator?.clipboard?.writeText) {
+                      navigator.clipboard.writeText(household.inviteCode);
+                    } else {
+                      const input = document.createElement("input");
+                      input.value = household.inviteCode;
+                      document.body.appendChild(input);
+                      input.select();
+                      document.execCommand("copy");
+                      document.body.removeChild(input);
+                    }
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.warn("Failed to copy invite code", err);
+                    alert("Copy failed. Please copy the code manually.");
+                  }
+                }}
+              >
+                Copy Code
+              </button>
+              <button
+                type="button"
+                style={secondaryButtonStyle}
+                onClick={() => refetchHousehold()}
+              >
+                Refresh
+              </button>
+            </div>
+          )}
         </section>
       )}
 

@@ -10,12 +10,10 @@ const roommateProfiles = {
 };
 
 const quickReplies = ["On my way!", "Can someone cover tonight?", "All set ✅"];
-const mentionFallback = ["You", "Alex", "Sam", "Jordan"];
-const mentionRegex = /@you\b/i;
+const mentionFallback = [];
 const LAST_SEEN_STORAGE_KEY = "habita:chat:last-seen";
 const MUTED_STORAGE_KEY = "habita:chat:muted";
 
-const containsMentionForYou = (text = "") => mentionRegex.test(text.toLowerCase());
 const escapeRegExp = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const sectionDefinitions = [
@@ -46,7 +44,7 @@ export default function Chat() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useUser();
-  const currentUserName = user?.name || "You";
+  const currentUserName = user?.name || user?.username || "";
 
   const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth <= 900 : false));
   const [viewMode, setViewMode] = useState(isMobile ? "list" : "chat");
@@ -58,6 +56,10 @@ export default function Chat() {
   const [currentAnchor, setCurrentAnchor] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const scrollRef = useRef(null);
+  const normalizeName = useCallback(
+    (name) => name || currentUserName,
+    [currentUserName]
+  );
 
   const [lastSeen, setLastSeen] = useState(() => {
     if (typeof window === "undefined") return {};
@@ -223,10 +225,9 @@ export default function Chat() {
     (thread) => {
       const presentation = getThreadPresentation(thread, currentUserName);
       const displayName = presentation.title.toLowerCase();
+      const lastSender = thread.lastMessage ? normalizeName(thread.lastMessage.sender) : "";
       const defaultPreview = thread.lastMessage
-        ? `${thread.lastMessage.sender === "You" ? "You" : thread.lastMessage.sender}: ${
-            thread.lastMessage.text
-          }`
+        ? `${lastSender}: ${thread.lastMessage.text}`
         : "No messages yet";
       if (!normalizedSearch) {
         return { matches: true, snippet: defaultPreview, presentation };
@@ -241,7 +242,7 @@ export default function Chat() {
         presentation,
       };
     },
-    [normalizedSearch, currentUserName]
+    [normalizedSearch, normalizeName]
   );
 
   const renderHighlighted = useCallback(
@@ -329,7 +330,7 @@ export default function Chat() {
           threadId: activeThread.id,
           contextType: activeThread.contextType,
           contextId: activeThread.contextId,
-          sender: "You",
+          sender: currentUserName,
           text: normalized,
           name: activeThread.name,
           participants: activeThread.participants,
@@ -343,7 +344,7 @@ export default function Chat() {
         console.warn("[chat] send failed", error);
       }
     },
-    [activeThread, sendMessage]
+    [activeThread, sendMessage, currentUserName]
   );
 
   const renderThreadList = () => (
@@ -394,7 +395,7 @@ const lastFromMessages =
 
           let preview;
           if (last) {
-            const senderLabel = last.sender === "You" ? "You" : last.sender;
+            const senderLabel = normalizeName(last.sender);
             const baseText = entry.snippet || last.text || "";
             preview = `${senderLabel}: ${baseText}`;
           } else if (entry.snippet) {
@@ -520,6 +521,10 @@ const lastFromMessages =
               anchorIndex !== null &&
               index === anchorIndex &&
               anchorIndex !== activeMessages.length;
+            const sender = normalizeName(msg.sender);
+            const isSelf = sender === currentUserName;
+            const mentionsMe =
+              msg.text.includes(`@${currentUserName}`) || msg.text.includes("@You");
             return (
               <Fragment key={msg.id}>
                 {showDivider && (
@@ -529,27 +534,27 @@ const lastFromMessages =
                     <span style={newDividerLineStyle} />
                   </div>
                 )}
-                <div
-                  style={{
-                    ...messageRowStyle,
-                    justifyContent: msg.sender === "You" ? "flex-end" : "flex-start",
-                  }}
-                >
-                  {msg.sender !== "You" && (
+                  <div
+                    style={{
+                      ...messageRowStyle,
+                      justifyContent: isSelf ? "flex-end" : "flex-start",
+                    }}
+                  >
+                  {!isSelf && (
                     <div
                       style={avatarWrapperStyle}
-                      onMouseEnter={() => setHoveredProfile({ id: msg.id, name: msg.sender })}
+                      onMouseEnter={() => setHoveredProfile({ id: msg.id, name: sender })}
                       onMouseLeave={() => setHoveredProfile(null)}
                     >
-                      <div style={avatarStyle}>{msg.sender.charAt(0)}</div>
+                      <div style={avatarStyle}>{sender.charAt(0)}</div>
                       {hoveredProfile?.id === msg.id && (
                         <div style={avatarTooltipStyle}>
-                          <strong style={tooltipTitleStyle}>{msg.sender}</strong>
+                          <strong style={tooltipTitleStyle}>{sender}</strong>
                           <span style={tooltipMetaStyle}>
-                            {roommateProfiles[msg.sender]?.role ?? "Participant"}
+                            {roommateProfiles[sender]?.role ?? "Participant"}
                           </span>
                           <span style={tooltipFunStyle}>
-                            {roommateProfiles[msg.sender]?.fun ?? "Stays in the loop."}
+                            {roommateProfiles[sender]?.fun ?? "Stays in the loop."}
                           </span>
                         </div>
                       )}
@@ -559,20 +564,20 @@ const lastFromMessages =
                     style={{
                       ...bubbleStyle,
                       background:
-                        msg.sender === "You"
+                        isSelf
                           ? "var(--habita-accent)"
-                          : containsMentionForYou(msg.text)
+                          : mentionsMe
                           ? "rgba(255,223,0,0.20)"
                           : "var(--habita-card)",
                       border:
-                        msg.sender === "You"
+                        isSelf
                           ? "1px solid transparent"
                           : "1px solid rgba(74,144,226,0.25)",
                       color:
-                        msg.sender === "You" ? "var(--habita-button-text)" : "var(--habita-text)",
+                        isSelf ? "var(--habita-button-text)" : "var(--habita-text)",
                     }}
                   >
-                    {msg.sender !== "You" && <span style={senderStyle}>{msg.sender}</span>}
+                    {!isSelf && <span style={senderStyle}>{sender}</span>}
                     <p style={messageTextStyle}>
                       {msg.text.split(/(@\w+)/g).map((part, partIndex) => {
                         if (part.startsWith("@")) {
@@ -594,7 +599,7 @@ const lastFromMessages =
                     <span
                       style={{
                         ...timestampStyle,
-                        color: msg.sender === "You" ? "rgba(255,255,255,0.85)" : "var(--habita-muted)",
+                        color: isSelf ? "rgba(255,255,255,0.85)" : "var(--habita-muted)",
                       }}
                     >
                       {msg.timestamp || formatTimestamp(msg.createdAt)}
@@ -771,7 +776,7 @@ function normalizeMentions(text, names = mentionFallback) {
 
 const sanitizeThreadName = (value = "") => value.replace(/^#\s*/, "").trim();
 
-function getThreadPresentation(thread, currentUser = "You") {
+function getThreadPresentation(thread, currentUser = "") {
   if (!thread) {
       return {
         title: "Conversation",

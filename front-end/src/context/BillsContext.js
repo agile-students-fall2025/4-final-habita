@@ -2,15 +2,29 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000/api";
 
+const getCurrentUserName = () => {
+  try {
+    const stored = localStorage.getItem("habita:auth:user");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed.name || parsed.username || "";
+    }
+  } catch (_err) {
+    /* ignore */
+  }
+  return "";
+};
+
 const normalizeBill = (bill) => {
+  const me = getCurrentUserName();
   const id = bill._id || bill.id;
   return {
     id,
     title: bill.title || "Untitled bill",
     amount: Number(bill.amount || 0),
     dueDate: bill.dueDate || new Date().toISOString().slice(0, 10),
-    payer: bill.payer || "You",
-    splitBetween: Array.isArray(bill.splitBetween) ? bill.splitBetween : ["You"],
+    payer: bill.payer || me,
+    splitBetween: Array.isArray(bill.splitBetween) ? bill.splitBetween : [me],
     splitType: bill.splitType || "even",
     customSplitAmounts: bill.customSplitAmounts || {},
     paymentDirection: bill.paymentDirection || "none",

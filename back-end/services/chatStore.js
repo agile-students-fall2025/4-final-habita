@@ -1,7 +1,7 @@
 const { randomUUID } = require("crypto")
 const { seedThreads, generateMessageId } = require("../data/chat")
 
-const DEFAULT_USER = "You"
+const DEFAULT_USER = "User"
 const mentionRegex = /@([\w-]+)/gi
 
 class ChatStore {

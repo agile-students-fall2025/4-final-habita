@@ -1,6 +1,8 @@
 const express = require("express")
 const { body, validationResult } = require("express-validator")
 const User = require("../models/User")
+const Household = require("../models/Household")
+const mongoose = require("mongoose")
 
 const authenticationRouter = () => {
   const router = express.Router()
@@ -19,6 +21,11 @@ const authenticationRouter = () => {
         .isString()
         .isLength({ min: 6 })
         .withMessage("Password must be at least 6 characters."),
+      body("householdId")
+        .optional()
+        .isString()
+        .custom((value) => mongoose.Types.ObjectId.isValid(value))
+        .withMessage("householdId must be a valid Mongo ObjectId"),
     ],
     async (req, res) => {
       const errors = validationResult(req)
@@ -44,6 +51,48 @@ const authenticationRouter = () => {
         }
 
         const user = await new User({ username, password }).save()
+
+        // Attach to an existing household if provided, otherwise create a new one.
+        let householdId = req.body.householdId
+        try {
+          if (householdId) {
+            const existingHousehold = await Household.findById(householdId)
+            if (existingHousehold) {
+              const isMember = existingHousehold.members.some(
+                (member) => member.userId.toString() === user._id.toString()
+              )
+              if (!isMember) {
+                existingHousehold.members.push({ userId: user._id, role: "member" })
+                await existingHousehold.save()
+              }
+              user.householdId = existingHousehold._id
+            } else {
+              // Provided householdId not found, fall back to creating a new one
+              householdId = null
+            }
+          }
+
+          if (!householdId) {
+            const household = new Household({
+              name: `${user.username}'s household`,
+              createdBy: user._id,
+              members: [{ userId: user._id, role: "admin" }],
+            })
+            household.generateInviteCode?.()
+            await household.save()
+            user.householdId = household._id
+            householdId = household._id
+          }
+
+          await user.save()
+        } catch (householdErr) {
+          console.error(`Failed to assign household: ${householdErr}`)
+          return res.status(500).json({
+            success: false,
+            message: "Error assigning household.",
+            error: householdErr.message,
+          })
+        }
         const token = user.generateJWT()
 
         return res.json({
@@ -51,6 +100,7 @@ const authenticationRouter = () => {
           message: "User saved successfully.",
           token,
           username: user.username,
+          householdId: user.householdId,
         })
       } catch (err) {
         console.error(`Failed to save user: ${err}`)

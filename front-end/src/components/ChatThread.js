@@ -13,7 +13,8 @@ export default function ChatThread({
   contextType, // 'house' | 'bill' | 'task'
   contextId, // id for bill/task; undefined for house
   title,
-  participants = [], // ['Alex','Sam','Jordan','You']
+  participants = [], // ['Alex','Sam','Jordan']
+  currentUserName = "",
   onAfterSend,
 }) {
   const { messagesByThread, loadMessages, sendMessage } = useChat();
@@ -29,15 +30,18 @@ export default function ChatThread({
 
 
 
-  const names = useMemo(() => ["You", ...participants], [participants]);
+  const names = useMemo(() => {
+    const set = new Set([currentUserName, ...participants]);
+    return Array.from(set);
+  }, [participants, currentUserName]);
 
 
 
   const mentionable = useMemo(() => {
     // ensure 'You' is available and no duplicates
-    const set = new Set([..."You" ? ["You"] : [], ...participants]);
+    const set = new Set([currentUserName, ...participants]);
     return Array.from(set);
-  }, [participants]);
+  }, [participants, currentUserName]);
 
 
   useEffect(() => {
@@ -75,7 +79,7 @@ export default function ChatThread({
         threadId,
         contextType,
         contextId,
-        sender: "You",
+        sender: currentUserName,
         text: normalized,
         name: title,
         participants: names,
@@ -138,8 +142,8 @@ export default function ChatThread({
         }}
       >
         {messages.map((m) => {
-          const self = m.sender === "You";
-          const isMentioningYou = m.text.includes("@You");
+          const self = m.sender === currentUserName;
+          const isMentioningYou = m.text.includes(`@${currentUserName}`);
           const bubbleBg = self
             ? "var(--habita-accent)"
             : isMentioningYou
@@ -213,7 +217,7 @@ export default function ChatThread({
                     }}
                 >
                 {names
-                .filter((n) => n !== "You")
+                .filter((n) => n !== currentUserName)
                 .filter((n) => n.toLowerCase().startsWith(mentionQuery || ""))
                 .map((n) => (
                     <div

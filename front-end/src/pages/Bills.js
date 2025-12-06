@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useBills } from "../context/BillsContext";
+import { useHousehold } from "../context/HouseholdContext";
+import { useUser } from "../context/UserContext";
+import ChatThread from "../components/ChatThread";
 
 // format ISO 'YYYY-MM-DD' to local label w/o timezone shift
 const formatISODate = (iso, options) => {
@@ -10,8 +13,6 @@ const formatISODate = (iso, options) => {
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return d.toLocaleDateString(undefined, options);
 };
-import ChatThread from "../components/ChatThread";
-
 
 const filterOptions = [
   { id: "all", label: "All" },
@@ -22,34 +23,47 @@ const filterOptions = [
   { id: "oweTo", label: "Owe to Someone" },
 ];
 
-const roommates = ["You", "Alex", "Sam", "Jordan"];
-
 const statusDisplay = {
   unpaid: { label: "Unpaid", fg: "#d42626", bg: "rgba(212, 38, 38, 0.15)" },
   paid: { label: "Paid", fg: "#389e0d", bg: "rgba(88, 204, 2, 0.18)" },
 };
 
-const initialBillState = {
-  title: "",
-  amount: "",
-  dueDate: "",
-  payer: "You",
-  splitBetween: ["You"],
-  splitType: "even",
-  customSplitAmounts: {},
-  paymentDirection: "none",
-  description: "",
-};
-
 export default function Bills() {
+  const { household } = useHousehold();
+  const { user } = useUser();
+  const myName = user?.name || user?.username || "";
   const location = useLocation();
   const navigate = useNavigate();
-  const { bills, addBill, updateBillStatus, togglePayment, updateBill, stats } = useBills();
+  const { bills, addBill, updateBillStatus, togglePayment, updateBill, deleteBill, stats } = useBills();
   const [chatOpen, setChatOpen] = useState(null);
   const [editingBill, setEditingBill] = useState(null);
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
-  const [newBill, setNewBill] = useState(initialBillState);
+  const memberOptions = useMemo(() => {
+    const names = new Set([myName]);
+    (household?.members || []).forEach((member) => {
+      const name = member.userId?.displayName || member.userId?.username;
+      if (name) names.add(name);
+    });
+    return Array.from(names);
+  }, [household?.members, myName]);
+
+  const createInitialBillState = useCallback(
+    () => ({
+      title: "",
+      amount: "",
+      dueDate: "",
+      payer: memberOptions[0] || myName,
+      splitBetween: [memberOptions[0] || myName],
+      splitType: "even",
+      customSplitAmounts: {},
+      paymentDirection: "none",
+      description: "",
+    }),
+    [memberOptions, myName]
+  );
+
+  const [newBill, setNewBill] = useState(() => createInitialBillState());
   const [splitAmountError, setSplitAmountError] = useState("");
   const [formError, setFormError] = useState("");
 
@@ -92,14 +106,16 @@ export default function Bills() {
         amount: editingBill.amount.toString(),
         dueDate: editingBill.dueDate,
         payer: editingBill.payer,
-        splitBetween: editingBill.splitBetween || ["You"],
+        splitBetween: editingBill.splitBetween || [myName],
         splitType: editingBill.splitType || "even",
         customSplitAmounts: editingBill.customSplitAmounts || {},
         paymentDirection: editingBill.paymentDirection || "none",
         description: editingBill.description || "",
       });
+    } else {
+      setNewBill(createInitialBillState());
     }
-  }, [editingBill]);
+  }, [editingBill, createInitialBillState]);
 
   const filteredBills = bills.filter((bill) => {
     if (filter === "all") return true;
@@ -173,14 +189,14 @@ export default function Bills() {
     }
     
     setShowForm(false);
-    setNewBill(initialBillState);
+    setNewBill(createInitialBillState());
     setSplitAmountError("");
   };
 
   const handleCancel = () => {
     setShowForm(false);
     setEditingBill(null);
-    setNewBill(initialBillState);
+    setNewBill(createInitialBillState());
     setSplitAmountError("");
     setFormError("");
   };
@@ -205,7 +221,7 @@ export default function Bills() {
 
   const calculateYourShare = (bill) => {
     if (bill.splitType === "custom" && bill.customSplitAmounts) {
-      const yourAmount = bill.customSplitAmounts["You"];
+      const yourAmount = bill.customSplitAmounts[myName];
       return yourAmount ? parseFloat(yourAmount) : 0;
     }
     return bill.amount / bill.splitBetween.length;
@@ -319,9 +335,9 @@ export default function Bills() {
                   setNewBill(prev => ({
                     ...prev,
                     paymentDirection: "none",
-                    splitBetween: ["You"],
+                    splitBetween: [myName],
                     splitType: "even",
-                    payer: "You"
+                    payer: myName
                   }));
                 }}
               >
@@ -342,7 +358,7 @@ export default function Bills() {
                   ...prev,
                   paymentDirection: "outgoing",
                   splitBetween: [],
-                  payer: "You"
+                  payer: myName
                 }))}
               >
                 I Need to Pay Someone
@@ -362,7 +378,7 @@ export default function Bills() {
                   ...prev,
                   paymentDirection: "incoming",
                   splitBetween: [],
-                  payer: "You"
+                  payer: myName
                 }))}
               >
                 Someone Owes Me
@@ -376,26 +392,26 @@ export default function Bills() {
             </p>
 
             <div style={splitButtonsContainer}>
-              {roommates.map((roommate) => {
-                const shouldShow = newBill.paymentDirection === "none" || roommate !== "You";
+              {memberOptions.map((person) => {
+                const shouldShow = newBill.paymentDirection === "none" || person !== myName;
                 if (!shouldShow) return null;
-                
+
                 return (
                   <button
-                    key={roommate}
+                    key={person}
                     type="button"
-                    onClick={() => handleSplitToggle(roommate)}
+                    onClick={() => handleSplitToggle(person)}
                     style={{
                       ...splitPersonButtonStyle,
-                      backgroundColor: newBill.splitBetween.includes(roommate)
+                      backgroundColor: newBill.splitBetween.includes(person)
                         ? "var(--habita-accent)"
                         : "var(--habita-chip)",
-                      color: newBill.splitBetween.includes(roommate)
+                      color: newBill.splitBetween.includes(person)
                         ? "#ffffff"
                         : "var(--habita-text)",
                     }}
                   >
-                    {roommate}
+                    {person}
                   </button>
                 );
               })}
@@ -584,6 +600,16 @@ export default function Bills() {
                       {statusDisplay[bill.status]?.label ?? bill.status ?? "Unknown"}
                     </button>
                     <button
+                      onClick={() => {
+                        const ok = window.confirm("Delete this bill?");
+                        if (!ok) return;
+                        deleteBill(bill.id);
+                      }}
+                      style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
+                    >
+                      Delete
+                    </button>
+                    <button
                       onClick={() => setChatOpen(bill.id)}
                       style={{
                         ...editButtonStyle,
@@ -656,18 +682,16 @@ export default function Bills() {
                     <div style={paymentChipsContainer}>
                       {bill.paymentDirection === "outgoing" ? (
                         <button
-                          onClick={() => togglePayment(bill.id, "You")}
+                          onClick={() => togglePayment(bill.id, myName)}
                           style={{
                             ...paymentChipStyle,
-                            backgroundColor: (bill.payments && bill.payments["You"])
+                            backgroundColor: bill.payments?.[myName]
                               ? "rgba(88, 204, 2, 0.18)"
                               : "rgba(212, 38, 38, 0.15)",
-                            color: (bill.payments && bill.payments["You"])
-                              ? "#389e0d"
-                              : "#d42626",
+                            color: bill.payments?.[myName] ? "#389e0d" : "#d42626",
                           }}
                         >
-                          You {(bill.payments && bill.payments["You"]) ? "✓" : "✗"}
+                          {myName} {bill.payments?.[myName] ? "✓" : "✗"}
                         </button>
                       ) : (
                         bill.splitBetween.map((person) => (
@@ -731,7 +755,8 @@ export default function Bills() {
               contextType="bill"
               contextId={chatOpen}
               title={`Bill Chat: ${bills.find(b => b.id === chatOpen)?.title}`}
-              participants={["Alex", "Sam", "Jordan", "You"]}
+              participants={memberOptions}
+              currentUserName={myName}
               onAfterSend={(threadId) => {
                 setChatOpen(null);
                 navigate("/chat", { state: { openThreadId: threadId } });

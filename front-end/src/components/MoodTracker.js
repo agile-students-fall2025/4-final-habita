@@ -49,7 +49,7 @@ export default function MoodTracker({
   onCheckInRequest,
 }) {
   const { user: currentUser } = useUser();
-  const currentUserName = currentUser?.name || "You";
+  const currentUserName = currentUser?.name || currentUser?.username || "";
   const isCompact = variant === "compact";
   const [mood, setMood] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
