@@ -565,6 +565,21 @@ export default function Bills() {
             const billTypeColor = getBillTypeColor(bill.paymentDirection);
             return (
               <div id={`bill-card-${bill.id}`} key={bill.id} style={billCardStyle}>
+                <button
+                  onClick={() =>
+                    updateBillStatus(bill.id, bill.status === "paid" ? "unpaid" : "paid")
+                  }
+                  style={{
+                    ...statusChipStyle,
+                    position: "absolute",
+                    top: "1rem",
+                    right: "1.25rem",
+                    backgroundColor: statusDisplay[bill.status]?.bg ?? "rgba(0,0,0,0.06)",
+                    color: statusDisplay[bill.status]?.fg ?? "var(--habita-text)",
+                  }}
+                >
+                  {statusDisplay[bill.status]?.label ?? bill.status ?? "Unknown"}
+                </button>
                 <div style={billTypeIndicatorStyle}>
                   <span style={{
                     ...billTypeBadgeStyle,
@@ -578,26 +593,24 @@ export default function Bills() {
                 <div style={billHeaderStyle}>
                   <h3 style={billTitleStyle}>{bill.title}</h3>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                      onClick={() => setChatOpen(bill.id)}
+                      style={{
+                        ...editButtonStyle,
+                        background: "var(--habita-chip)",
+                        color: "var(--habita-accent)",
+                      }}
+                    >
+                      Chat
+                    </button>
                     <button
                       onClick={() => {
                         setEditingBill(bill);
                         setShowForm(true);
                       }}
-                      style={editButtonStyle}
+                      style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
                     >
                       Edit
-                    </button>
-                    <button
-                      onClick={() =>
-                        updateBillStatus(bill.id, bill.status === "paid" ? "unpaid" : "paid")
-                      }
-                      style={{
-                        ...statusChipStyle,
-                        backgroundColor: statusDisplay[bill.status]?.bg ?? "rgba(0,0,0,0.06)",
-                        color: statusDisplay[bill.status]?.fg ?? "var(--habita-text)",
-                      }}
-                    >
-                      {statusDisplay[bill.status]?.label ?? bill.status ?? "Unknown"}
                     </button>
                     <button
                       onClick={() => {
@@ -608,16 +621,6 @@ export default function Bills() {
                       style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
                     >
                       Delete
-                    </button>
-                    <button
-                      onClick={() => setChatOpen(bill.id)}
-                      style={{
-                        ...editButtonStyle,
-                        background: "var(--habita-chip)",
-                        color: "var(--habita-accent)",
-                      }}
-                    >
-                      Chat
                     </button>
 
                   </div>
@@ -1056,6 +1059,7 @@ const billCardStyle = {
   borderRadius: "14px",
   border: "1px solid rgba(74,144,226,0.25)",
   transition: "transform 0.2s ease",
+  position: "relative",
 };
 
 const billTypeIndicatorStyle = {

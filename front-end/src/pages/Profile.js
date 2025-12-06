@@ -73,13 +73,6 @@ export default function Profile() {
           <button
             type="button"
             style={secondaryButtonStyle}
-            onClick={() => navigate("/household")}
-          >
-            Manage Household
-          </button>
-          <button
-            type="button"
-            style={secondaryButtonStyle}
             onClick={() => navigate("/profile/edit")}
           >
             Edit Profile
@@ -144,13 +137,13 @@ export default function Profile() {
 
       <section style={groupCardStyle}>
         <header style={sectionHeaderStyle}>
-          <h3 style={sectionTitleStyle}>My Group</h3>
+          <h3 style={sectionTitleStyle}>{household?.name || "My Household"}</h3>
           <button
             type="button"
             style={ghostButtonStyle}
-            onClick={() => setShowInvite((prev) => !prev)}
+            onClick={() => navigate("/household")}
           >
-            {showInvite ? "Hide Invite" : "Invite Roommate"}
+            Manage Household
           </button>
         </header>
         {householdLoading ? (
@@ -200,7 +193,16 @@ export default function Profile() {
 
       {showInvite && (
         <section style={inviteCardStyle}>
-          <h3 style={sectionTitleStyle}>Invite Roommates</h3>
+          <div style={sectionHeaderStyle}>
+            <h3 style={sectionTitleStyle}>Invite Roommates</h3>
+            <button
+              type="button"
+              style={ghostButtonStyle}
+              onClick={() => setShowInvite(false)}
+            >
+              Hide Invites
+            </button>
+          </div>
           <p style={sectionHintStyle}>
             {householdLoading
               ? "Loading your invite code..."

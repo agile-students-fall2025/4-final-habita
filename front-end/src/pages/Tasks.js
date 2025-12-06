@@ -607,16 +607,18 @@ const helperText =
                   <h3 style={taskTitleStyle}>{task.title}</h3>
                   <div style={taskMetaStyle}>
                     <span>Due: {formatDueLabel(task.due)}</span>
-                    <span>
-                      Assigned: {Array.isArray(task.assignees)
-                        ? task.assignees.join(", ")
-                        : task.assignees}
-                    </span>
                     {repeatLabel && (
                       <span style={repeatBadgeStyle}>
                         {repeatLabel}
                       </span>
                     )}
+                  </div>
+                  <div style={taskAssignedStyle}>
+                    <span>
+                      Assigned: {Array.isArray(task.assignees)
+                        ? task.assignees.join(", ")
+                        : task.assignees}
+                    </span>
                   </div>
                 </div>
                 <span
@@ -628,31 +630,33 @@ const helperText =
                 >
                   {statusDisplay[task.status]?.label ?? task.status ?? "Unknown"}
                 </span>
-                <button
-                  type="button"
-                  style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
-                  onClick={() => setChatOpen(task.id)}
-                >
-                  Chat
-                </button>
-                <button
-                  type="button"
-                  style={editButtonStyle}
-                  onClick={() => handleEdit(task)}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  style={editButtonStyle}
-                  onClick={() => {
-                    const confirmDelete = window.confirm("Delete this task?");
-                    if (!confirmDelete) return;
-                    deleteTask(task.id);
-                  }}
-                >
-                  Delete
-                </button>
+                <div style={actionsRowStyle}>
+                  <button
+                    type="button"
+                    style={{ ...editButtonStyle, color: "var(--habita-accent)", whiteSpace: "nowrap" }}
+                    onClick={() => setChatOpen(task.id)}
+                  >
+                    Chat
+                  </button>
+                  <button
+                    type="button"
+                    style={editButtonStyle}
+                    onClick={() => handleEdit(task)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    style={editButtonStyle}
+                    onClick={() => {
+                      const confirmDelete = window.confirm("Delete this task?");
+                      if (!confirmDelete) return;
+                      deleteTask(task.id);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
               {editingId === task.id && editDraft && (
                 <form
@@ -1036,17 +1040,22 @@ const taskCardStyle = {
   padding: "0.9rem 1rem",
   display: "flex",
   flexDirection: "column",
+  position: "relative",
 };
 
 const taskCardRowStyle = {
   display: "flex",
   alignItems: "center",
   gap: "0.8rem",
+  flexWrap: "nowrap",
 };
 
 const statusToggleStyle = {
   width: "22px",
   height: "22px",
+  minWidth: "22px",
+  minHeight: "22px",
+  flexShrink: 0,
   borderRadius: "50%",
   border: "1.5px solid var(--habita-accent)",
   background: "var(--habita-card)",
@@ -1071,6 +1080,7 @@ const taskContentStyle = {
   display: "flex",
   flexDirection: "column",
   gap: "0.35rem",
+  minWidth: 0,
 };
 
 const taskTitleStyle = {
@@ -1083,6 +1093,11 @@ const taskMetaStyle = {
   display: "flex",
   gap: "0.9rem",
   flexWrap: "wrap",
+  fontSize: "0.8rem",
+  color: "var(--habita-muted)",
+};
+
+const taskAssignedStyle = {
   fontSize: "0.8rem",
   color: "var(--habita-muted)",
 };
@@ -1101,6 +1116,9 @@ const statusPillStyle = {
   fontSize: "0.7rem",
   fontWeight: 600,
   padding: "0.25rem 0.6rem",
+  position: "absolute",
+  top: "0.75rem",
+  right: "1rem",
 };
 
 const editButtonStyle = {
@@ -1110,6 +1128,16 @@ const editButtonStyle = {
   fontSize: "0.75rem",
   fontWeight: 600,
   cursor: "pointer",
+};
+
+const actionsRowStyle = {
+  marginLeft: "auto",
+  display: "flex",
+  alignItems: "center",
+  gap: "0.5rem",
+  flexWrap: "nowrap",
+  justifyContent: "flex-end",
+  maxWidth: "100%",
 };
 
 const formSectionStyle = {

@@ -98,6 +98,9 @@ export default function HouseholdManagement() {
   if (!household && view === "main") {
     return (
       <div style={pageStyle}>
+        <button style={backButtonStyle} onClick={() => navigate("/profile")}>
+          ← Back to Profile
+        </button>
         <section style={headerSectionStyle}>
           <h2 style={titleStyle}>Household Setup</h2>
           <p style={subtitleStyle}>
@@ -132,6 +135,9 @@ export default function HouseholdManagement() {
   if (view === "create") {
     return (
       <div style={pageStyle}>
+        <button style={backButtonStyle} onClick={() => navigate("/profile")}>
+          ← Back to Profile
+        </button>
         <section style={headerSectionStyle}>
           <h2 style={titleStyle}>Create New Household</h2>
           <p style={subtitleStyle}>Give your household a name</p>
@@ -163,6 +169,9 @@ export default function HouseholdManagement() {
   if (view === "join") {
     return (
       <div style={pageStyle}>
+        <button style={backButtonStyle} onClick={() => navigate("/profile")}>
+          ← Back to Profile
+        </button>
         <section style={headerSectionStyle}>
           <h2 style={titleStyle}>Join Household</h2>
           <p style={subtitleStyle}>Enter the 6-character invite code</p>
@@ -194,6 +203,9 @@ export default function HouseholdManagement() {
 
   return (
     <div style={pageStyle}>
+      <button style={backButtonStyle} onClick={() => navigate("/profile")}>
+        ← Back to Profile
+      </button>
       <section style={headerSectionStyle}>
         <h2 style={titleStyle}>{household.name}</h2>
         <p style={subtitleStyle}>Manage your household and members</p>
@@ -247,10 +259,6 @@ export default function HouseholdManagement() {
           Leave Household
         </button>
       </section>
-
-      <button style={backButtonStyle} onClick={() => navigate("/profile")}>
-        ← Back to Profile
-      </button>
     </div>
   );
 }
