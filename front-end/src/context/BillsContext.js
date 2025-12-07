@@ -137,6 +137,7 @@ export function BillsProvider({ children }) {
       const token = getAuthToken();
       if (!token) throw new Error("Not authenticated");
 
+      // This hits the /status endpoint (Expects: { status: "paid" | "unpaid" })
       const response = await fetch(`${API_URL}/bills/${id}/status`, {
         method: "PATCH",
         headers: {

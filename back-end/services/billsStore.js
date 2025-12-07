@@ -51,7 +51,6 @@ class BillsStore {
   async update(userId, billId, updates) {
     if (!userId || !billId) return null
 
-
     const user = await User.findById(userId).lean()
     if (!user || !user.householdId) return null
 
@@ -67,7 +66,6 @@ class BillsStore {
   async delete(userId, billId) {
     if (!userId || !billId) return null
 
-    
     const user = await User.findById(userId).lean()
     if (!user || !user.householdId) return null
 
@@ -75,22 +73,43 @@ class BillsStore {
     return bill ? bill.toObject() : null
   }
 
-  async togglePayment(userId, billId, person) {
+async togglePayment(userId, billId, person) {
     if (!userId || !billId) return null
 
-  
+    if (!person || typeof person !== 'string') {
+        return null; 
+    }
+
     const user = await User.findById(userId).lean()
     if (!user || !user.householdId) return null
 
     const bill = await Bill.findOne({ _id: billId, householdId: user.householdId })
     if (!bill) return null
 
-    const payments = bill.payments || new Map()
-    payments.set(person, !payments.get(person))
+    let paymentsObj = {};
+    if (bill.payments && typeof bill.payments.toJSON === 'function') {
+        paymentsObj = bill.payments.toJSON(); 
+    } else if (bill.payments && bill.payments instanceof Map) {
+        paymentsObj = Object.fromEntries(bill.payments);
+    } else if (typeof bill.payments === 'object') {
+        paymentsObj = bill.payments; 
+    }
+
+    const currentStatus = !!paymentsObj[person];
+    paymentsObj[person] = !currentStatus;
+
+    bill.payments = paymentsObj;
+
+    const splitList = Array.isArray(bill.splitBetween) ? bill.splitBetween : [];
     
-    const allPaid = bill.splitBetween.every((p) => payments.get(p))
-    bill.payments = payments
-    bill.status = allPaid ? "paid" : "unpaid"
+    if (splitList.length > 0) {
+        const allPaid = splitList.every((p) => paymentsObj[p] === true);
+        bill.status = allPaid ? "paid" : "unpaid";
+    } else {
+        bill.status = "unpaid";
+    }
+    
+    bill.markModified('payments');
     
     await bill.save()
     return bill.toObject()
@@ -98,6 +117,10 @@ class BillsStore {
 
   async updateStatus(userId, billId, newStatus) {
     if (!userId || !billId) return null
+
+    if (!["paid", "unpaid"].includes(newStatus)) {
+        return null; 
+    }
 
     const user = await User.findById(userId).lean()
     if (!user || !user.householdId) return null
@@ -108,9 +131,15 @@ class BillsStore {
     bill.status = newStatus
     
     if (newStatus === "paid") {
-      const payments = new Map()
-      bill.splitBetween.forEach((person) => payments.set(person, true))
-      bill.payments = payments
+      const splitList = Array.isArray(bill.splitBetween) ? bill.splitBetween : [];
+      const newPaymentsObj = {};
+      
+      splitList.forEach((person) => {
+          if(person) newPaymentsObj[person] = true;
+      })
+      
+      bill.payments = newPaymentsObj;
+      bill.markModified('payments');
     }
     
     await bill.save()
