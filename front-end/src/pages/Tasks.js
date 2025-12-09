@@ -272,7 +272,7 @@ export default function Tasks() {
     return [...withDueApplied].sort(
       (a, b) => dueValue(a.due) - dueValue(b.due)
     );
-  }, [tasks, filter, showMineOnly, dueFilter, todayISO]);
+  }, [tasks, filter, showMineOnly, dueFilter, todayISO, isAssignedToMe]);
 
 const helperText =
   "✨ Tap the status dot to move a task from pending → in progress → completed.";
@@ -357,20 +357,28 @@ const helperText =
             {stats.pending} active ・ {stats.completed} completed
           </p>
         </div>
-        <button
-          type="button"
-          style={headerAddButtonStyle}
-          onClick={() => {
-            setShowForm(true);
-            setEditingId(null);
-            setForm(createDefaultForm());
-          }}
-        >
-          +
-        </button>
+        {household && (
+          <button
+            type="button"
+            style={headerAddButtonStyle}
+            onClick={() => {
+              setShowForm(true);
+              setEditingId(null);
+              setForm(createDefaultForm());
+            }}
+          >
+            +
+          </button>
+        )}
       </section>
 
-      {showForm && (
+      {!household && (
+        <section style={listSectionStyle}>
+          <p style={emptyStateStyle}>Join or create a household to manage shared tasks.</p>
+        </section>
+      )}
+
+      {household && showForm && (
         <section style={{ ...formSectionStyle, marginTop: "0.5rem" }}>
           <div style={formHeaderStyle}>
             <h3 style={formTitleStyle}>
@@ -511,7 +519,7 @@ const helperText =
         </section>
       )}
 
-      <section style={filtersSectionStyle}>
+      {household && (<section style={filtersSectionStyle}>
         <div style={filterChipRowStyle}>
           {filterOptions.map((option) => {
             const isActive = filter === option.id;
@@ -577,9 +585,42 @@ const helperText =
             Only My Tasks
           </span>
         </label>
-      </section>
+        <div style={{ ...dateFilterRowStyle, width: "100%" }}>
+          <input
+            type="date"
+            value={
+              typeof dueFilter === "object" && dueFilter?.type === "date"
+                ? dueFilter.value
+                : ""
+            }
+            onChange={(event) => {
+              const val = event.target.value;
+              if (val) {
+                setDueFilter({ type: "date", value: val });
+              } else {
+                setDueFilter(null);
+              }
+            }}
+            placeholder="Filter by date"
+            style={dateInputStyle}
+            aria-label="Filter by date"
+          />
+          {typeof dueFilter === "object" &&
+            dueFilter?.type === "date" &&
+            dueFilter?.value && (
+              <button
+                type="button"
+                onClick={() => setDueFilter(null)}
+                style={clearDateButtonStyle}
+                aria-label="Clear date filter"
+              >
+                Clear
+              </button>
+            )}
+        </div>
+      </section>)}
 
-      <section style={listSectionStyle} ref={listTopRef}>
+      {household && (<section style={listSectionStyle} ref={listTopRef}>
         <p style={helperTextStyle}>{helperText}</p>
 
         {filteredTasks.length === 0 ? (
@@ -843,7 +884,7 @@ const helperText =
             )
           })
         )}
-      </section>
+      </section>)}
 
       {chatOpen && (
         <div style={{
@@ -969,6 +1010,28 @@ const filterChipStyle = {
   color: "var(--habita-muted)",
   fontWeight: 600,
   transition: "all 0.2s ease",
+};
+
+const dateFilterRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.4rem",
+  marginLeft: "0.25rem",
+};
+
+const dateInputStyle = {
+  border: "1px solid var(--habita-border)",
+  borderRadius: "999px",
+  background: "var(--habita-card)",
+  color: "var(--habita-text)",
+  fontSize: "0.8rem",
+  padding: "0.35rem 0.6rem",
+  outline: "none",
+};
+
+const clearDateButtonStyle = {
+  ...filterChipStyle,
+  padding: "0.35rem 0.6rem",
 };
 
 const mineToggleStyle = {

@@ -186,7 +186,10 @@ export function UserProvider({ children }) {
         password,
       });
 
-      const userProfile = normalizeUser(payload.username || normalizedUsername);
+      const userProfile = normalizeUser(
+        payload.username || normalizedUsername,
+        payload.displayName || undefined
+      );
       persistUser(userProfile);
       persistToken(payload.token);
       return userProfile;

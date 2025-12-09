@@ -29,7 +29,6 @@ class BillsStore {
     }
 
     const bill = new Bill({
-      userId,
       householdId: user.householdId,
       title: payload.title || "Untitled bill",
       amount: payload.amount || 0,

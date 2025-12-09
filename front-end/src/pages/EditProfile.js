@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000/api";
+
 export default function EditProfile() {
   const navigate = useNavigate();
-  const { user, updateUser, avatarOptions } = useUser();
+  const { user, updateUser, avatarOptions, token } = useUser();
   const [form, setForm] = useState({
     name: user.name,
     email: user.email,
@@ -17,10 +19,25 @@ export default function EditProfile() {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (form.password && form.password !== form.confirm) {
       return;
+    }
+    // Persist displayName on server when authenticated
+    try {
+      if (token) {
+        await fetch(`${API_URL}/users/me`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ displayName: form.name }),
+        });
+      }
+    } catch (_) {
+      // ignore network errors; we'll still update local
     }
     updateUser({
       name: form.name,

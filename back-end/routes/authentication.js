@@ -165,6 +165,7 @@ const authenticationRouter = () => {
           message: "User logged in successfully.",
           token,
           username: user.username,
+          displayName: user.displayName || "",
         })
       } catch (err) {
         console.error(`Error looking up user: ${err}`)
