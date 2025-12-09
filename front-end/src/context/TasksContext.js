@@ -107,7 +107,16 @@ export function TasksProvider({ children }) {
         },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("Failed to create task");
+      if (!res.ok) {
+        let detail = "Failed to create task";
+        try {
+          const data = await res.json();
+          detail = data?.error || detail;
+        } catch (_) {
+          /* noop */
+        }
+        throw new Error(detail);
+      }
       const data = await res.json();
       const created = normalizeTask(data.data);
       setTasks((prev) => [created, ...prev]);

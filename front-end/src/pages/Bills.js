@@ -39,6 +39,7 @@ export default function Bills() {
   const [editingBill, setEditingBill] = useState(null);
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
+  const [dateFilter, setDateFilter] = useState("");
 
   const memberOptions = useMemo(() => {
     const names = new Set([myName]);
@@ -74,7 +75,7 @@ export default function Bills() {
     if (!location.state) {
       return;
     }
-    const { openForm, filter: targetFilter, openChatForBillId } = location.state;
+    const { openForm, filter: targetFilter, openChatForBillId, fromCalendarDate } = location.state;
     let shouldReplace = false;
 
     if (openForm) {
@@ -84,6 +85,12 @@ export default function Bills() {
 
     if (targetFilter) {
       setFilter(targetFilter);
+      shouldReplace = true;
+    }
+
+    if (fromCalendarDate) {
+      const token = typeof fromCalendarDate === "string" ? fromCalendarDate.slice(0, 10) : "";
+      setDateFilter(token);
       shouldReplace = true;
     }
 
@@ -120,7 +127,7 @@ export default function Bills() {
     } else {
       setNewBill(createInitialBillState());
     }
-  }, [editingBill, createInitialBillState]);
+  }, [editingBill, createInitialBillState, myName]);
 
   const filteredBills = bills.filter((bill) => {
     if (filter === "all") return true;
@@ -129,6 +136,12 @@ export default function Bills() {
     if (filter === "general") return bill.paymentDirection === "none";
     return bill.status === filter;
   });
+
+  const filteredByDate = dateFilter
+    ? filteredBills.filter(
+        (bill) => typeof bill?.dueDate === "string" && bill.dueDate.slice(0, 10) === dateFilter
+      )
+    : filteredBills;
 
   const validateSplitAmounts = () => {
     if (newBill.splitType === "custom" && newBill.splitBetween.length > 1) {
@@ -589,11 +602,32 @@ export default function Bills() {
         })}
       </div>
 
+      <div style={dateFilterRowStyle}>
+        <input
+          type="date"
+          value={dateFilter || ""}
+          onChange={(event) => setDateFilter(event.target.value || "")}
+          placeholder="Filter by date"
+          aria-label="Filter by date"
+          style={dateInputStyle}
+        />
+        {dateFilter && (
+          <button
+            type="button"
+            onClick={() => setDateFilter("")}
+            style={clearDateButtonStyle}
+            aria-label="Clear date filter"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       <div style={billsListStyle}>
-        {filteredBills.length === 0 ? (
+        {filteredByDate.length === 0 ? (
           <p style={emptyStateStyle}>No bills in this view.</p>
         ) : (
-          filteredBills.map((bill) => {
+          filteredByDate.map((bill) => {
             const billTypeColor = getBillTypeColor(bill.paymentDirection);
             return (
               <div id={`bill-card-${bill.id}`} key={bill.id} style={billCardStyle}>
@@ -1066,6 +1100,28 @@ const filterButtonStyle = {
   color: "var(--habita-muted)",
   fontWeight: 600,
   transition: "all 0.2s ease",
+};
+
+const dateFilterRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.4rem",
+  marginLeft: "0.25rem",
+};
+
+const dateInputStyle = {
+  border: "1px solid var(--habita-border)",
+  borderRadius: "999px",
+  background: "var(--habita-card)",
+  color: "var(--habita-text)",
+  fontSize: "0.8rem",
+  padding: "0.35rem 0.6rem",
+  outline: "none",
+};
+
+const clearDateButtonStyle = {
+  ...filterButtonStyle,
+  padding: "0.35rem 0.6rem",
 };
 
 const billsListStyle = {

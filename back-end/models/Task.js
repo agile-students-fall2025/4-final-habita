@@ -29,6 +29,12 @@ const TaskSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    householdId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Household",
+      required: true,
+      index: true,
+    },
     title: {
       type: String,
       required: true,

@@ -1,20 +1,30 @@
 const Task = require("../models/Task")
+const User = require("../models/User")
 
 class TasksStore {
   async list(userId) {
     if (!userId) return []
-    return await Task.find({ userId }).sort({ due: 1, createdAt: -1 }).lean()
+    const user = await User.findById(userId).lean()
+    if (!user || !user.householdId) return []
+    return await Task.find({ householdId: user.householdId }).sort({ due: 1, createdAt: -1 }).lean()
   }
 
   async get(userId, taskId) {
     if (!userId || !taskId) return null
-    return await Task.findOne({ _id: taskId, userId }).lean()
+    const user = await User.findById(userId).lean()
+    if (!user || !user.householdId) return null
+    return await Task.findOne({ _id: taskId, householdId: user.householdId }).lean()
   }
 
   async create(userId, payload) {
     if (!userId) throw new Error("User ID required")
+    const user = await User.findById(userId).lean()
+    if (!user || !user.householdId) {
+      throw new Error("User must belong to a household to create tasks")
+    }
     const task = new Task({
       userId,
+      householdId: user.householdId,
       title: payload.title || "Untitled task",
       due: payload.due || new Date().toISOString().slice(0, 10),
       assignees: Array.isArray(payload.assignees) ? payload.assignees : ["Unassigned"],
@@ -31,6 +41,8 @@ class TasksStore {
 
   async update(userId, taskId, updates) {
     if (!userId || !taskId) return null
+    const user = await User.findById(userId).lean()
+    if (!user || !user.householdId) return null
     const normalized = { ...updates }
     if (updates?.repeat) {
       normalized.repeat = {
@@ -40,7 +52,7 @@ class TasksStore {
       }
     }
     const task = await Task.findOneAndUpdate(
-      { _id: taskId, userId },
+      { _id: taskId, householdId: user.householdId },
       { $set: normalized },
       { new: true, runValidators: true }
     )
@@ -49,15 +61,19 @@ class TasksStore {
 
   async delete(userId, taskId) {
     if (!userId || !taskId) return null
-    const task = await Task.findOneAndDelete({ _id: taskId, userId })
+    const user = await User.findById(userId).lean()
+    if (!user || !user.householdId) return null
+    const task = await Task.findOneAndDelete({ _id: taskId, householdId: user.householdId })
     return task ? task.toObject() : null
   }
 
   async updateStatus(userId, taskId, status) {
     if (!userId || !taskId) return null
     if (!["pending", "in-progress", "completed"].includes(status)) return null
+    const user = await User.findById(userId).lean()
+    if (!user || !user.householdId) return null
     const task = await Task.findOneAndUpdate(
-      { _id: taskId, userId },
+      { _id: taskId, householdId: user.householdId },
       { $set: { status } },
       { new: true, runValidators: true }
     )
@@ -66,7 +82,9 @@ class TasksStore {
 
   async cycleStatus(userId, taskId) {
     if (!userId || !taskId) return null
-    const task = await Task.findOne({ _id: taskId, userId })
+    const user = await User.findById(userId).lean()
+    if (!user || !user.householdId) return null
+    const task = await Task.findOne({ _id: taskId, householdId: user.householdId })
     if (!task) return null
     const next =
       task.status === "pending" ? "in-progress" :
