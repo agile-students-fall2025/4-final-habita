@@ -34,9 +34,15 @@ class ChatStore {
   }
 
   listThreads(filters = {}) {
-    const { tag, contextType } = filters
+    const { tag, contextType, contextId } = filters
+    const normalizeId = (value) =>
+      value === undefined || value === null ? null : value.toString()
+    const targetContextId = normalizeId(contextId)
     const list = this.threads.filter((thread) => {
       if (contextType && thread.contextType !== contextType) return false
+      if (targetContextId !== null && normalizeId(thread.contextId) !== targetContextId) {
+        return false
+      }
       if (tag && !(thread.tags || []).includes(tag)) return false
       return true
     })

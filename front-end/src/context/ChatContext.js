@@ -17,7 +17,15 @@ export function ChatProvider({ children }) {
   const [messagesByThread, setMessagesByThread] = useState({});
   const [status, setStatus] = useState({ loading: false, error: null });
   const { household } = useHousehold();
-  const { user } = useUser();
+  const { user, token } = useUser();
+
+  const buildHeaders = useCallback(
+    (extra = {}) => ({
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...extra,
+    }),
+    [token]
+  );
 
   const defaultParticipants = useMemo(() => {
     const names = new Set([user?.name || user?.username || "Anonymous"]);
@@ -37,7 +45,7 @@ export function ChatProvider({ children }) {
           : defaultParticipants;
       const response = await fetch(`${API_BASE}/threads`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: buildHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           threadId,
           contextType,
@@ -59,13 +67,15 @@ export function ChatProvider({ children }) {
       });
       return payload.data;
     },
-    [defaultParticipants]
+    [defaultParticipants, buildHeaders]
   );
 
   const fetchThreads = useCallback(async () => {
     setStatus((prev) => ({ ...prev, loading: true }));
     try {
-      const response = await fetch(`${API_BASE}/threads`);
+      const response = await fetch(`${API_BASE}/threads`, {
+        headers: buildHeaders(),
+      });
       if (!response.ok) {
         throw new Error(`Failed to load chat threads (${response.status})`);
       }
@@ -83,7 +93,7 @@ export function ChatProvider({ children }) {
       setStatus({ loading: false, error: error.message || "Unable to load chats" });
       return [];
     }
-  }, [defaultParticipants]);
+  }, [defaultParticipants, buildHeaders]);
 
   useEffect(() => {
     fetchThreads();
@@ -124,7 +134,9 @@ export function ChatProvider({ children }) {
           name,
           participants: participants && participants.length ? participants : defaultParticipants,
         });
-        const response = await fetch(`${API_BASE}/messages?${params.toString()}`);
+        const response = await fetch(`${API_BASE}/messages?${params.toString()}`, {
+          headers: buildHeaders(),
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch chat messages");
         }
@@ -141,7 +153,7 @@ export function ChatProvider({ children }) {
         return [];
       }
     },
-    [ensureThread]
+    [ensureThread, buildHeaders]
   );
 
   const sendMessage = useCallback(
@@ -153,7 +165,7 @@ export function ChatProvider({ children }) {
         : defaultParticipants;
       const response = await fetch(`${API_BASE}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: buildHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           threadId,
           contextType,
@@ -182,13 +194,14 @@ export function ChatProvider({ children }) {
       );
       return formatted;
     },
-    [defaultParticipants]
+    [defaultParticipants, buildHeaders]
   );
 
   const markThreadRead = useCallback(async (threadId) => {
     if (!threadId) return null;
     const response = await fetch(`${API_BASE}/threads/${threadId}/read`, {
       method: "PATCH",
+      headers: buildHeaders(),
     });
     if (!response.ok) {
       throw new Error("Unable to update read state");
@@ -198,7 +211,7 @@ export function ChatProvider({ children }) {
       prev.map((thread) => (thread.id === threadId ? payload.data : thread))
     );
     return payload.data;
-  }, []);
+  }, [buildHeaders]);
 
   const value = useMemo(
     () => ({

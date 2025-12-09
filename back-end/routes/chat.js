@@ -1,8 +1,11 @@
 const express = require("express")
+const passport = require("passport")
 const router = express.Router()
 const { chatStore } = require("../services/chatStore")
 
-router.get("/threads", (req, res) => {
+const auth = passport.authenticate("jwt", { session: false })
+
+router.get("/threads", auth, (req, res) => {
   const threads = chatStore.listThreads({
     tag: req.query.tag,
     contextType: req.query.contextType,
@@ -10,7 +13,7 @@ router.get("/threads", (req, res) => {
   res.json({ data: threads })
 })
 
-router.post("/threads", (req, res) => {
+router.post("/threads", auth, (req, res) => {
   const { threadId, contextType, contextId, name, participants, tags } = req.body
   if (!contextType && !threadId) {
     return res.status(400).json({
@@ -28,7 +31,7 @@ router.post("/threads", (req, res) => {
   res.status(201).json({ data: thread })
 })
 
-router.get("/threads/:id", (req, res) => {
+router.get("/threads/:id", auth, (req, res) => {
   const thread = chatStore.getThread({ threadId: req.params.id })
   if (!thread) {
     return res.status(404).json({ error: "Thread not found" })
@@ -36,7 +39,7 @@ router.get("/threads/:id", (req, res) => {
   res.json({ data: thread })
 })
 
-router.patch("/threads/:id/read", (req, res) => {
+router.patch("/threads/:id/read", auth, (req, res) => {
   const thread = chatStore.markThreadRead(req.params.id)
   if (!thread) {
     return res.status(404).json({ error: "Thread not found" })
@@ -44,7 +47,7 @@ router.patch("/threads/:id/read", (req, res) => {
   res.json({ data: thread })
 })
 
-router.get("/messages", (req, res) => {
+router.get("/messages", auth, (req, res) => {
   const { threadId, contextType, contextId } = req.query
   if (!threadId && !contextType) {
     return res
@@ -59,11 +62,14 @@ router.get("/messages", (req, res) => {
   res.json({ data: messages })
 })
 
-router.post("/messages", (req, res) => {
-  const { text, sender, threadId, contextType, contextId, participants, name } =
-    req.body
-  if (!text || !sender) {
-    return res.status(400).json({ error: "sender and text are required" })
+router.post("/messages", auth, (req, res) => {
+  const { text, threadId, contextType, contextId, participants, name } = req.body
+  const sender = req.user?.displayName || req.user?.username
+  if (!text) {
+    return res.status(400).json({ error: "text is required" })
+  }
+  if (!sender) {
+    return res.status(400).json({ error: "Unable to determine sender from user profile" })
   }
   const { message, thread } = chatStore.addMessage({
     text,
