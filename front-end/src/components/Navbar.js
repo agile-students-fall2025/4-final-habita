@@ -1,7 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 
 function Navbar() {
   const location = useLocation();
+  const { translate: t } = useUser();
   const active = (path) =>
     location.pathname === path
       ? "var(--habita-accent)"
@@ -24,31 +26,31 @@ function Navbar() {
         to="/home"
         style={{ color: active("/home"), textDecoration: "none", fontWeight: 600 }}
       >
-        Home
+        {t("nav.home")}
       </Link>
       <Link
         to="/tasks"
         style={{ color: active("/tasks"), textDecoration: "none", fontWeight: 600 }}
       >
-        Tasks
+        {t("nav.tasks")}
       </Link>
       <Link
         to="/bills"
         style={{ color: active("/bills"), textDecoration: "none", fontWeight: 600 }}
       >
-        Bills
+        {t("nav.bills")}
       </Link>
       <Link
         to="/calendar"
         style={{ color: active("/calendar"), textDecoration: "none", fontWeight: 600 }}
       >
-        Calendar
+        {t("nav.calendar")}
       </Link>
       <Link
         to="/profile"
         style={{ color: active("/profile"), textDecoration: "none", fontWeight: 600 }}
       >
-        Profile
+        {t("nav.profile")}
       </Link>
     </nav>
   );

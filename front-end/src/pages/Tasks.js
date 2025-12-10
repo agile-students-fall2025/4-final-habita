@@ -5,53 +5,6 @@ import ChatThread from "../components/ChatThread";
 import { useHousehold } from "../context/HouseholdContext";
 import { useUser } from "../context/UserContext";
 
-const repeatOptions = [
-  { id: "none", label: "Never" },
-  { id: "daily", label: "Daily" },
-  { id: "weekdays", label: "Weekdays" },
-  { id: "weekends", label: "Weekends" },
-  { id: "weekly", label: "Weekly" },
-  { id: "biweekly", label: "Biweekly" },
-  { id: "monthly", label: "Monthly" },
-  { id: "every-3-months", label: "Every 3 Months" },
-  { id: "every-6-months", label: "Every 6 Months" },
-  { id: "yearly", label: "Yearly" },
-  { id: "custom", label: "Custom" },
-];
-
-const repeatUnitOptions = [
-  { id: "days", label: "Days" },
-  { id: "weeks", label: "Weeks" },
-  { id: "months", label: "Months" },
-  { id: "years", label: "Years" },
-];
-
-
-const filterOptions = [
-  { id: "all", label: "All" },
-  { id: "pending", label: "Pending" },
-  { id: "in-progress", label: "In Progress" },
-  { id: "completed", label: "Completed" },
-];
-
-const statusDisplay = {
-  pending: {
-    label: "Pending",
-    fg: "#2563eb",
-    bg: "rgba(37, 99, 235, 0.16)",
-  },
-  "in-progress": {
-    label: "In Progress",
-    fg: "#3f9da5",
-    bg: "rgba(63, 157, 165, 0.18)",
-  },
-  completed: {
-    label: "Completed",
-    fg: "#1e3a8a",
-    bg: "rgba(30, 58, 138, 0.16)",
-  },
-};
-
 // format ISO 'YYYY-MM-DD' to local short label
 const formatDueLabel = (iso) => {
   const token = typeof iso === "string" ? iso.slice(0, 10) : "";
@@ -88,21 +41,9 @@ const ensureRepeat = (value) => {
   };
 };
 
-const formatRepeatLabel = (repeat) => {
-  if (!repeat || repeat.type === "none") return null;
-  if (repeat.type === "custom") {
-    const interval = repeat.interval || 1;
-    const unit = repeat.unit || "weeks";
-    const unitLabel = interval === 1 ? unit.replace(/s$/, "") : unit;
-    return `Repeats every ${interval} ${unitLabel}`;
-  }
-  const preset = repeatOptions.find((option) => option.id === repeat.type);
-  return preset ? preset.label : "Repeats";
-};
-
 export default function Tasks() {
   const todayISO = getTodayISO();
-  const { user } = useUser();
+  const { user, translate: t } = useUser();
   const { household } = useHousehold();
   const myName = user?.name || user?.username || "";
   const peopleOptions = useMemo(() => {
@@ -114,6 +55,48 @@ export default function Tasks() {
     return Array.from(names);
   }, [household?.members, myName]);
   const { tasks, addTask, updateTask, toggleTaskStatus, deleteTask, stats } = useTasks();
+  const repeatOptions = useMemo(() => ([
+    { id: "none", label: t("Never") },
+    { id: "daily", label: t("Daily") },
+    { id: "weekdays", label: t("Weekdays") },
+    { id: "weekends", label: t("Weekends") },
+    { id: "weekly", label: t("Weekly") },
+    { id: "biweekly", label: t("Biweekly") },
+    { id: "monthly", label: t("Monthly") },
+    { id: "every-3-months", label: t("Every 3 Months") },
+    { id: "every-6-months", label: t("Every 6 Months") },
+    { id: "yearly", label: t("Yearly") },
+    { id: "custom", label: t("Custom") },
+  ]), [t]);
+  const repeatUnitOptions = useMemo(() => ([
+    { id: "days", label: t("Days") },
+    { id: "weeks", label: t("Weeks") },
+    { id: "months", label: t("Months") },
+    { id: "years", label: t("Years") },
+  ]), [t]);
+  const filterOptions = useMemo(() => ([
+    { id: "all", label: t("All") },
+    { id: "pending", label: t("status.pending") },
+    { id: "in-progress", label: t("status.inProgress") },
+    { id: "completed", label: t("status.completed") },
+  ]), [t]);
+  const statusDisplay = useMemo(() => ({
+    pending: {
+      label: t("status.pending"),
+      fg: "#2563eb",
+      bg: "rgba(37, 99, 235, 0.16)",
+    },
+    "in-progress": {
+      label: t("status.inProgress"),
+      fg: "#3f9da5",
+      bg: "rgba(63, 157, 165, 0.18)",
+    },
+    completed: {
+      label: t("status.completed"),
+      fg: "#1e3a8a",
+      bg: "rgba(30, 58, 138, 0.16)",
+    },
+  }), [t]);
   const [filter, setFilter] = useState("all");
   const [showMineOnly, setShowMineOnly] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -134,6 +117,25 @@ export default function Tasks() {
   const location = useLocation();
   const navigate = useNavigate();
   const listTopRef = useRef(null);
+  const helperText = t("✨ Tap the status dot to move a task from pending → in progress → completed.");
+  const formatRepeatLabel = useCallback((repeat) => {
+    if (!repeat || repeat.type === "none") return null;
+    if (repeat.type === "custom") {
+      const interval = repeat.interval || 1;
+      const unit = repeat.unit || "weeks";
+      const unitLabel = interval === 1 ? unit.replace(/s$/, "") : unit;
+      return t("Repeats every {interval} {unit}", { interval, unit: unitLabel });
+    }
+    const preset = repeatOptions.find((option) => option.id === repeat.type);
+    return preset ? preset.label : t("Repeats");
+  }, [repeatOptions, t]);
+  const formatAssigneeNames = useCallback((value) => {
+    const names = Array.isArray(value) ? value : [value];
+    const cleaned = names
+      .filter(Boolean)
+      .map((name) => (name === "Unassigned" ? t("Unassigned") : name));
+    return cleaned.join(", ");
+  }, [t]);
 
   useEffect(() => {
     if (!location.state) {
@@ -274,9 +276,6 @@ export default function Tasks() {
     );
   }, [tasks, filter, showMineOnly, dueFilter, todayISO, isAssignedToMe]);
 
-const helperText =
-  "✨ Tap the status dot to move a task from pending → in progress → completed.";
-
   const handleSubmit = (event) => {
     event.preventDefault();
     const trimmedTitle = form.title.trim();
@@ -352,9 +351,9 @@ const helperText =
     <div style={pageStyle}>
       <section style={headerStyle}>
         <div style={headerTextStyle}>
-          <h2 style={titleStyle}>Tasks</h2>
+          <h2 style={titleStyle}>{t("Tasks")}</h2>
           <p style={headerSubtitleStyle}>
-            {stats.pending} active ・ {stats.completed} completed
+            {t("{pending} active ・ {completed} completed", { pending: stats.pending, completed: stats.completed })}
           </p>
         </div>
         {household && (
@@ -374,7 +373,7 @@ const helperText =
 
       {!household && (
         <section style={listSectionStyle}>
-          <p style={emptyStateStyle}>Join or create a household to manage shared tasks.</p>
+          <p style={emptyStateStyle}>{t("Join or create a household to manage shared tasks.")}</p>
         </section>
       )}
 
@@ -382,7 +381,7 @@ const helperText =
         <section style={{ ...formSectionStyle, marginTop: "0.5rem" }}>
           <div style={formHeaderStyle}>
             <h3 style={formTitleStyle}>
-              {editingId ? "Edit Task" : "Add Task"}
+              {editingId ? t("Edit Task") : t("Add Task")}
             </h3>
             <button
               type="button"
@@ -393,26 +392,26 @@ const helperText =
                 setForm(createDefaultForm());
               }}
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </div>
           <form onSubmit={handleSubmit} style={formStyle}>
             <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Task name</span>
+              <span style={fieldLabelStyle}>{t("Task name")}</span>
               <input
                 type="text"
                 value={form.title}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, title: event.target.value }))
                 }
-                placeholder="e.g. Book shared laundry slot"
+                placeholder={t("e.g. Book shared laundry slot")}
                 style={inputStyle}
                 required
               />
             </label>
             <div style={fieldRowStyle}>
               <label style={{ ...fieldStyle, flex: 1 }}>
-                <span style={fieldLabelStyle}>Due date</span>
+                <span style={fieldLabelStyle}>{t("Due date")}</span>
                 <input
                   type="date"
                   value={form.due}
@@ -423,7 +422,7 @@ const helperText =
                 />
               </label>
               <div style={{ ...fieldStyle, flex: 1 }}>
-                <span style={fieldLabelStyle}>Assigned to</span>
+                <span style={fieldLabelStyle}>{t("Assigned to")}</span>
                 <div style={assigneeChipsWrapperStyle}>
                   {peopleOptions.map((person) => {
                     const active = form.assignees.includes(person);
@@ -445,7 +444,7 @@ const helperText =
               </div>
             </div>
             <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Repeat</span>
+              <span style={fieldLabelStyle}>{t("Repeat")}</span>
               <select
                 value={form.repeat.type}
                 onChange={(event) => {
@@ -473,7 +472,7 @@ const helperText =
               {form.repeat.type === "custom" && (
                 <div style={customRepeatRowStyle}>
                   <label style={customRepeatFieldStyle}>
-                    <span style={fieldLabelStyle}>Every</span>
+                    <span style={fieldLabelStyle}>{t("Every")}</span>
                     <input
                       type="number"
                       min="1"
@@ -491,7 +490,7 @@ const helperText =
                     />
                   </label>
                   <label style={customRepeatFieldStyle}>
-                    <span style={fieldLabelStyle}>Unit</span>
+                    <span style={fieldLabelStyle}>{t("Unit")}</span>
                     <select
                       value={form.repeat.unit}
                       onChange={(event) =>
@@ -513,7 +512,7 @@ const helperText =
               )}
             </label>
             <button type="submit" style={submitButtonStyle}>
-              {editingId ? "Update Task" : "Save Task"}
+              {editingId ? t("Update Task") : t("Save Task")}
             </button>
           </form>
         </section>
@@ -582,7 +581,7 @@ const helperText =
                 : "var(--habita-muted)",
             }}
           >
-            Only My Tasks
+            {t("Only My Tasks")}
           </span>
         </label>
         <div style={{ ...dateFilterRowStyle, width: "100%" }}>
@@ -601,9 +600,9 @@ const helperText =
                 setDueFilter(null);
               }
             }}
-            placeholder="Filter by date"
+            placeholder={t("Filter by date")}
             style={dateInputStyle}
-            aria-label="Filter by date"
+            aria-label={t("Filter by date")}
           />
           {typeof dueFilter === "object" &&
             dueFilter?.type === "date" &&
@@ -612,9 +611,9 @@ const helperText =
                 type="button"
                 onClick={() => setDueFilter(null)}
                 style={clearDateButtonStyle}
-                aria-label="Clear date filter"
+                aria-label={t("Clear date filter")}
               >
-                Clear
+                {t("Clear")}
               </button>
             )}
         </div>
@@ -624,7 +623,7 @@ const helperText =
         <p style={helperTextStyle}>{helperText}</p>
 
         {filteredTasks.length === 0 ? (
-          <p style={emptyStateStyle}>No tasks in this view.</p>
+          <p style={emptyStateStyle}>{t("No tasks in this view.")}</p>
         ) : (
           filteredTasks.map((task) => {
             const repeatLabel = formatRepeatLabel(task.repeat)
@@ -640,14 +639,14 @@ const helperText =
                       ? statusToggleCompletedStyle
                       : {}),
                   }}
-                  aria-label="Toggle task status"
+                  aria-label={t("Toggle task status")}
                 >
                   {task.status === "completed" ? "✓" : ""}
                 </button>
                 <div style={taskContentStyle}>
                   <h3 style={taskTitleStyle}>{task.title}</h3>
                   <div style={taskMetaStyle}>
-                    <span>Due: {formatDueLabel(task.due)}</span>
+                    <span>{t("Due: {date}", { date: formatDueLabel(task.due) })}</span>
                     {repeatLabel && (
                       <span style={repeatBadgeStyle}>
                         {repeatLabel}
@@ -656,9 +655,9 @@ const helperText =
                   </div>
                   <div style={taskAssignedStyle}>
                     <span>
-                      Assigned: {Array.isArray(task.assignees)
-                        ? task.assignees.join(", ")
-                        : task.assignees}
+                      {t("Assigned: {names}", {
+                        names: formatAssigneeNames(task.assignees),
+                      })}
                     </span>
                   </div>
                 </div>
@@ -669,7 +668,7 @@ const helperText =
                     backgroundColor: statusDisplay[task.status]?.bg ?? "rgba(0,0,0,0.04)",
                   }}
                 >
-                  {statusDisplay[task.status]?.label ?? task.status ?? "Unknown"}
+                  {statusDisplay[task.status]?.label ?? task.status ?? t("Unknown")}
                 </span>
                 <div style={actionsRowStyle}>
                   <button
@@ -677,25 +676,25 @@ const helperText =
                     style={{ ...editButtonStyle, color: "var(--habita-accent)", whiteSpace: "nowrap" }}
                     onClick={() => setChatOpen(task.id)}
                   >
-                    Chat
+                    {t("Chat")}
                   </button>
                   <button
                     type="button"
                     style={editButtonStyle}
                     onClick={() => handleEdit(task)}
                   >
-                    Edit
+                    {t("Edit")}
                   </button>
                   <button
                     type="button"
                     style={editButtonStyle}
                     onClick={() => {
-                      const confirmDelete = window.confirm("Delete this task?");
+                      const confirmDelete = window.confirm(t("Delete this task?"));
                       if (!confirmDelete) return;
                       deleteTask(task.id);
                     }}
                   >
-                    Delete
+                    {t("Delete")}
                   </button>
                 </div>
               </div>
@@ -719,7 +718,7 @@ const helperText =
                   style={inlineFormStyle}
                 >
                   <label style={inlineFieldStyle}>
-                    <span style={inlineLabelStyle}>Task name</span>
+                    <span style={inlineLabelStyle}>{t("Task name")}</span>
                     <input
                       type="text"
                       value={editDraft.title}
@@ -735,7 +734,7 @@ const helperText =
                   </label>
                   <div style={inlineRowStyle}>
                     <label style={{ ...inlineFieldStyle, flex: 1 }}>
-                      <span style={inlineLabelStyle}>Due date</span>
+                      <span style={inlineLabelStyle}>{t("Due date")}</span>
                       <input
                         type="date"
                         value={editDraft.due}
@@ -749,7 +748,7 @@ const helperText =
                       />
                     </label>
                     <div style={{ ...inlineFieldStyle, flex: 1 }}>
-                      <span style={inlineLabelStyle}>Assigned to</span>
+                      <span style={inlineLabelStyle}>{t("Assigned to")}</span>
                       <div style={assigneeChipsWrapperStyle}>
                         {peopleOptions.map((person) => {
                           const active = editDraft.assignees.includes(person);
@@ -789,7 +788,7 @@ const helperText =
                     </div>
                   </div>
                 <label style={inlineFieldStyle}>
-                  <span style={inlineLabelStyle}>Repeat</span>
+                  <span style={inlineLabelStyle}>{t("Repeat")}</span>
                   <select
                     value={editDraft.repeat?.type || "none"}
                     onChange={(event) => {
@@ -817,7 +816,7 @@ const helperText =
                   {editDraft.repeat?.type === "custom" && (
                     <div style={customRepeatRowStyle}>
                       <label style={customRepeatFieldStyle}>
-                        <span style={fieldLabelStyle}>Every</span>
+                        <span style={fieldLabelStyle}>{t("Every")}</span>
                         <input
                           type="number"
                           min="1"
@@ -838,7 +837,7 @@ const helperText =
                         />
                       </label>
                       <label style={customRepeatFieldStyle}>
-                        <span style={fieldLabelStyle}>Unit</span>
+                        <span style={fieldLabelStyle}>{t("Unit")}</span>
                         <select
                           value={editDraft.repeat.unit}
                           onChange={(event) =>
@@ -872,10 +871,10 @@ const helperText =
                         setEditDraft(null);
                       }}
                     >
-                      Cancel
+                      {t("Cancel")}
                     </button>
                     <button type="submit" style={submitButtonStyle}>
-                      Update
+                      {t("Update")}
                     </button>
                   </div>
                 </form>
@@ -915,7 +914,7 @@ const helperText =
             <ChatThread
               contextType="task"
               contextId={chatOpen}
-              title={`Task Chat: ${tasks.find(t => t.id === chatOpen)?.title}`}
+              title={t("Task Chat: {title}", { title: tasks.find(t => t.id === chatOpen)?.title || "" })}
               participants={peopleOptions}
               currentUserName={myName}
               onAfterSend={(threadId) => {

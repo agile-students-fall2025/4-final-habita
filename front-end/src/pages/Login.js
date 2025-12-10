@@ -5,7 +5,7 @@ import { useUser } from "../context/UserContext";
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useUser();
+  const { login, isAuthenticated, translate: t } = useUser();
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -27,12 +27,12 @@ export default function Login() {
         await login({ username: form.username, password: form.password });
         navigate(redirectPath, { replace: true });
       } catch (err) {
-        setError(err.message || "Unable to log in. Please try again.");
+        setError(err.message || t("Unable to log in. Please try again."));
       } finally {
         setSubmitting(false);
       }
     },
-    [form.password, form.username, login, navigate, redirectPath]
+    [form.password, form.username, login, navigate, redirectPath, t]
   );
 
   const handleChange = useCallback((field) => (event) => {
@@ -44,16 +44,16 @@ export default function Login() {
     <div style={pageStyle}>
       <div style={cardStyle}>
         <div style={headerBlockStyle}>
-          <span style={eyebrowStyle}>Welcome back</span>
-          <h2 style={titleStyle}>Sign in to Habita</h2>
+          <span style={eyebrowStyle}>{t("Welcome back")}</span>
+          <h2 style={titleStyle}>{t("Sign in to Habita")}</h2>
           <p style={subtitleStyle}>
-            Keep up with shared tasks, bills, and roommate chats in one spot.
+            {t("Keep up with shared tasks, bills, and roommate chats in one spot.")}
           </p>
         </div>
 
         <form style={formStyle} onSubmit={handleSubmit}>
           <label style={fieldStyle}>
-            <span style={labelStyle}>Username</span>
+            <span style={labelStyle}>{t("Username")}</span>
             <input
               style={inputStyle}
               type="text"
@@ -65,7 +65,7 @@ export default function Login() {
             />
           </label>
           <label style={fieldStyle}>
-            <span style={labelStyle}>Password</span>
+            <span style={labelStyle}>{t("Password")}</span>
             <input
               style={inputStyle}
               type="password"
@@ -78,14 +78,14 @@ export default function Login() {
           </label>
           {error && <div style={errorStyle}>{error}</div>}
           <button style={submitButtonStyle} type="submit" disabled={submitting}>
-            {submitting ? "Signing In..." : "Log In"}
+            {submitting ? t("Signing In...") : t("Log In")}
           </button>
         </form>
 
         <div style={footerRowStyle}>
-          <span style={footerTextStyle}>New to Habita?</span>
+          <span style={footerTextStyle}>{t("New to Habita?")}</span>
           <Link to="/register" style={footerLinkStyle}>
-            Create an account
+            {t("Create an account")}
           </Link>
         </div>
       </div>

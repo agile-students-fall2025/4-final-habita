@@ -5,7 +5,7 @@ import { useUser } from "../context/UserContext";
 export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { register, isAuthenticated } = useUser();
+  const { register, isAuthenticated, translate: t } = useUser();
   const [form, setForm] = useState({ name: "", username: "", password: "", householdId: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -37,36 +37,36 @@ export default function Register() {
         });
         navigate(redirectPath, { replace: true });
       } catch (err) {
-        setError(err.message || "Unable to create account.");
+        setError(err.message || t("Unable to create account."));
       } finally {
         setSubmitting(false);
       }
     },
-    [form.name, form.password, form.username, navigate, redirectPath, register]
+    [form.name, form.password, form.username, navigate, redirectPath, register, t]
   );
 
   return (
     <div style={pageStyle}>
       <div style={card}>
         <div style={headerBlock}>
-          <span style={eyebrow}>Join the house</span>
-          <h2 style={title}>Create your Habita account</h2>
-          <p style={subtitle}>Set up your profile and start collaborating with roommates.</p>
+          <span style={eyebrow}>{t("Join the house")}</span>
+          <h2 style={title}>{t("Create your account")}</h2>
+          <p style={subtitle}>{t("Set up your profile and start collaborating with roommates.")}</p>
         </div>
 
         <form style={formStyles} onSubmit={handleSubmit}>
           <label style={field}>
-            <span style={label}>Full name</span>
+            <span style={label}>{t("Name")}</span>
             <input
               style={input}
               type="text"
-              placeholder="Alex Johnson"
+              placeholder={t("Full name placeholder")}
               value={form.name}
               onChange={handleChange("name")}
             />
           </label>
           <label style={field}>
-            <span style={label}>Username or email</span>
+            <span style={label}>{t("Username or email")}</span>
             <input
               style={input}
               type="text"
@@ -78,11 +78,11 @@ export default function Register() {
             />
           </label>
           <label style={field}>
-            <span style={label}>Password</span>
+            <span style={label}>{t("Password")}</span>
             <input
               style={input}
               type="password"
-              placeholder="Minimum 6 characters"
+              placeholder={t("Minimum 6 characters")}
               value={form.password}
               onChange={handleChange("password")}
               required
@@ -91,29 +91,29 @@ export default function Register() {
             />
           </label>
           <label style={field}>
-            <span style={label}>Household ID (optional)</span>
+            <span style={label}>{t("Invite code (optional)")}</span>
             <input
               style={input}
               type="text"
-              placeholder="24-char ObjectId (leave blank to auto-create)"
+              placeholder={t("Invite code placeholder")}
               value={form.householdId}
               onChange={handleChange("householdId")}
               autoComplete="off"
             />
             <span style={hint}>
-              Must be a valid Mongo ObjectId (24 hex chars); leave empty to create a new household.
+              {t("Invite code hint")}
             </span>
           </label>
           {error && <div style={errorStyle}>{error}</div>}
           <button style={button} type="submit" disabled={submitting}>
-            {submitting ? "Creating..." : "Register"}
+            {submitting ? t("Registering...") : t("Register")}
           </button>
         </form>
 
         <div style={footerRow}>
-          <span style={footerText}>Already have an account?</span>
+          <span style={footerText}>{t("Already have an account?")}</span>
           <Link to="/login" style={link}>
-            Login
+            {t("Sign in")}
           </Link>
         </div>
       </div>
