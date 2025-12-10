@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   backend:
     build:
@@ -13,15 +11,15 @@ services:
       JWT_EXP_DAYS: ${JWT_EXP_DAYS:-7}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
     ports:
-      - "4000:4000"
+      - "4001:4000"
 
   frontend:
     build:
       context: ./front-end
       args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:4000/api}
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:4001/api}
     container_name: habita-frontend
     depends_on:
       - backend
     ports:
-      - "3000:80"
+      - "3001:80"
