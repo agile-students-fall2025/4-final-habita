@@ -5,7 +5,19 @@ const RepeatSchema = new mongoose.Schema(
     type: {
       type: String,
       default: "none",
-      enum: ["none", "daily", "weekdays", "weekends", "weekly", "biweekly", "monthly", "every-3-months", "every-6-months", "yearly", "custom"],
+      enum: [
+        "none",
+        "daily",
+        "weekdays",
+        "weekends",
+        "weekly",
+        "biweekly",
+        "monthly",
+        "every-3-months",
+        "every-6-months",
+        "yearly",
+        "custom"
+      ],
     },
     interval: {
       type: Number,
@@ -23,31 +35,44 @@ const RepeatSchema = new mongoose.Schema(
 
 const TaskSchema = new mongoose.Schema(
   {
-    userId: {
+    // ✅ SHARED WITH ENTIRE HOUSEHOLD
+    householdId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Household",
       required: true,
       index: true,
     },
+
+    // Optional: Keep creator for auditing if needed
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
     title: {
       type: String,
       required: true,
       trim: true,
     },
+
     due: {
-      type: String, // ISO date (YYYY-MM-DD)
+      type: String, // ISO date
       required: true,
     },
+
+    // Names only (handled by frontend/user context)
     assignees: {
       type: [String],
       default: ["Unassigned"],
     },
+
     status: {
       type: String,
       enum: ["pending", "in-progress", "completed"],
       default: "pending",
       index: true,
     },
+
     repeat: {
       type: RepeatSchema,
       default: () => ({}),
@@ -56,9 +81,4 @@ const TaskSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
-const Task = mongoose.model("Task", TaskSchema)
-
-module.exports = Task
-
-
-
+module.exports = mongoose.model("Task", TaskSchema)

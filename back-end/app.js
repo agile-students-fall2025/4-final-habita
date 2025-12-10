@@ -5,7 +5,7 @@ const express = require("express")
 const passport = require("passport")
 const configureJwtStrategy = require("./config/jwt-config")
 const notificationsRouter = require("./routes/notifications")
-const chatRouter = require("./routes/chat")
+const chatRoutes = require("./routes/chat")
 const homeRouter = require("./routes/home")
 const billsRouter = require("./routes/bills")
 const tasksRouter = require("./routes/tasks")
@@ -47,7 +47,7 @@ app.get("/api/health", (_req, res) => {
 
 // Routes
 app.use("/api/notifications", notificationsRouter)
-app.use("/api/chat", chatRouter)
+app.use("/api/chats", chatRoutes)
 app.use("/api/home", homeRouter)
 app.use("/api/bills", billsRouter)
 app.use("/api/tasks", tasksRouter)

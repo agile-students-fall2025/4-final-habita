@@ -53,7 +53,11 @@ router.post('/', auth, async (req, res) => {
 router.get('/my-household', auth, async (req, res) => {
   try {
     if (!req.user.householdId) {
-      return res.status(404).json({ error: 'You are not part of any household' });
+      // Instead of 404, return empty data
+      return res.json({
+        success: true,
+        data: null  // or { household: null }
+      });
     }
 
     const household = await Household.findById(req.user.householdId)

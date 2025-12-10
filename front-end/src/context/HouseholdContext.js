@@ -1,6 +1,8 @@
-import { createContext, useContext, useEffect, useState } from "react";
+// Add useCallback to the imports (line 1):
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000/api";
+// Remove or comment out the unused API_URL line:
+// const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000/api";
 
 const HouseholdContext = createContext(null);
 
@@ -13,7 +15,7 @@ export function HouseholdProvider({ children }) {
     return localStorage.getItem("habita:auth:token");
   };
 
-  const fetchHousehold = async () => {
+  const fetchHousehold = useCallback(async () => {
     try {
       setLoading(true);
       const token = getAuthToken();
@@ -23,7 +25,7 @@ export function HouseholdProvider({ children }) {
         return;
       }
 
-      const response = await fetch(`${API_URL}/households/my-household`, {
+      const response = await fetch(`/api/households/my-household`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -56,18 +58,19 @@ export function HouseholdProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Empty dependency array
 
   useEffect(() => {
     fetchHousehold();
-  }, []);
+  }, [fetchHousehold]);
+
 
   const createHousehold = async (name) => {
     try {
       const token = getAuthToken();
       if (!token) throw new Error("Not authenticated");
 
-      const response = await fetch(`${API_URL}/households`, {
+      const response = await fetch(`/api/households`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -103,7 +106,7 @@ export function HouseholdProvider({ children }) {
       const token = getAuthToken();
       if (!token) throw new Error("Not authenticated");
 
-      const response = await fetch(`${API_URL}/households/join`, {
+      const response = await fetch(`/api/households/join`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -133,7 +136,7 @@ export function HouseholdProvider({ children }) {
       const token = getAuthToken();
       if (!token) throw new Error("Not authenticated");
 
-      const response = await fetch(`${API_URL}/households/leave`, {
+      const response = await fetch(`/api/households/leave`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -157,7 +160,7 @@ export function HouseholdProvider({ children }) {
       const token = getAuthToken();
       if (!token) throw new Error("Not authenticated");
 
-      const response = await fetch(`${API_URL}/households/${household.id}/regenerate-code`, {
+      const response = await fetch(`/api/households/${household.id}/regenerate-code`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -187,7 +190,7 @@ export function HouseholdProvider({ children }) {
       const token = getAuthToken();
       if (!token) throw new Error("Not authenticated");
 
-      const response = await fetch(`${API_URL}/households/${household.id}/members/${userId}`, {
+      const response = await fetch(`/api/households/${household.id}/members/${userId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

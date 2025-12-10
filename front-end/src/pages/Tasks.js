@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTasks } from "../context/TasksContext";
-import ChatThread from "../components/ChatThread";
+//import TaskChat from "../components/TaskChat";
 import { useHousehold } from "../context/HouseholdContext";
 import { useUser } from "../context/UserContext";
+import ChatThread from "../components/ChatThread";
+
 
 const repeatOptions = [
   { id: "none", label: "Never" },
@@ -120,6 +122,11 @@ export default function Tasks() {
   const [editingId, setEditingId] = useState(null);
   const [dueFilter, setDueFilter] = useState(null);
   const [chatOpen, setChatOpen] = useState(null);
+  const activeTask = chatOpen
+  ? tasks.find((t) => `task-${t.id}` === chatOpen)
+  : null;
+
+
   const createDefaultForm = useCallback(
     () => ({
       title: "",
@@ -272,7 +279,7 @@ export default function Tasks() {
     return [...withDueApplied].sort(
       (a, b) => dueValue(a.due) - dueValue(b.due)
     );
-  }, [tasks, filter, showMineOnly, dueFilter, todayISO]);
+  }, [tasks, filter, showMineOnly, dueFilter, todayISO, isAssignedToMe]);
 
 const helperText =
   "✨ Tap the status dot to move a task from pending → in progress → completed.";
@@ -634,7 +641,7 @@ const helperText =
                   <button
                     type="button"
                     style={{ ...editButtonStyle, color: "var(--habita-accent)", whiteSpace: "nowrap" }}
-                    onClick={() => setChatOpen(task.id)}
+                    onClick={() => setChatOpen(`task-${task.id}`)}
                   >
                     Chat
                   </button>
@@ -846,46 +853,56 @@ const helperText =
       </section>
 
       {chatOpen && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.4)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 999,
-        }}>
-          <div style={{
-            background: "var(--habita-bg)",
-            borderRadius: "16px",
-            padding: "1rem",
-            width: "90%",
-            maxWidth: "480px",
-            height: "70%",
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
             display: "flex",
-            flexDirection: "column",
-          }}>
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 999,
+          }}
+        >
+          <div
+            style={{
+              background: "var(--habita-bg)",
+              borderRadius: "16px",
+              padding: "1rem",
+              width: "90%",
+              maxWidth: "480px",
+              height: "70%",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
             <button
               onClick={() => setChatOpen(null)}
-              style={{ alignSelf: "flex-end", border: "none", background: "transparent", fontSize: "1.5rem", cursor: "pointer" }}
+              style={{
+                alignSelf: "flex-end",
+                border: "none",
+                background: "transparent",
+                fontSize: "1.5rem",
+                cursor: "pointer",
+              }}
             >
               ✕
             </button>
-            <ChatThread
-              contextType="task"
-              contextId={chatOpen}
-              title={`Task Chat: ${tasks.find(t => t.id === chatOpen)?.title}`}
-              participants={peopleOptions}
-              currentUserName={myName}
-              onAfterSend={(threadId) => {
-                setChatOpen(null);
-                navigate("/chat", { state: { openThreadId: threadId } });
-              }}
-            />
 
+            <ChatThread
+              threadId={chatOpen}
+              title={
+                activeTask
+                  ? `Task Chat: ${activeTask.title}`
+                  : "Task Chat"
+              }
+              currentUserName={myName}
+            />
           </div>
         </div>
       )}
+
+
 
     </div>
   );

@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
+
 import Dashboard from "./components/Dashboard";
+
 import Home from "./pages/Home";
 import Tasks from "./pages/Tasks";
 import Bills from "./pages/Bills";
@@ -11,34 +13,33 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
 import HouseholdManagement from "./pages/HouseholdManagement";
+
 import { TasksProvider } from "./context/TasksContext";
 import { UserProvider } from "./context/UserContext";
 import { BillsProvider } from "./context/BillsContext";
-import { ChatProvider } from "./context/ChatContext";
 import { HouseholdProvider } from "./context/HouseholdContext";
 import RequireAuth from "./components/RequireAuth";
-
 
 function App() {
   return (
     <Router>
       <UserProvider>
         <Routes>
+          {/* Public routes */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
+          {/* Protected app shell (Dashboard) */}
           <Route
             element={
               <RequireAuth>
                 <HouseholdProvider>
-                  <ChatProvider>
-                    <TasksProvider>
-                      <BillsProvider>
-                        <Dashboard />
-                      </BillsProvider>
-                    </TasksProvider>
-                  </ChatProvider>
+                  <TasksProvider>
+                    <BillsProvider>
+                      <Dashboard />
+                    </BillsProvider>
+                  </TasksProvider>
                 </HouseholdProvider>
               </RequireAuth>
             }
@@ -47,7 +48,7 @@ function App() {
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/bills" element={<Bills />} />
             <Route path="/calendar" element={<Calendar />} />
-            <Route path="/chat" element={<Chat />} />
+            <Route path="/chat" element={<Chat />} />   
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/household" element={<HouseholdManagement />} />
