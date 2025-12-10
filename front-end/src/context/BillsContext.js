@@ -31,6 +31,10 @@ const normalizeBill = (bill) => {
     payments: bill.payments || {},
     status: bill.status || "unpaid",
     description: bill.description || "",
+    // backend-provided fields
+    receiver: bill.receiver || "",
+    createdBy: bill.createdBy || "",
+    ownerId: bill.userId || bill.ownerId || null,
   };
 };
 
@@ -76,6 +80,7 @@ export function BillsProvider({ children }) {
 
   useEffect(() => {
     fetchBills();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addBill = async (billData) => {
@@ -83,6 +88,7 @@ export function BillsProvider({ children }) {
       const token = getAuthToken();
       if (!token) throw new Error("Not authenticated");
 
+      console.log("[addBill] Sending payload:", billData);
       const response = await fetch(`${API_URL}/bills`, {
         method: "POST",
         headers: {
@@ -92,7 +98,11 @@ export function BillsProvider({ children }) {
         body: JSON.stringify(billData),
       });
 
-      if (!response.ok) throw new Error("Failed to create bill");
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("[addBill] Server error response:", errorData);
+        throw new Error("Failed to create bill");
+      }
 
       const data = await response.json();
       const newBill = normalizeBill(data.data);

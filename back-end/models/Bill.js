@@ -42,14 +42,23 @@ const BillSchema = new mongoose.Schema(
       default: "even",
     },
     customSplitAmounts: {
-      type: Map,
-      of: Number,
+      type: Object,
       default: {},
     },
     paymentDirection: {
       type: String,
-      enum: ["none", "incoming", "outgoing"],
+      enum: ["none", "incoming", "outgoing", "personal"],
       default: "none",
+    },
+    // For personal bills: the person who should receive the money
+    receiver: {
+      type: String,
+      default: "",
+    },
+    // Username of the user who created the bill (helps the frontend decide who can edit)
+    createdBy: {
+      type: String,
+      default: "",
     },
     payments: {
       type: Object,

@@ -43,6 +43,7 @@ router.post("/", requireAuth, async (req, res) => {
     const created = await billsStore.create(req.user.id, req.body || {})
     res.status(201).json({ data: created })
   } catch (error) {
+    console.error('Error in POST /api/bills', { error: error.stack || error, payload: req.body })
     res.status(500).json({ error: error.message })
   }
 })

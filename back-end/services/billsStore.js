@@ -29,14 +29,17 @@ class BillsStore {
     }
 
     const bill = new Bill({
+      userId: user._id,
+      createdBy: user.username || user.displayName || "",
       householdId: user.householdId,
       title: payload.title || "Untitled bill",
       amount: payload.amount || 0,
       dueDate: payload.dueDate || new Date().toISOString().slice(0, 10),
       payer: payload.payer || "You",
-      splitBetween: payload.splitBetween || ["You"],
+      receiver: payload.receiver || "",
+      splitBetween: Array.isArray(payload.splitBetween) ? payload.splitBetween : [],
       splitType: payload.splitType || "even",
-      customSplitAmounts: payload.customSplitAmounts || {},
+      customSplitAmounts: Object.assign({}, payload.customSplitAmounts || {}),
       paymentDirection: payload.paymentDirection || "none",
       payments: {},
       status: payload.status || "unpaid",
