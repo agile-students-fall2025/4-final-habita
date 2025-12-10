@@ -14,23 +14,9 @@ const formatISODate = (iso, options) => {
   return d.toLocaleDateString(undefined, options);
 };
 
-const filterOptions = [
-  { id: "all", label: "All" },
-  { id: "unpaid", label: "Unpaid" },
-  { id: "paid", label: "Paid" },
-  { id: "general", label: "General Bill" },
-  { id: "owed", label: "Owed to me" },
-  { id: "oweTo", label: "Owe to Someone" },
-];
-
-const statusDisplay = {
-  unpaid: { label: "Unpaid", fg: "#d42626", bg: "rgba(212, 38, 38, 0.15)" },
-  paid: { label: "Paid", fg: "#389e0d", bg: "rgba(88, 204, 2, 0.18)" },
-};
-
 export default function Bills() {
   const { household } = useHousehold();
-  const { user } = useUser();
+  const { user, translate: t } = useUser();
   const myName = user?.name || user?.username || "";
   const location = useLocation();
   const navigate = useNavigate();
@@ -40,6 +26,18 @@ export default function Bills() {
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
+  const filterOptions = useMemo(() => ([
+    { id: "all", label: t("All") },
+    { id: "unpaid", label: t("Unpaid") },
+    { id: "paid", label: t("Paid") },
+    { id: "general", label: t("General Bill") },
+    { id: "owed", label: t("Owed to me") },
+    { id: "oweTo", label: t("Owe to Someone") },
+  ]), [t]);
+  const statusDisplay = useMemo(() => ({
+    unpaid: { label: t("Unpaid"), fg: "#d42626", bg: "rgba(212, 38, 38, 0.15)" },
+    paid: { label: t("Paid"), fg: "#389e0d", bg: "rgba(88, 204, 2, 0.18)" },
+  }), [t]);
 
   const memberOptions = useMemo(() => {
     const names = new Set([myName]);
@@ -246,9 +244,9 @@ export default function Bills() {
   };
 
   const getBillTypeLabel = (paymentDirection) => {
-    if (paymentDirection === "outgoing") return "I Need to Pay Someone";
-    if (paymentDirection === "incoming") return "Someone Owes Me";
-    return "General Bill";
+    if (paymentDirection === "outgoing") return t("I Need to Pay Someone");
+    if (paymentDirection === "incoming") return t("Someone Owes Me");
+    return t("General Bill");
   };
 
   const getBillTypeColor = (paymentDirection) => {
@@ -272,12 +270,12 @@ export default function Bills() {
   return (
     <div style={pageStyle}>
       <div style={headerStyle}>
-        <h2 style={titleStyle}>Bills & Expenses</h2>
+        <h2 style={titleStyle}>{t("Bills & Expenses")}</h2>
         
         <button
           onClick={() => {
             if (!household) {
-                alert("You must join a household before creating bills.");
+                alert(t("You are not currently part of a household."));
                 return;
             }
             if (showForm || editingBill) {
@@ -292,7 +290,7 @@ export default function Bills() {
             cursor: !household ? "not-allowed" : "pointer"
           }}
           disabled={!household}
-          title={!household ? "Join a household to add bills" : "Add Bill"}
+          title={!household ? t("Join a household to add bills") : t("Add Bill")}
         >
           {showForm || editingBill ? "✕" : "+"}
         </button>
@@ -309,26 +307,26 @@ export default function Bills() {
             textAlign: "center",
             fontSize: "0.95rem"
         }}>
-            <strong>Missing Household:</strong> You are not currently part of a household. 
-            <br/>Please create or join a household in your settings to manage bills.
+            <strong>{t("Missing Household:")}</strong> {t("You are not currently part of a household.")} 
+            <br/>{t("Please create or join a household in your settings to manage bills.")}
         </div>
       )}
 
       <div style={statsContainerStyle}>
         <div style={statItemStyle}>
-          <span style={statLabelStyle}>Total Bills</span>
+          <span style={statLabelStyle}>{t("Total Bills")}</span>
           <span style={statValueStyle}>{stats.total}</span>
         </div>
         <div style={statItemStyle}>
-          <span style={statLabelStyle}>Unpaid</span>
+          <span style={statLabelStyle}>{t("Unpaid")}</span>
           <span style={statValueStyle}>{stats.unpaid}</span>
         </div>
         <div style={statItemStyle}>
-          <span style={statLabelStyle}>You Owe</span>
+          <span style={statLabelStyle}>{t("You Owe")}</span>
           <span style={statValueStyle}>${(calculateYouOwe() ?? 0).toFixed(2)}</span>
         </div>
         <div style={statItemStyle}>
-          <span style={statLabelStyle}>Total Amount</span>
+          <span style={statLabelStyle}>{t("Total Amount")}</span>
           <span style={statValueStyle}>${(stats?.totalAmount ?? 0).toFixed(2)}</span>
         </div>
       </div>
@@ -338,7 +336,7 @@ export default function Bills() {
           <input
             style={inputStyle}
             type="text"
-            placeholder="Bill Title"
+            placeholder={t("Bill Title")}
             value={newBill.title}
             onChange={(e) => setNewBill({ ...newBill, title: e.target.value })}
             required
@@ -348,7 +346,7 @@ export default function Bills() {
             style={inputStyle}
             type="number"
             step="0.01"
-            placeholder="Amount"
+            placeholder={t("Amount")}
             value={newBill.amount}
             onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
             required
@@ -363,7 +361,7 @@ export default function Bills() {
           />
 
           <div style={paymentDirectionStyle}>
-            <p style={formSectionTitleStyle}>Bill Type</p>
+            <p style={formSectionTitleStyle}>{t("Bill Type")}</p>
             <div style={optionButtonsContainerStyle}>
               <button
                 type="button"
@@ -386,7 +384,7 @@ export default function Bills() {
                   }));
                 }}
               >
-                General Bill
+                {t("General Bill")}
               </button>
               <button
                 type="button"
@@ -406,7 +404,7 @@ export default function Bills() {
                   payer: myName
                 }))}
               >
-                I Need to Pay Someone
+                {t("I Need to Pay Someone")}
               </button>
               <button
                 type="button"
@@ -426,14 +424,14 @@ export default function Bills() {
                   payer: myName
                 }))}
               >
-                Someone Owes Me
+                {t("Someone Owes Me")}
               </button>
             </div>
 
             <p style={formSectionTitleStyle}>
-              {newBill.paymentDirection === "none" ? "Split Between" :
-               newBill.paymentDirection === "outgoing" ? "Pay To" :
-               "Owed By"}
+              {newBill.paymentDirection === "none" ? t("Split Between") :
+               newBill.paymentDirection === "outgoing" ? t("Pay To") :
+               t("Owed By")}
             </p>
 
             <div style={splitButtonsContainer}>
@@ -465,7 +463,7 @@ export default function Bills() {
 
           {newBill.splitBetween.length > 1 && (newBill.paymentDirection === "none" || newBill.paymentDirection === "incoming") && (
             <div style={splitTypeContainerStyle}>
-              <p style={formSectionTitleStyle}>Split Type</p>
+              <p style={formSectionTitleStyle}>{t("Split Type")}</p>
               <div style={optionButtonsContainerStyle}>
                 <button
                   type="button"
@@ -480,7 +478,7 @@ export default function Bills() {
                   }}
                   onClick={() => setNewBill(prev => ({ ...prev, splitType: "even", customSplitAmounts: {} }))}
                 >
-                  Even Split
+                  {t("Even Split")}
                 </button>
                 <button
                   type="button"
@@ -495,7 +493,7 @@ export default function Bills() {
                   }}
                   onClick={() => setNewBill(prev => ({ ...prev, splitType: "custom" }))}
                 >
-                  Custom Split
+                  {t("Custom Split")}
                 </button>
               </div>
             </div>
@@ -503,7 +501,7 @@ export default function Bills() {
 
           {newBill.splitType === "custom" && newBill.splitBetween.length > 1 && (
             <div style={customSplitContainerStyle}>
-              <p style={formSectionTitleStyle}>Custom Split Amounts</p>
+              <p style={formSectionTitleStyle}>{t("Custom Split Amounts")}</p>
               <div style={customSplitGridStyle}>
                 {newBill.splitBetween.map((person) => (
                   <div key={person} style={customSplitCardStyle}>
@@ -552,7 +550,7 @@ export default function Bills() {
 
           <textarea
             style={textareaStyle}
-            placeholder="Description (optional)"
+            placeholder={t("Description (optional)")}
             value={newBill.description}
             onChange={(e) => setNewBill({ ...newBill, description: e.target.value })}
           />
@@ -565,10 +563,10 @@ export default function Bills() {
           
           <div style={formButtonsStyle}>
             <button type="button" onClick={handleCancel} style={cancelButtonStyle}>
-              Cancel
+              {t("Cancel")}
             </button>
             <button type="submit" style={submitButtonStyle} disabled={!isFormValid()}>
-              {editingBill ? "Save Changes" : "Add Bill"}
+              {editingBill ? t("Save Changes") : t("Add Bill CTA")}
             </button>
           </div>
         </form>
@@ -607,8 +605,8 @@ export default function Bills() {
           type="date"
           value={dateFilter || ""}
           onChange={(event) => setDateFilter(event.target.value || "")}
-          placeholder="Filter by date"
-          aria-label="Filter by date"
+          placeholder={t("Filter by date (bills)")}
+          aria-label={t("Filter by date (bills)")}
           style={dateInputStyle}
         />
         {dateFilter && (
@@ -616,16 +614,16 @@ export default function Bills() {
             type="button"
             onClick={() => setDateFilter("")}
             style={clearDateButtonStyle}
-            aria-label="Clear date filter"
+            aria-label={t("Clear date filter (bills)")}
           >
-            Clear
+            {t("Clear")}
           </button>
         )}
       </div>
 
       <div style={billsListStyle}>
         {filteredByDate.length === 0 ? (
-          <p style={emptyStateStyle}>No bills in this view.</p>
+          <p style={emptyStateStyle}>{t("No bills in this view.")}</p>
         ) : (
           filteredByDate.map((bill) => {
             const billTypeColor = getBillTypeColor(bill.paymentDirection);
@@ -644,7 +642,7 @@ export default function Bills() {
                     color: statusDisplay[bill.status]?.fg ?? "var(--habita-text)",
                   }}
                 >
-                  {statusDisplay[bill.status]?.label ?? bill.status ?? "Unknown"}
+                  {statusDisplay[bill.status]?.label ?? bill.status ?? t("Unknown")}
                 </button>
                 <div style={billTypeIndicatorStyle}>
                   <span style={{
@@ -667,7 +665,7 @@ export default function Bills() {
                         color: "var(--habita-accent)",
                       }}
                     >
-                      Chat
+                      {t("Chat")}
                     </button>
                     <button
                       onClick={() => {
@@ -676,17 +674,17 @@ export default function Bills() {
                       }}
                       style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
                     >
-                      Edit
+                      {t("Edit")}
                     </button>
                     <button
                       onClick={() => {
-                        const ok = window.confirm("Delete this bill?");
+                        const ok = window.confirm(t("Delete this bill?"));
                         if (!ok) return;
                         deleteBill(bill.id);
                       }}
                       style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
                     >
-                      Delete
+                      {t("Delete")}
                     </button>
 
                   </div>
@@ -727,18 +725,18 @@ export default function Bills() {
                 </div>
                 
                 <div style={billInfoContainerStyle}>
-                  <p style={billInfoStyle}>Due: {formatISODate(bill.dueDate, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                  <p style={billInfoStyle}>{t("Due: {date}", { date: formatISODate(bill.dueDate, { month: 'short', day: 'numeric', year: 'numeric' }) })}</p>
                   <p style={billInfoStyle}>
                     {bill.paymentDirection === "incoming" 
-                      ? "Paid by" 
+                      ? t("Paid by") 
                       : bill.paymentDirection === "outgoing"
-                        ? "Pay to"
-                        : "Paid by"}: {
-                      bill.paymentDirection === "outgoing" 
-                        ? bill.splitBetween[0]
-                        : bill.payments && Object.entries(bill.payments).filter(([_, paid]) => paid).length > 0
-                          ? Object.entries(bill.payments).filter(([_, paid]) => paid).map(([person]) => person).join(", ")
-                          : "None"
+                        ? t("Pay to")
+                        : t("Paid by")}: {
+                    bill.paymentDirection === "outgoing" 
+                      ? bill.splitBetween[0]
+                      : bill.payments && Object.entries(bill.payments).filter(([_, paid]) => paid).length > 0
+                        ? Object.entries(bill.payments).filter(([_, paid]) => paid).map(([person]) => person).join(", ")
+                        : t("None")
                     }
                   </p>
                 </div>
@@ -747,7 +745,7 @@ export default function Bills() {
                   bill.paymentDirection === "incoming" || 
                   bill.paymentDirection === "outgoing") && (
                   <div style={paymentStatusStyle}>
-                    <p style={paymentLabelStyle}>Payment Status:</p>
+                    <p style={paymentLabelStyle}>{t("Payment Status:")}</p>
                     <div style={paymentChipsContainer}>
                       {bill.paymentDirection === "outgoing" ? (
                         <button
