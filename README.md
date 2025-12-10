@@ -1,5 +1,7 @@
 # 🏠 Habita
 
+[![Continuous Integration](https://github.com/agile-students-fall2025/4-final-habita/actions/workflows/ci.yml/badge.svg?branch=master&event=pull_request)](https://github.com/agile-students-fall2025/4-final-habita/actions/workflows/ci.yml)
+
 **Habita** is an AI-assisted roommate management app designed to make shared living simpler, more organized, and more connected.  
 It helps roommates manage **tasks**, **bills**, and **communication** all in one place, reducing daily friction and improving collaboration at home.
 
@@ -18,13 +20,13 @@ The **Minimum Viable Product (MVP)** focuses on three core goals:
 
 ## 👩‍💻 Core Team Members
 
-| Name | Role (Sprint 0) | GitHub | Other Links |
+| Name | Role | GitHub | Other Links |
 |------|------------------|--------|--------------|
-| Mavis Liu | Product Owner | [@meiivis](https://github.com/meiivis) | [LinkedIn](https://www.linkedin.com/in/mavisliuisme/) |
-| Steven Oluwabusi | Scrum Master | [@St12t](https://github.com/St12t) |  |
-| Bilbo Lam | Developer | [@bilbo](https://github.com/BilboLam) |  |
+| Mavis Liu | Developer | [@meiivis](https://github.com/meiivis) | [LinkedIn](https://www.linkedin.com/in/mavisliuisme/) |
+| Steven Oluwabusi | Developer | [@St12t](https://github.com/St12t) |  |
+| Bilbo Lam | Developer | [@BilboLam](https://github.com/BilboLam) |  |
 | Tawhid Zaman | Developer | [@TawhidZGit](https://github.com/TawhidZGit) |  |
-| Buki Seid | Developer | [@teammate5](https://github.com/dibukseid) |  |
+| Buki Seid | Developer | [@dibukseid](https://github.com/dibukseid) |  |
 
 ---
 
@@ -93,7 +95,13 @@ npm start
 npm run build
 ```
 
-The Chat page and Notifications page consume the Express API above. Home/Tasks/Bills currently rely on local mock data (per sprint plan) but already route users to backend-backed chat threads from those contexts.
+### Docker (optional)
+
+- Copy env templates: `cp back-end/.env.example back-end/.env` and `cp front-end/.env.example front-end/.env`, then fill in values (e.g., `MONGODB_URI`, `JWT_SECRET`, `REACT_APP_API_URL`).
+- Build and run both services together: `docker compose up --build`.
+- Access points (current compose defaults): front-end at http://localhost:3001, back-end at http://localhost:4001.
+- Override the API base at build time if needed: `REACT_APP_API_URL=http://localhost:4001/api docker compose build front-end`.
+
 
 
 ## 📚 Additional Documentation
@@ -102,7 +110,6 @@ The Chat page and Notifications page consume the Express API above. Home/Tasks/B
 - [UX-DESIGN.md](./UX-DESIGN.md) – Wireframes, app map, and design documents  
 - [Product Backlog](https://github.com/agile-students-fall2025/4-final-habita/issues) – Current project tasks and user stories  
 - [Sprint Board](https://github.com/orgs/agile-students-fall2025/projects) – Active Scrum task board
-
 
 
 ---
