@@ -3,18 +3,31 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useTasks } from "../context/TasksContext";
 import { useBills } from "../context/BillsContext";
-import { useChat } from "../context/ChatContext";
+// import { useChat } from "../context/ChatContext";
 import { useUser } from "../context/UserContext";
+//import { useTranslation } from "react-i18next";
+
 
 function Dashboard({ children }) {
+  //const { t } = useTranslation();
+  // const { threads } = useChat();
+  //const { user, translate: t } = useUser();
   const { tasks } = useTasks();
   const { stats } = useBills();
-  const { threads } = useChat();
-  const { user, translate: t } = useUser();
+  // const { threads } = useChat();
+  const { user, translate } = useUser();
+  const t =
+    typeof translate === "function"
+      ? translate
+      : (key, { open = 0, unpaid = 0 } = {}) => `${open} open • ${unpaid} unpaid`;
   const myName = user?.name || user?.username || "";
   const location = useLocation();
   const isChat = location.pathname === "/chat";
-  const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth <= 900 : false));
+
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth <= 900 : false
+  );
+
   useEffect(() => {
     const onResize = () => {
       if (typeof window !== "undefined") {
@@ -27,8 +40,11 @@ function Dashboard({ children }) {
     }
     return () => {};
   }, []);
+
   const hideChrome = isChat && isMobile;
-  const unreadWindows = threads.filter((t) => (t.unreadCount || 0) > 0).length;
+
+  // We removed global chat threads, so unread count is always 0
+  const unreadWindows = 0;
 
   const myTasks = tasks.filter((task) =>
     Array.isArray(task.assignees)
@@ -81,9 +97,12 @@ function Dashboard({ children }) {
             }}
             aria-label="Open chat"
           >
-            <span role="img" aria-label="chat">💬</span>
-            {unreadWindows > 0 && (
-                <span className="habita-badge-notification habita-badge-notification--overlay">
+            <span role="img" aria-label="chat">
+              💬
+            </span>
+            {/* We no longer track unread threads globally */}
+            {false && unreadWindows > 0 && (
+              <span className="habita-badge-notification habita-badge-notification--overlay">
                 {unreadWindows}
               </span>
             )}

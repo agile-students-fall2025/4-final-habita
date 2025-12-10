@@ -3,7 +3,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useBills } from "../context/BillsContext";
 import { useHousehold } from "../context/HouseholdContext";
 import { useUser } from "../context/UserContext";
+//import TaskChat from "../components/TaskChat";
 import ChatThread from "../components/ChatThread";
+
+
+//import ChatThread from "../components/ChatThread";
 
 // format ISO 'YYYY-MM-DD' to local label w/o timezone shift
 const formatISODate = (iso, options) => {
@@ -35,6 +39,10 @@ export default function Bills() {
   const navigate = useNavigate();
   const { bills, addBill, updateBillStatus, togglePayment, updateBill, deleteBill } = useBills();
   const [chatOpen, setChatOpen] = useState(null);
+  const activeBill = chatOpen
+    ? bills.find((b) => `bill-${b.id}` === chatOpen)
+    : null;
+
   const [editingBill, setEditingBill] = useState(null);
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
@@ -128,7 +136,7 @@ export default function Bills() {
     } else {
       setNewBill(createInitialBillState());
     }
-  }, [editingBill, createInitialBillState, myName]);
+  }, [editingBill, createInitialBillState, myName, memberOptions]);
 
   // Auto-update splitBetween for personal bills when receiver changes
   useEffect(() => {
@@ -728,7 +736,7 @@ export default function Bills() {
                   <h3 style={billTitleStyle}>{bill.title}</h3>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button
-                      onClick={() => setChatOpen(bill.id)}
+                      onClick={() => setChatOpen(`bill-${bill.id}`)}
                       style={{
                         ...editButtonStyle,
                         background: "var(--habita-chip)",
@@ -883,42 +891,52 @@ export default function Bills() {
       </div>
 
       {chatOpen && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.4)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 999,
-        }}>
-          <div style={{
-            background: "var(--habita-bg)",
-            borderRadius: "16px",
-            padding: "1rem",
-            width: "90%",
-            maxWidth: "480px",
-            height: "70%",
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
             display: "flex",
-            flexDirection: "column",
-          }}>
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 999,
+          }}
+        >
+          <div
+            style={{
+              background: "var(--habita-bg)",
+              borderRadius: "16px",
+              padding: "1rem",
+              width: "90%",
+              maxWidth: "480px",
+              height: "70%",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
             <button
               onClick={() => setChatOpen(null)}
-              style={{ alignSelf: "flex-end", border: "none", background: "transparent", fontSize: "1.5rem", cursor: "pointer" }}
+              style={{
+                alignSelf: "flex-end",
+                border: "none",
+                background: "transparent",
+                fontSize: "1.5rem",
+                cursor: "pointer",
+              }}
             >
               ✕
             </button>
+
             <ChatThread
-              contextType="bill"
-              contextId={chatOpen}
-              title={`Bill Chat: ${bills.find(b => b.id === chatOpen)?.title}`}
-              participants={memberOptions}
+              threadId={`bill-${activeBill.id}`}
+              title={`Bill Chat: ${activeBill.title}`}
               currentUserName={myName}
-              onAfterSend={() => {}} 
             />
+
           </div>
         </div>
       )}
+
 
     </div>
   );
