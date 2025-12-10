@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./back-end
+    container_name: habita-backend
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MONGODB_URI: ${MONGODB_URI:-}
+      JWT_SECRET: ${JWT_SECRET:-dev_local_jwt_secret}
+      JWT_EXP_DAYS: ${JWT_EXP_DAYS:-7}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./front-end
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:4000/api}
+    container_name: habita-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
