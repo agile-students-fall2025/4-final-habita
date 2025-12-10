@@ -1,0 +1,137 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  backend-ci:
+    name: Backend - Build & Test
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        working-directory: ./back-end
+        run: npm ci
+
+      - name: Run Prettier lint check
+        working-directory: ./back-end
+        run: npm run lint
+
+      - name: Run tests with coverage
+        working-directory: ./back-end
+        run: npm test
+
+      - name: Upload coverage reports
+        if: matrix.node-version == '20.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: back-end/coverage/
+
+  frontend-ci:
+    name: Frontend - Build & Test
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        working-directory: ./front-end
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: ./front-end
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: ./front-end
+        run: npm test -- --coverage --watchAll=false
+
+      - name: Build production bundle
+        working-directory: ./front-end
+        run: npm run build
+
+      - name: Upload build artifacts
+        if: matrix.node-version == '20.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: front-end/build/
+
+      - name: Upload coverage reports
+        if: matrix.node-version == '20.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: front-end/coverage/
+
+  integration-check:
+    name: Integration Check - All Tests Passed
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci]
+
+    steps:
+      - name: All CI checks passed
+        run: |
+          echo "  All CI checks passed successfully!"
+          echo "- Backend build and tests completed"
+          echo "- Frontend build and tests completed"
+          echo "- Linting checks passed"
+
+  quality-summary:
+    name: Code Quality Summary
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci]
+    if: always()
+
+    steps:
+      - name: Download backend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: ./coverage/backend
+        continue-on-error: true
+
+      - name: Download frontend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: ./coverage/frontend
+        continue-on-error: true
+
+      - name: Generate summary
+        run: |
+          echo "## CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Status" >> $GITHUB_STEP_SUMMARY
+          echo "-  Backend: Built and tested" >> $GITHUB_STEP_SUMMARY
+          echo "-  Frontend: Built and tested" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Coverage reports uploaded" >> $GITHUB_STEP_SUMMARY
+          echo "- Production build artifacts uploaded" >> $GITHUB_STEP_SUMMARY

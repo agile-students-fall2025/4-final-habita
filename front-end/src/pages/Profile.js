@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { useTasks } from "../context/TasksContext";
 import { useHousehold } from "../context/HouseholdContext";
 
-const languages = ["English", "Spanish", "Mandarin"];
 const roommateProfiles = {
   Alex: { role: "Organizer", fun: "Keeper of the household calendar." },
   Sam: { role: "Bills", fun: "Handles split expenses like a pro." },
@@ -13,16 +12,27 @@ const roommateProfiles = {
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, cycleAvatar, darkMode, toggleDarkMode, updateUser, logout } = useUser();
+  const {
+    user,
+    cycleAvatar,
+    darkMode,
+    toggleDarkMode,
+    logout,
+    language,
+    setLanguage,
+    translate: t,
+    languageOptions: localeOptions,
+  } = useUser();
   const { tasks } = useTasks();
   const { household, refetch: refetchHousehold, loading: householdLoading } = useHousehold();
   const [showInvite, setShowInvite] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState({
     notifications: true,
-    language: "English",
+    language,
   });
   const [hoveredRoommate, setHoveredRoommate] = useState(null);
+  const languageChoices = localeOptions || [];
 
   const groupedRoommates = useMemo(() => {
     if (!household?.members?.length) {
@@ -38,10 +48,10 @@ export default function Profile() {
         id: userRef._id || member._id || name,
         name,
         initials: initials || "?",
-        role: member.role || "Member",
+        role: member.role || t("profile.memberRoleFallback"),
       }
     })
-  }, [household?.members]);
+  }, [household?.members, t]);
 
   const myTasks = useMemo(() => {
     const me = user?.name || user?.username || "";
@@ -51,6 +61,10 @@ export default function Profile() {
       task.assignees === me
     );
   }, [tasks, user?.name, user?.username]);
+
+  useEffect(() => {
+    setSettings((prev) => ({ ...prev, language }));
+  }, [language]);
 
   return (
     <div style={pageStyle}>
@@ -75,24 +89,24 @@ export default function Profile() {
             style={secondaryButtonStyle}
             onClick={() => navigate("/profile/edit")}
           >
-            Edit Profile
+            {t("profile.editProfile")}
           </button>
         </div>
       </section>
 
       <section style={tasksCardStyle}>
         <header style={sectionHeaderStyle}>
-          <h3 style={sectionTitleStyle}>My Tasks</h3>
+          <h3 style={sectionTitleStyle}>{t("profile.myTasksTitle")}</h3>
           <button
             type="button"
             style={ghostButtonStyle}
             onClick={() => navigate("/tasks", { state: { mineOnly: true } })}
           >
-            View All
+            {t("profile.viewAll")}
           </button>
         </header>
         {myTasks.length === 0 ? (
-          <p style={emptyTasksStyle}>No tasks assigned to you.</p>
+          <p style={emptyTasksStyle}>{t("profile.noTasks")}</p>
         ) : (
           <div style={tasksListStyle}>
             {myTasks.slice(0, 3).map((task) => (
@@ -100,10 +114,10 @@ export default function Profile() {
                 <div style={taskInfoStyle}>
                   <span style={taskTitleTextStyle}>{task.title}</span>
                   <span style={taskMetaTextStyle}>
-                    Due: {new Date(task.due).toLocaleDateString(undefined, {
+                    {t("profile.due", { date: new Date(task.due).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",
-                    })}
+                    })})}
                   </span>
                 </div>
                 <span
@@ -124,10 +138,10 @@ export default function Profile() {
                   }}
                 >
                   {task.status === "completed"
-                    ? "Completed"
+                    ? t("status.completed")
                     : task.status === "in-progress"
-                    ? "In Progress"
-                    : "Pending"}
+                    ? t("status.inProgress")
+                    : t("status.pending")}
                 </span>
               </div>
             ))}
@@ -137,23 +151,21 @@ export default function Profile() {
 
       <section style={groupCardStyle}>
         <header style={sectionHeaderStyle}>
-          <h3 style={sectionTitleStyle}>{household?.name || "My Household"}</h3>
+          <h3 style={sectionTitleStyle}>{household?.name || t("profile.myHousehold")}</h3>
           <button
             type="button"
             style={ghostButtonStyle}
             onClick={() => navigate("/household")}
           >
-            Manage Household
+            {t("profile.manageHousehold")}
           </button>
         </header>
         {householdLoading ? (
-          <p style={emptyTasksStyle}>Loading household...</p>
+          <p style={emptyTasksStyle}>{t("profile.loadingHousehold")}</p>
         ) : !household ? (
-          <p style={emptyTasksStyle}>
-            No household yet. Create one or join with an invite code.
-          </p>
+          <p style={emptyTasksStyle}>{t("profile.noHousehold")}</p>
         ) : groupedRoommates.length === 0 ? (
-          <p style={emptyTasksStyle}>No members yet.</p>
+          <p style={emptyTasksStyle}>{t("profile.noMembers")}</p>
         ) : (
           <div style={roommateGridStyle}>
             {groupedRoommates.map((roommate) => (
@@ -171,9 +183,9 @@ export default function Profile() {
                 {hoveredRoommate?.id === roommate.id && (
                   <div style={tooltipStyle}>
                     <strong style={tooltipTitleStyle}>{roommate.name}</strong>
-                    <span style={tooltipMetaStyle}>{roommate.role || "Roommate"}</span>
+                    <span style={tooltipMetaStyle}>{roommate.role || t("profile.memberRoleFallback")}</span>
                     <span style={tooltipFunStyle}>
-                      {roommateProfiles[roommate.name]?.fun || "Teamwork makes the dream work."}
+                      {roommateProfiles[roommate.name]?.fun || t("profile.funFallback")}
                     </span>
                   </div>
                 )}
@@ -183,7 +195,7 @@ export default function Profile() {
               type="button"
               style={addMemberButtonStyle}
               onClick={() => setShowInvite(true)}
-              aria-label="Invite roommate"
+              aria-label={t("profile.inviteRoommateAria")}
             >
               +
             </button>
@@ -194,21 +206,21 @@ export default function Profile() {
       {showInvite && (
         <section style={inviteCardStyle}>
           <div style={sectionHeaderStyle}>
-            <h3 style={sectionTitleStyle}>Invite Roommates</h3>
+            <h3 style={sectionTitleStyle}>{t("profile.inviteRoommates")}</h3>
             <button
               type="button"
               style={ghostButtonStyle}
               onClick={() => setShowInvite(false)}
             >
-              Hide Invites
+              {t("profile.hideInvites")}
             </button>
           </div>
           <p style={sectionHintStyle}>
             {householdLoading
-              ? "Loading your invite code..."
+              ? t("profile.inviteHintLoading")
               : household?.inviteCode
-              ? "Share this code so your roommates can join your household."
-              : "Create a household to get an invite code."}
+              ? t("profile.inviteHintShare")
+              : t("profile.inviteHintCreate")}
           </p>
           {household?.inviteCode && (
             <div style={codeRowStyle}>
@@ -235,14 +247,14 @@ export default function Profile() {
                   }
                 }}
               >
-                Copy Code
+                {t("profile.copyCode")}
               </button>
               <button
                 type="button"
                 style={secondaryButtonStyle}
                 onClick={() => refetchHousehold()}
               >
-                Refresh
+                {t("profile.refresh")}
               </button>
             </div>
           )}
@@ -251,19 +263,19 @@ export default function Profile() {
 
       <section style={settingsCardStyle}>
         <header style={sectionHeaderStyle}>
-          <h3 style={sectionTitleStyle}>Settings</h3>
+          <h3 style={sectionTitleStyle}>{t("profile.settings")}</h3>
           <button
             type="button"
             style={ghostButtonStyle}
             onClick={() => setShowSettings((prev) => !prev)}
           >
-            {showSettings ? "Hide" : "Adjust"}
+            {showSettings ? t("profile.hideSettings") : t("profile.adjustSettings")}
           </button>
         </header>
         {showSettings && (
           <div style={settingsBodyStyle}>
             <div style={settingRowStyle}>
-              <span>Notifications</span>
+              <span>{t("profile.notifications")}</span>
               <label style={toggleWrapperStyle}>
                 <input
                   type="checkbox"
@@ -299,7 +311,7 @@ export default function Profile() {
               </label>
             </div>
             <div style={settingRowStyle}>
-              <span>Dark Mode</span>
+              <span>{t("profile.darkMode")}</span>
               <label style={toggleWrapperStyle}>
                 <input
                   type="checkbox"
@@ -330,20 +342,22 @@ export default function Profile() {
               </label>
             </div>
             <label style={settingColumnStyle}>
-              <span>Language</span>
+              <span>{t("profile.language")}</span>
               <select
                 value={settings.language}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const nextLang = event.target.value;
                   setSettings((prev) => ({
                     ...prev,
-                    language: event.target.value,
-                  }))
-                }
+                    language: nextLang,
+                  }));
+                  setLanguage(nextLang);
+                }}
                 style={selectStyle}
               >
-                {languages.map((lang) => (
-                  <option key={lang} value={lang}>
-                    {lang}
+                {languageChoices.map((lang) => (
+                  <option key={lang.value} value={lang.value}>
+                    {lang.label}
                   </option>
                 ))}
               </select>
@@ -360,7 +374,7 @@ export default function Profile() {
           navigate("/login", { replace: true });
         }}
       >
-        Log out
+        {t("profile.logout")}
       </button>
     </div>
   );

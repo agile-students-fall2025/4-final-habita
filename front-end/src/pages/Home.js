@@ -9,7 +9,7 @@ const MOOD_HISTORY_STORAGE_KEY = "habita:mood-history";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { user, token } = useUser();
+  const { user, token, translate: t } = useUser();
   const { tasks } = useTasks();
   const myName = user?.name || user?.username || "";
   const [summary, setSummary] = useState(null);
@@ -255,14 +255,14 @@ export default function Home() {
             aria-label="Open tasks"
           >
             <div style={cardHeaderRowStyle}>
-              <h3 style={titleStyle}>My Tasks</h3>
+              <h3 style={titleStyle}>{t("My Tasks")}</h3>
               <div style={cardHeaderActionsStyle}>
                 <button
                   type="button"
                   style={cardLinkButtonStyle}
                   onClick={() => goToTasks()}
                 >
-                  View
+                  {t("View")}
                 </button>
                 <button
                   type="button"
@@ -276,23 +276,23 @@ export default function Home() {
             </div>
             {renderStatCards([
               {
-                label: "Due today",
+                label: t("Due today"),
                 value: dueTodayCount,
-                hint: "Today's focus",
+                hint: t("Today's focus"),
                 onClick: () => goToTasks({ dueFilter: "due-today" }),
               },
               {
-                label: "Overdue",
+                label: t("Overdue"),
                 value: overdueCount,
-                hint: "Needs attention",
+                hint: t("Needs attention"),
                 onClick: () => goToTasks({ dueFilter: "overdue" }),
               },
             ])}
             <div style={cardDividerStyle} />
             <div>
-              <p style={cardSubheadingStyle}>Next task</p>
+              <p style={cardSubheadingStyle}>{t("Next task")}</p>
               {!nextTask ? (
-                <p style={textStyle}>Everything is wrapped up.</p>
+                <p style={textStyle}>{t("Everything is wrapped up.")}</p>
               ) : (
                 <button
                   type="button"
@@ -309,8 +309,9 @@ export default function Home() {
               )}
               {pendingCount + inProgressCount + myCompletedCount > 0 && (
                 <p style={miniMetaStyle}>
-                  + {pendingCount + inProgressCount + myCompletedCount} more tasks
-                  in your queue
+                  {t("+ {count} more tasks in your queue", {
+                    count: pendingCount + inProgressCount + myCompletedCount,
+                  })}
                 </p>
               )}
             </div>
@@ -333,14 +334,14 @@ export default function Home() {
             aria-label="Open bills"
           >
             <div style={cardHeaderRowStyle}>
-              <h3 style={titleStyle}>My Bills</h3>
+              <h3 style={titleStyle}>{t("My Bills")}</h3>
               <div style={cardHeaderActionsStyle}>
                 <button
                   type="button"
                   style={cardLinkButtonStyle}
                   onClick={() => goToBills()}
                 >
-                  View
+                  {t("View")}
                 </button>
                 <button
                   type="button"
@@ -354,15 +355,15 @@ export default function Home() {
             </div>
             {renderStatCards([
               {
-                label: "Due this week",
+                label: t("Due this week"),
                 value: dueSoonBillCount,
-                hint: "Upcoming payments",
+                hint: t("Upcoming payments"),
                 onClick: () => goToBills({ dueFilter: "due-week" }),
               },
               {
-                label: "Your share",
+                label: t("Your share"),
                 value: `$${myShareDue.toFixed(2)}`,
-                hint: "Outstanding split",
+                hint: t("Outstanding split"),
                 onClick: () => goToBills({ filter: "unpaid" }),
               },
             ])}
@@ -370,7 +371,7 @@ export default function Home() {
               <>
                 <div style={cardDividerStyle} />
                 <div>
-                  <p style={cardSubheadingStyle}>Next bill</p>
+                  <p style={cardSubheadingStyle}>{t("Next bill")}</p>
                   <button
                     type="button"
                     style={singleListButtonStyle}
@@ -393,13 +394,15 @@ export default function Home() {
                   </button>
                   {(remainingBills > 0 || myBillStats.unpaid > 1) && (
                     <p style={miniMetaStyle}>
-                      + {remainingBills || myBillStats.unpaid - 1} more bills waiting
+                      {t("+ {count} more bills waiting", {
+                        count: remainingBills || myBillStats.unpaid - 1,
+                      })}
                     </p>
                   )}
                 </div>
               </>
             ) : (
-              <p style={textStyle}>All of your bills are settled.</p>
+              <p style={textStyle}>{t("All of your bills are settled.")}</p>
             )}
           </div>
         </section>
@@ -418,10 +421,10 @@ export default function Home() {
               goToCalendarPage();
             }
           }}
-          aria-label="Open calendar"
+          aria-label={t("Calendar")}
         >
           <MiniCalendar
-            titlePrefix="Calendar"
+            titlePrefix={t("Calendar")}
             monthDate={calendarDate}
             eventsByISO={combinedEventsByISO}
             moodEntriesByISO={moodEntriesByISO}
@@ -443,15 +446,13 @@ export default function Home() {
                 <p style={moodSheetTitleStyle}>{formatFullDate(selectedMoodISO)}</p>
                 <span style={moodSheetSubtitleStyle}>
                   {selectedMoodEntries.length > 0
-                    ? `${selectedMoodEntries.length} mood ${
-                        selectedMoodEntries.length === 1 ? "entry" : "entries"
-                      }`
-                    : "No mood logs yet"}
+                    ? `${selectedMoodEntries.length} ${t("mood entries")}`
+                    : t("No mood logs yet")}
                 </span>
               </div>
             </div>
             {selectedMoodEntries.length === 0 ? (
-              <p style={textStyle}>No one has logged a mood for this day yet.</p>
+              <p style={textStyle}>{t("No one has logged a mood for this day yet.")}</p>
             ) : (
               <ul style={moodSheetListStyle}>
                 {selectedMoodEntries.map((entry) => (
@@ -486,14 +487,14 @@ export default function Home() {
                   goToTasks({ dueFilter: { type: "date", value: selectedMoodISO }, date: selectedMoodISO })
                 }
               >
-                View tasks for this day
+                {t("View tasks for this day")}
               </button>
               <button
                 type="button"
                 style={moodSheetGhostButtonStyle}
                 onClick={() => setSelectedMoodISO(null)}
               >
-                Close
+                {t("Close")}
               </button>
             </div>
           </div>

@@ -48,7 +48,7 @@ export default function MoodTracker({
   onMoodHistoryChange,
   onCheckInRequest,
 }) {
-  const { user: currentUser } = useUser();
+  const { user: currentUser, translate: t } = useUser();
   const currentUserName = currentUser?.name || currentUser?.username || "";
   const isCompact = variant === "compact";
   const [mood, setMood] = useState(null);
@@ -273,7 +273,7 @@ export default function MoodTracker({
           marginBottom: isCompact ? "0.6rem" : titleStyle.marginBottom,
         }}
       >
-        Your Mood Today
+        {t("Your Mood Today")}
       </h3>
       {!isLocked && (
         <div
@@ -416,15 +416,15 @@ export default function MoodTracker({
               onClick={() => setShowSnapshot((prev) => !prev)}
               style={toggleStatsButtonStyle}
             >
-              {showSnapshot ? "Hide house vibes" : "Show house vibes"}
+              {showSnapshot ? t("Hide house vibes") : t("Show house vibes")}
             </button>
           )}
           {(!isCompact || showSnapshot) && (
             <>
               <div style={timelineCardStyle}>
                 <div style={timelineHeaderStyle}>
-                  <p style={statsTitle}>House vibe (7 days)</p>
-                  <span style={timelineHintStyle}>Dominant mood per day</span>
+                  <p style={statsTitle}>{t("House vibe (7 days)")}</p>
+                  <span style={timelineHintStyle}>{t("Dominant mood per day")}</span>
                 </div>
                 <div style={timelineStripStyle}>
                   {timelineDays.map((day) => (
@@ -442,7 +442,7 @@ export default function MoodTracker({
                       <span style={timelineDayLabelStyle}>{day.weekday}</span>
                       <span style={timelineEmojiStyle}>{day.mood?.emoji ?? "–"}</span>
                       <span style={timelineMoodLabelStyle}>
-                        {day.mood?.label ?? "No log"}
+                        {day.mood?.label ?? t("No log")}
                       </span>
                     </div>
                   ))}
@@ -450,11 +450,11 @@ export default function MoodTracker({
               </div>
               <div style={houseFeedCardStyle}>
                 <div style={houseFeedHeaderStyle}>
-                  <p style={statsTitle}>Household check-ins</p>
-                  <span style={houseFeedHintStyle}>Tap a sticker to react</span>
+                  <p style={statsTitle}>{t("Household check-ins")}</p>
+                  <span style={houseFeedHintStyle}>{t("Tap a sticker to react")}</span>
                 </div>
                 {householdFeed.length === 0 ? (
-                  <p style={emptyFeedStyle}>No moods logged today.</p>
+                  <p style={emptyFeedStyle}>{t("No moods logged today.")}</p>
                 ) : (
                   householdFeed.map((entry) => (
                     <div key={entry.id} style={houseFeedRowStyle}>
@@ -492,7 +492,7 @@ export default function MoodTracker({
                           style={checkInButtonStyle}
                           onClick={() => onCheckInRequest?.(entry)}
                         >
-                          Check in with {entry.userName}
+                          {t("Check in with {name}", { name: entry.userName })}
                         </button>
                       )}
                     </div>

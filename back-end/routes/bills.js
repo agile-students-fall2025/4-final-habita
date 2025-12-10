@@ -43,6 +43,7 @@ router.post("/", requireAuth, async (req, res) => {
     const created = await billsStore.create(req.user.id, req.body || {})
     res.status(201).json({ data: created })
   } catch (error) {
+    console.error('Error in POST /api/bills', { error: error.stack || error, payload: req.body })
     res.status(500).json({ error: error.message })
   }
 })
@@ -65,6 +66,7 @@ router.patch("/:id/pay", requireAuth, async (req, res) => {
     if (!updated) return res.status(404).json({ error: "Bill not found" })
     res.json({ data: updated })
   } catch (error) {
+    console.error('Error in PATCH /api/bills/:id/pay', { error: error.stack || error, params: req.params, body: req.body })
     res.status(500).json({ error: error.message })
   }
 })
@@ -76,6 +78,7 @@ router.patch("/:id/status", requireAuth, async (req, res) => {
     if (!updated) return res.status(404).json({ error: "Bill not found" })
     res.json({ data: updated })
   } catch (error) {
+    console.error('Error in PATCH /api/bills/:id/status', { error: error.stack || error, params: req.params, body: req.body })
     res.status(500).json({ error: error.message })
   }
 })

@@ -3,6 +3,7 @@ import { useTasks } from "../context/TasksContext";
 import { useBills } from "../context/BillsContext";
 import { useNavigate } from "react-router-dom";
 import MiniCalendar from "../components/MiniCalendar";
+import { useUser } from "../context/UserContext";
 
 const toISO = (date) => {
   const year = date.getFullYear();
@@ -45,6 +46,7 @@ export default function Calendar() {
   const { tasks } = useTasks();
   const { bills } = useBills();
   const navigate = useNavigate();
+  const { translate: t } = useUser();
 
   const [monthDate, setMonthDate] = useState(new Date());
   const [customEvents, setCustomEvents] = useState([]);
@@ -106,7 +108,7 @@ export default function Calendar() {
   const activeISO = selectedDateISO || todayISO;
   const activeEvents = eventsByISO[activeISO] || [];
   const activeLabel = formatDateLabel(activeISO);
-  const detailsSubtitle = selectedDateISO ? "Household plan" : "Today's routine";
+  const detailsSubtitle = selectedDateISO ? t("Household plan") : t("Today's routine");
 
   const handleEventClick = useCallback(
     (event) => {
@@ -183,17 +185,16 @@ export default function Calendar() {
   return (
     <div style={pageStyle}>
       <section style={headerSectionStyle}>
-        <h2 style={titleStyle}>Shared Calendar</h2>
+        <h2 style={titleStyle}>{t("Shared Calendar")}</h2>
         <p style={subtitleStyle}>
-          A compact look at your household schedule. Tap a date to expand
-          today's plan.
+          {t("A compact look at your household schedule. Tap a date to expand today's plan.")}
         </p>
       </section>
 
       <div style={cardsLayoutStyle}>
         <section style={thumbnailCardStyle}>
           <MiniCalendar
-            titlePrefix="Household"
+            titlePrefix={t("Household")}
             monthDate={monthDate}
             eventsByISO={eventsByISO}
             indicatorMode="types"
@@ -224,7 +225,7 @@ export default function Calendar() {
               ...(detailsOpen ? detailToggleChipActiveStyle : {}),
             }}
           >
-            {detailsOpen ? "Close" : "Open"}
+            {detailsOpen ? t("Close") : t("Open")}
           </span>
         </button>
 
@@ -233,7 +234,7 @@ export default function Calendar() {
             <div style={detailListStyle}>
               {activeEvents.length === 0 ? (
                 <p style={detailEmptyStyle}>
-                  Nothing on the books for this day. Enjoy the downtime!
+                  {t("Nothing on the books for this day. Enjoy the downtime!")}
                 </p>
               ) : (
                 activeEvents.map((event) => (
@@ -262,10 +263,10 @@ export default function Calendar() {
                       <p style={detailTitleStyle}>{event.title}</p>
                       <p style={detailMetaStyle}>
                         {event.type === "task" && event.assignees?.length
-                          ? `Assigned to ${event.assignees.join(", ")}`
+                          ? t("Assigned to {names}", { names: event.assignees.join(", ") })
                           : event.type === "bill" && event.amount
                           ? `$${event.amount.toFixed(2)}`
-                          : "Custom reminder"}
+                          : t("Custom reminder")}
                       </p>
                     </div>
                   </div>
@@ -279,20 +280,20 @@ export default function Calendar() {
                 style={detailPrimaryButtonStyle}
                 onClick={handleOpenTasks}
               >
-                Open this day in Tasks
+                {t("Open this day in Tasks")}
               </button>
               <button
                 type="button"
                 style={detailSecondaryButtonStyle}
                 onClick={handleOpenBills}
               >
-                Review bills on this day
+                {t("Review bills on this day")}
               </button>
               {showAddEvent ? (
                 <form style={addEventFormStyle} onSubmit={handleAddEventSubmit}>
                   <input
                     type="text"
-                    placeholder="Reminder title"
+                    placeholder={t("Reminder title")}
                     value={newEventTitle}
                     onChange={(event) => setNewEventTitle(event.target.value)}
                     style={addEventInputStyle}
@@ -305,7 +306,7 @@ export default function Calendar() {
                   />
                   <div style={addEventButtonRowStyle}>
                     <button type="submit" style={addEventSaveStyle}>
-                      Save event
+                      {t("Save event")}
                     </button>
                     <button
                       type="button"
@@ -316,7 +317,7 @@ export default function Calendar() {
                         setNewEventDate(activeISO);
                       }}
                     >
-                      Cancel
+                      {t("Cancel")}
                     </button>
                   </div>
                 </form>
@@ -329,7 +330,7 @@ export default function Calendar() {
                     setNewEventDate(activeISO);
                   }}
                 >
-                  + Add quick reminder
+                  + {t("Add quick reminder")}
                 </button>
               )}
             </div>

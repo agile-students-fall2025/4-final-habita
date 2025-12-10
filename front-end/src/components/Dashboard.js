@@ -5,12 +5,21 @@ import { useTasks } from "../context/TasksContext";
 import { useBills } from "../context/BillsContext";
 // import { useChat } from "../context/ChatContext";
 import { useUser } from "../context/UserContext";
+//import { useTranslation } from "react-i18next";
+
 
 function Dashboard({ children }) {
+  //const { t } = useTranslation();
+  // const { threads } = useChat();
+  //const { user, translate: t } = useUser();
   const { tasks } = useTasks();
   const { stats } = useBills();
   // const { threads } = useChat();
-  const { user } = useUser();
+  const { user, translate } = useUser();
+  const t =
+    typeof translate === "function"
+      ? translate
+      : (key, { open = 0, unpaid = 0 } = {}) => `${open} open • ${unpaid} unpaid`;
   const myName = user?.name || user?.username || "";
   const location = useLocation();
   const isChat = location.pathname === "/chat";
@@ -110,7 +119,7 @@ function Dashboard({ children }) {
             color: "var(--habita-text)",
           }}
         >
-          Tasks open: {openForMe} ・ Unpaid bills: {stats.unpaid}
+          {t("dashboard.summary", { open: openForMe, unpaid: stats.unpaid })}
         </div>
       )}
       <div style={{ flex: 1, overflowY: "auto" }}>{children || <Outlet />}</div>
