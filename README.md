@@ -99,8 +99,8 @@ npm run build
 
 - Copy env templates: `cp back-end/.env.example back-end/.env` and `cp front-end/.env.example front-end/.env`, then fill in values (e.g., `MONGODB_URI`, `JWT_SECRET`, `REACT_APP_API_URL`).
 - Build and run both services together: `docker compose up --build`.
-- Access points: front-end at http://localhost:3000, back-end at http://localhost:4000.
-- Override the API base at build time if needed: `REACT_APP_API_URL=http://localhost:4000/api docker compose build front-end`.
+- Access points (current compose defaults): front-end at http://localhost:3001, back-end at http://localhost:4001.
+- Override the API base at build time if needed: `REACT_APP_API_URL=http://localhost:4001/api docker compose build front-end`.
 
 
 
