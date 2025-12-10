@@ -52,8 +52,7 @@ const BillSchema = new mongoose.Schema(
       default: "none",
     },
     payments: {
-      type: Map,
-      of: Boolean,
+      type: Object,
       default: {},
     },
     status: {

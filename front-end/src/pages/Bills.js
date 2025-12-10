@@ -631,10 +631,18 @@ export default function Bills() {
             const billTypeColor = getBillTypeColor(bill.paymentDirection);
             return (
               <div id={`bill-card-${bill.id}`} key={bill.id} style={billCardStyle}>
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() =>
                     updateBillStatus(bill.id, bill.status === "paid" ? "unpaid" : "paid")
                   }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      updateBillStatus(bill.id, bill.status === "paid" ? "unpaid" : "paid");
+                    }
+                  }}
                   style={{
                     ...statusChipStyle,
                     position: "absolute",
@@ -642,10 +650,12 @@ export default function Bills() {
                     right: "1.25rem",
                     backgroundColor: statusDisplay[bill.status]?.bg ?? "rgba(0,0,0,0.06)",
                     color: statusDisplay[bill.status]?.fg ?? "var(--habita-text)",
+                    display: 'inline-block',
+                    cursor: 'pointer'
                   }}
                 >
                   {statusDisplay[bill.status]?.label ?? bill.status ?? "Unknown"}
-                </button>
+                </div>
                 <div style={billTypeIndicatorStyle}>
                   <span style={{
                     ...billTypeBadgeStyle,
