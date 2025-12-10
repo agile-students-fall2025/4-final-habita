@@ -1,16 +1,18 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install only production dependencies for a smaller image
+# Copy package files
 COPY package*.json ./
-RUN npm ci --omit=dev
 
-# Copy application source
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy application files
 COPY . .
 
-ENV NODE_ENV=production
+# Expose port
 EXPOSE 4000
 
-# Default command
+# Start the application
 CMD ["npm", "start"]

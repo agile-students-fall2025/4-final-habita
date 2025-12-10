@@ -1,25 +1,51 @@
 services:
+  mongodb:
+    image: mongo:7
+    container_name: habita-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - habita-network
+
   backend:
     build:
       context: ./back-end
+      dockerfile: Dockerfile
     container_name: habita-backend
-    environment:
-      NODE_ENV: production
-      PORT: 4000
-      MONGODB_URI: ${MONGODB_URI:-}
-      JWT_SECRET: ${JWT_SECRET:-dev_local_jwt_secret}
-      JWT_EXP_DAYS: ${JWT_EXP_DAYS:-7}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    restart: unless-stopped
     ports:
-      - "4001:4000"
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - MONGODB_URI=mongodb://mongodb:27017/habita
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      - mongodb
+    networks:
+      - habita-network
 
   frontend:
     build:
       context: ./front-end
+      dockerfile: Dockerfile
       args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:4001/api}
+        - REACT_APP_API_URL=${REACT_APP_API_URL}
     container_name: habita-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
     depends_on:
       - backend
-    ports:
-      - "3001:80"
+    networks:
+      - habita-network
+
+networks:
+  habita-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:

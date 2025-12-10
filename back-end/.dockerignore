@@ -1,8 +1,10 @@
-.git
 node_modules
 npm-debug.log
-coverage
-*.log
 .env
-build
-Dockerfile
+.git
+.gitignore
+README.md
+coverage
+test
+*.test.js
+.DS_Store
