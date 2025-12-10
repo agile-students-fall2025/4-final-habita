@@ -14,30 +14,31 @@ const formatISODate = (iso, options) => {
   return d.toLocaleDateString(undefined, options);
 };
 
+const filterOptions = [
+  { id: "all", label: "All" },
+  { id: "unpaid", label: "Unpaid" },
+  { id: "paid", label: "Paid" },
+  { id: "general", label: "General Bill" },
+  { id: "personal", label: "Personal Bill" },
+];
+
+const statusDisplay = {
+  unpaid: { label: "Unpaid", fg: "#d42626", bg: "rgba(212, 38, 38, 0.15)" },
+  paid: { label: "Paid", fg: "#389e0d", bg: "rgba(88, 204, 2, 0.18)" },
+};
+
 export default function Bills() {
   const { household } = useHousehold();
-  const { user, translate: t } = useUser();
+  const { user } = useUser();
   const myName = user?.name || user?.username || "";
   const location = useLocation();
   const navigate = useNavigate();
-  const { bills, addBill, updateBillStatus, togglePayment, updateBill, deleteBill, stats } = useBills();
+  const { bills, addBill, updateBillStatus, togglePayment, updateBill, deleteBill } = useBills();
   const [chatOpen, setChatOpen] = useState(null);
   const [editingBill, setEditingBill] = useState(null);
   const [filter, setFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
-  const filterOptions = useMemo(() => ([
-    { id: "all", label: t("All") },
-    { id: "unpaid", label: t("Unpaid") },
-    { id: "paid", label: t("Paid") },
-    { id: "general", label: t("General Bill") },
-    { id: "owed", label: t("Owed to me") },
-    { id: "oweTo", label: t("Owe to Someone") },
-  ]), [t]);
-  const statusDisplay = useMemo(() => ({
-    unpaid: { label: t("Unpaid"), fg: "#d42626", bg: "rgba(212, 38, 38, 0.15)" },
-    paid: { label: t("Paid"), fg: "#389e0d", bg: "rgba(88, 204, 2, 0.18)" },
-  }), [t]);
 
   const memberOptions = useMemo(() => {
     const names = new Set([myName]);
@@ -56,6 +57,7 @@ export default function Bills() {
       amount: "",
       dueDate: "",
       payer: memberOptions[0] || myName,
+      receiver: memberOptions[0] || myName,
       splitBetween: [memberOptions[0] || myName],
       splitType: "even",
       customSplitAmounts: {},
@@ -116,6 +118,7 @@ export default function Bills() {
         amount: editingBill.amount.toString(),
         dueDate: editingBill.dueDate,
         payer: editingBill.payer,
+        receiver: editingBill.receiver || memberOptions[0] || myName,
         splitBetween: editingBill.splitBetween || [myName],
         splitType: editingBill.splitType || "even",
         customSplitAmounts: editingBill.customSplitAmounts || {},
@@ -127,10 +130,28 @@ export default function Bills() {
     }
   }, [editingBill, createInitialBillState, myName]);
 
+  // Auto-update splitBetween for personal bills when receiver changes
+  useEffect(() => {
+    if (newBill.paymentDirection === "personal" && memberOptions.length > 0) {
+      const debtors = memberOptions.filter(m => m !== newBill.receiver);
+      setNewBill(prev => ({
+        ...prev,
+        splitBetween: debtors,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newBill.paymentDirection, newBill.receiver, memberOptions.length]);
+
   const filteredBills = bills.filter((bill) => {
+    // enforce personal bill visibility: only debtors, receiver, or creator can see personal bills
+    if (bill.paymentDirection === "personal") {
+      const isDebtor = Array.isArray(bill.splitBetween) && bill.splitBetween.includes(myName);
+      const isReceiver = bill.receiver === myName;
+      const isCreator = bill.createdBy === myName;
+      if (!(isDebtor || isReceiver || isCreator)) return false;
+    }
     if (filter === "all") return true;
-    if (filter === "owed") return bill.paymentDirection === "incoming" && bill.status === "unpaid";
-    if (filter === "oweTo") return bill.paymentDirection === "outgoing" && bill.status === "unpaid";
+    if (filter === "personal") return bill.paymentDirection === "personal";
     if (filter === "general") return bill.paymentDirection === "none";
     return bill.status === filter;
   });
@@ -160,6 +181,7 @@ export default function Bills() {
     if (!newBill.title.trim() || !newBill.amount || !newBill.dueDate) {
       return false;
     }
+    if (parseFloat(newBill.amount) <= 0) return false;
     if (newBill.splitBetween.length === 0) {
       return false;
     }
@@ -244,38 +266,65 @@ export default function Bills() {
   };
 
   const getBillTypeLabel = (paymentDirection) => {
-    if (paymentDirection === "outgoing") return t("I Need to Pay Someone");
-    if (paymentDirection === "incoming") return t("Someone Owes Me");
-    return t("General Bill");
+    if (paymentDirection === "outgoing") return "I Need to Pay Someone";
+    if (paymentDirection === "incoming") return "Someone Owes Me";
+    if (paymentDirection === "personal") return "Personal Bill";
+    return "General Bill";
   };
 
   const getBillTypeColor = (paymentDirection) => {
     if (paymentDirection === "outgoing") return { bg: "rgba(255, 193, 7, 0.15)", fg: "#ff9800" };
     if (paymentDirection === "incoming") return { bg: "rgba(88, 204, 2, 0.18)", fg: "#389e0d" };
+    if (paymentDirection === "personal") return { bg: "rgba(123, 97, 255, 0.12)", fg: "#7b61ff" };
     return { bg: "rgba(33, 150, 243, 0.15)", fg: "#1976d2" };
   };
 
-  const calculateYouOwe = () => {
-    return bills
-      .filter(bill => bill.status === "unpaid" && bill.paymentDirection !== "incoming")
-      .reduce((total, bill) => {
-        if (bill.paymentDirection === "outgoing") {
-          return total + bill.amount;
-        } else {
-          return total + calculateYourShare(bill);
-        }
-      }, 0);
+
+  // Visibility: personal bills should only be visible to assigned people, receiver, or creator
+  const isBillVisibleToUser = (bill) => {
+    if (bill.paymentDirection === "personal") {
+      const isDebtor = Array.isArray(bill.splitBetween) && bill.splitBetween.includes(myName);
+      const isReceiver = bill.receiver === myName;
+      const isCreator = bill.createdBy === myName;
+      return isDebtor || isReceiver || isCreator;
+    }
+    // general and other bills are visible to household members
+    return true;
   };
+
+  const visibleBills = bills.filter(isBillVisibleToUser);
+  const visibleTotal = visibleBills.length;
+  const visibleUnpaid = visibleBills.filter(b => b.status === 'unpaid').length;
+  const visibleTotalAmount = visibleBills.reduce((s, b) => s + (parseFloat(b.amount) || 0), 0);
+  const visibleYouOwe = visibleBills
+    .filter(b => b.status === 'unpaid')
+    .reduce((s, b) => {
+      // If I've already marked my payment for this bill, don't count it
+      if (b.payments && b.payments[myName]) return s;
+
+      // For personal bills, only count if I'm a debtor (not the receiver)
+      if (b.paymentDirection === 'personal') {
+        const isReceiver = b.receiver === myName;
+        if (isReceiver) return s; // receivers don't owe anything
+        const isDebtor = Array.isArray(b.splitBetween) && b.splitBetween.includes(myName);
+        if (!isDebtor) return s;
+      }
+
+      // For other bills, count if I'm in the split
+      if (!(Array.isArray(b.splitBetween) && b.splitBetween.includes(myName))) return s;
+      const myShare = b.splitType === 'custom' ? (parseFloat(b.customSplitAmounts?.[myName]) || 0) : (parseFloat(b.amount) || 0) / b.splitBetween.length;
+      return s + myShare;
+    }, 0);
 
   return (
     <div style={pageStyle}>
       <div style={headerStyle}>
-        <h2 style={titleStyle}>{t("Bills & Expenses")}</h2>
+        <h2 style={titleStyle}>Bills & Expenses</h2>
         
         <button
           onClick={() => {
             if (!household) {
-                alert(t("You are not currently part of a household."));
+                alert("You must join a household before creating bills.");
                 return;
             }
             if (showForm || editingBill) {
@@ -290,7 +339,7 @@ export default function Bills() {
             cursor: !household ? "not-allowed" : "pointer"
           }}
           disabled={!household}
-          title={!household ? t("Join a household to add bills") : t("Add Bill")}
+          title={!household ? "Join a household to add bills" : "Add Bill"}
         >
           {showForm || editingBill ? "✕" : "+"}
         </button>
@@ -307,27 +356,27 @@ export default function Bills() {
             textAlign: "center",
             fontSize: "0.95rem"
         }}>
-            <strong>{t("Missing Household:")}</strong> {t("You are not currently part of a household.")} 
-            <br/>{t("Please create or join a household in your settings to manage bills.")}
+            <strong>Missing Household:</strong> You are not currently part of a household. 
+            <br/>Please create or join a household in your settings to manage bills.
         </div>
       )}
 
       <div style={statsContainerStyle}>
         <div style={statItemStyle}>
-          <span style={statLabelStyle}>{t("Total Bills")}</span>
-          <span style={statValueStyle}>{stats.total}</span>
+          <span style={statLabelStyle}>Total Bills</span>
+          <span style={statValueStyle}>{visibleTotal}</span>
         </div>
         <div style={statItemStyle}>
-          <span style={statLabelStyle}>{t("Unpaid")}</span>
-          <span style={statValueStyle}>{stats.unpaid}</span>
+          <span style={statLabelStyle}>Unpaid</span>
+          <span style={statValueStyle}>{visibleUnpaid}</span>
         </div>
         <div style={statItemStyle}>
-          <span style={statLabelStyle}>{t("You Owe")}</span>
-          <span style={statValueStyle}>${(calculateYouOwe() ?? 0).toFixed(2)}</span>
+          <span style={statLabelStyle}>You Owe</span>
+          <span style={statValueStyle}>${(visibleYouOwe ?? 0).toFixed(2)}</span>
         </div>
         <div style={statItemStyle}>
-          <span style={statLabelStyle}>{t("Total Amount")}</span>
-          <span style={statValueStyle}>${(stats?.totalAmount ?? 0).toFixed(2)}</span>
+          <span style={statLabelStyle}>Total Amount</span>
+          <span style={statValueStyle}>${(visibleTotalAmount ?? 0).toFixed(2)}</span>
         </div>
       </div>
 
@@ -336,7 +385,7 @@ export default function Bills() {
           <input
             style={inputStyle}
             type="text"
-            placeholder={t("Bill Title")}
+            placeholder="Bill Title"
             value={newBill.title}
             onChange={(e) => setNewBill({ ...newBill, title: e.target.value })}
             required
@@ -346,7 +395,7 @@ export default function Bills() {
             style={inputStyle}
             type="number"
             step="0.01"
-            placeholder={t("Amount")}
+            placeholder="Amount"
             value={newBill.amount}
             onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
             required
@@ -361,7 +410,7 @@ export default function Bills() {
           />
 
           <div style={paymentDirectionStyle}>
-            <p style={formSectionTitleStyle}>{t("Bill Type")}</p>
+            <p style={formSectionTitleStyle}>Bill Type</p>
             <div style={optionButtonsContainerStyle}>
               <button
                 type="button"
@@ -384,61 +433,70 @@ export default function Bills() {
                   }));
                 }}
               >
-                {t("General Bill")}
+                General Bill
               </button>
               <button
                 type="button"
                 style={{
                   ...optionButtonStyle,
-                  backgroundColor: newBill.paymentDirection === "outgoing" 
-                    ? "var(--habita-accent)" 
-                    : "var(--habita-chip)",
-                  color: newBill.paymentDirection === "outgoing"
-                    ? "#ffffff"
-                    : "var(--habita-text)",
-                }}
-                onClick={() => setNewBill(prev => ({
-                  ...prev,
-                  paymentDirection: "outgoing",
-                  splitBetween: [],
-                  payer: myName
-                }))}
-              >
-                {t("I Need to Pay Someone")}
-              </button>
-              <button
-                type="button"
-                style={{
-                  ...optionButtonStyle,
-                  backgroundColor: newBill.paymentDirection === "incoming"
+                  backgroundColor: newBill.paymentDirection === "personal"
                     ? "var(--habita-accent)"
                     : "var(--habita-chip)",
-                  color: newBill.paymentDirection === "incoming"
+                  color: newBill.paymentDirection === "personal"
                     ? "#ffffff"
                     : "var(--habita-text)",
                 }}
-                onClick={() => setNewBill(prev => ({
-                  ...prev,
-                  paymentDirection: "incoming",
-                  splitBetween: [],
-                  payer: myName
-                }))}
+                onClick={() => {
+                  const defaultReceiver = memberOptions[0] || myName;
+                  setNewBill(prev => ({
+                    ...prev,
+                    paymentDirection: "personal",
+                    splitBetween: memberOptions.filter(m => m !== defaultReceiver),
+                    receiver: defaultReceiver
+                  }));
+                }}
               >
-                {t("Someone Owes Me")}
+                Personal Bill
               </button>
             </div>
 
             <p style={formSectionTitleStyle}>
-              {newBill.paymentDirection === "none" ? t("Split Between") :
-               newBill.paymentDirection === "outgoing" ? t("Pay To") :
-               t("Owed By")}
+              {newBill.paymentDirection === "none" ? "Split Between" :
+               newBill.paymentDirection === "personal" ? "Select who owes" :
+               "Split Between"}
             </p>
 
+            {newBill.paymentDirection === "personal" && (
+              <div style={{ marginBottom: '0.75rem' }}>
+                <p style={receiverPayerLabelStyle}>Receiver</p>
+                <select
+                  value={newBill.receiver}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewBill(prev => ({
+                      ...prev,
+                      receiver: val,
+                      // ensure receiver isn't in splitBetween and add everyone else
+                      splitBetween: memberOptions.filter(m => m !== val),
+                    }));
+                  }}
+                  style={{ padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid var(--habita-border)', background: 'var(--habita-input)', color: 'var(--habita-text)' }}
+                >
+                  {memberOptions.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div style={splitButtonsContainer}>
+              <p style={receiverPayerLabelStyle}>Payer</p>
               {memberOptions.map((person) => {
-                const shouldShow = newBill.paymentDirection === "none" || person !== myName;
+                // For personal bills, do not show the receiver as a payer option
+                if (newBill.paymentDirection === "personal" && person === newBill.receiver) return null;
+                const shouldShow = newBill.paymentDirection === "none" || person !== myName || newBill.paymentDirection === "personal";
                 if (!shouldShow) return null;
-                
+
                 return (
                   <button
                     key={person}
@@ -461,9 +519,9 @@ export default function Bills() {
             </div>
           </div>
 
-          {newBill.splitBetween.length > 1 && (newBill.paymentDirection === "none" || newBill.paymentDirection === "incoming") && (
+          {newBill.splitBetween.length > 1 && (newBill.paymentDirection === "none" || newBill.paymentDirection === "personal") && (
             <div style={splitTypeContainerStyle}>
-              <p style={formSectionTitleStyle}>{t("Split Type")}</p>
+              <p style={formSectionTitleStyle}>Split Type</p>
               <div style={optionButtonsContainerStyle}>
                 <button
                   type="button"
@@ -478,7 +536,7 @@ export default function Bills() {
                   }}
                   onClick={() => setNewBill(prev => ({ ...prev, splitType: "even", customSplitAmounts: {} }))}
                 >
-                  {t("Even Split")}
+                  Even Split
                 </button>
                 <button
                   type="button"
@@ -493,7 +551,7 @@ export default function Bills() {
                   }}
                   onClick={() => setNewBill(prev => ({ ...prev, splitType: "custom" }))}
                 >
-                  {t("Custom Split")}
+                  Custom Split
                 </button>
               </div>
             </div>
@@ -501,7 +559,7 @@ export default function Bills() {
 
           {newBill.splitType === "custom" && newBill.splitBetween.length > 1 && (
             <div style={customSplitContainerStyle}>
-              <p style={formSectionTitleStyle}>{t("Custom Split Amounts")}</p>
+              <p style={formSectionTitleStyle}>Custom Split Amounts</p>
               <div style={customSplitGridStyle}>
                 {newBill.splitBetween.map((person) => (
                   <div key={person} style={customSplitCardStyle}>
@@ -511,7 +569,7 @@ export default function Bills() {
                       <input
                         type="number"
                         step="0.01"
-                        min="0"
+                        min="0.01"
                         placeholder="0.00"
                         value={newBill.customSplitAmounts[person] || ""}
                         onChange={(e) => {
@@ -527,8 +585,10 @@ export default function Bills() {
                           const totalAmount = parseFloat(newBill.amount) || 0;
                           const otherAmounts = Object.entries({...newBill.customSplitAmounts, [person]: newValue})
                             .reduce((sum, [_, value]) => sum + (parseFloat(value) || 0), 0);
-                          
-                          if (Math.abs(otherAmounts - totalAmount) > 0.01 && otherAmounts !== 0) {
+
+                          if (newValue !== "" && parseFloat(newValue) <= 0) {
+                            setSplitAmountError(`Each custom amount must be greater than 0`);
+                          } else if (Math.abs(otherAmounts - totalAmount) > 0.01 && otherAmounts !== 0) {
                             setSplitAmountError(`Split total (${otherAmounts.toFixed(2)}) must equal bill amount (${totalAmount.toFixed(2)})`);
                           } else {
                             setSplitAmountError("");
@@ -550,7 +610,7 @@ export default function Bills() {
 
           <textarea
             style={textareaStyle}
-            placeholder={t("Description (optional)")}
+            placeholder="Description (optional)"
             value={newBill.description}
             onChange={(e) => setNewBill({ ...newBill, description: e.target.value })}
           />
@@ -563,10 +623,10 @@ export default function Bills() {
           
           <div style={formButtonsStyle}>
             <button type="button" onClick={handleCancel} style={cancelButtonStyle}>
-              {t("Cancel")}
+              Cancel
             </button>
             <button type="submit" style={submitButtonStyle} disabled={!isFormValid()}>
-              {editingBill ? t("Save Changes") : t("Add Bill CTA")}
+              {editingBill ? "Save Changes" : "Add Bill"}
             </button>
           </div>
         </form>
@@ -605,8 +665,8 @@ export default function Bills() {
           type="date"
           value={dateFilter || ""}
           onChange={(event) => setDateFilter(event.target.value || "")}
-          placeholder={t("Filter by date (bills)")}
-          aria-label={t("Filter by date (bills)")}
+          placeholder="Filter by date"
+          aria-label="Filter by date"
           style={dateInputStyle}
         />
         {dateFilter && (
@@ -614,25 +674,33 @@ export default function Bills() {
             type="button"
             onClick={() => setDateFilter("")}
             style={clearDateButtonStyle}
-            aria-label={t("Clear date filter (bills)")}
+            aria-label="Clear date filter"
           >
-            {t("Clear")}
+            Clear
           </button>
         )}
       </div>
 
       <div style={billsListStyle}>
         {filteredByDate.length === 0 ? (
-          <p style={emptyStateStyle}>{t("No bills in this view.")}</p>
+          <p style={emptyStateStyle}>No bills in this view.</p>
         ) : (
           filteredByDate.map((bill) => {
             const billTypeColor = getBillTypeColor(bill.paymentDirection);
             return (
               <div id={`bill-card-${bill.id}`} key={bill.id} style={billCardStyle}>
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() =>
                     updateBillStatus(bill.id, bill.status === "paid" ? "unpaid" : "paid")
                   }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      updateBillStatus(bill.id, bill.status === "paid" ? "unpaid" : "paid");
+                    }
+                  }}
                   style={{
                     ...statusChipStyle,
                     position: "absolute",
@@ -640,10 +708,12 @@ export default function Bills() {
                     right: "1.25rem",
                     backgroundColor: statusDisplay[bill.status]?.bg ?? "rgba(0,0,0,0.06)",
                     color: statusDisplay[bill.status]?.fg ?? "var(--habita-text)",
+                    display: 'inline-block',
+                    cursor: 'pointer'
                   }}
                 >
-                  {statusDisplay[bill.status]?.label ?? bill.status ?? t("Unknown")}
-                </button>
+                  {statusDisplay[bill.status]?.label ?? bill.status ?? "Unknown"}
+                </div>
                 <div style={billTypeIndicatorStyle}>
                   <span style={{
                     ...billTypeBadgeStyle,
@@ -657,7 +727,7 @@ export default function Bills() {
                 <div style={billHeaderStyle}>
                   <h3 style={billTitleStyle}>{bill.title}</h3>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button
+                    <button
                       onClick={() => setChatOpen(bill.id)}
                       style={{
                         ...editButtonStyle,
@@ -665,54 +735,69 @@ export default function Bills() {
                         color: "var(--habita-accent)",
                       }}
                     >
-                      {t("Chat")}
+                      Chat
                     </button>
-                    <button
-                      onClick={() => {
-                        setEditingBill(bill);
-                        setShowForm(true);
-                      }}
-                      style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
-                    >
-                      {t("Edit")}
-                    </button>
-                    <button
-                      onClick={() => {
-                        const ok = window.confirm(t("Delete this bill?"));
-                        if (!ok) return;
-                        deleteBill(bill.id);
-                      }}
-                      style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
-                    >
-                      {t("Delete")}
-                    </button>
-
+                    {!(bill.paymentDirection === "personal") || (bill.createdBy && bill.createdBy === myName) ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingBill(bill);
+                            setShowForm(true);
+                          }}
+                          style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            const ok = window.confirm("Delete this bill?");
+                            if (!ok) return;
+                            deleteBill(bill.id);
+                          }}
+                          style={{ ...editButtonStyle, color: "var(--habita-accent)" }}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
                 
                 <div style={billAmountStyle}>
                   <div>
                     <div style={amountMainStyle}>
-                      ${bill.paymentDirection === "incoming" 
-                        ? calculateYourShare(bill).toFixed(2)
-                        : bill.paymentDirection === "outgoing"
+                      ${bill.paymentDirection === "personal"
+                        ? bill.receiver === myName
                           ? bill.amount.toFixed(2)
-                          : calculateYourShare(bill).toFixed(2)}
+                          : calculateYourShare(bill).toFixed(2)
+                        : bill.paymentDirection === "incoming" 
+                          ? calculateYourShare(bill).toFixed(2)
+                          : bill.paymentDirection === "outgoing"
+                            ? bill.amount.toFixed(2)
+                            : calculateYourShare(bill).toFixed(2)}
                     </div>
                     <div style={amountSecondaryStyle}>
-                      {bill.paymentDirection === "incoming"
-                        ? bill.splitType === "custom"
-                          ? `they owe you (custom) of ${bill.amount.toFixed(2)}`
-                          : bill.splitBetween.length > 1
-                            ? `they owe you of ${bill.amount.toFixed(2)}`
-                            : "total amount owed"
-                        : bill.paymentDirection === "outgoing"
-                          ? "you need to pay"
-                          : bill.splitType === "custom" 
-                            ? `your custom share of ${bill.amount.toFixed(2)}` 
-                            : bill.splitBetween.length > 1
+                      {bill.paymentDirection === "personal"
+                        ? bill.receiver === myName
+                          ? "total owed to you"
+                          : bill.splitType === "custom"
+                            ? `your custom share of ${bill.amount.toFixed(2)}`
+                            : bill.splitBetween.length > 0
                               ? `your share of ${bill.amount.toFixed(2)}`
-                              : "total amount"}
+                              : "total amount"
+                        : bill.paymentDirection === "incoming"
+                          ? bill.splitType === "custom"
+                            ? `they owe you (custom) of ${bill.amount.toFixed(2)}`
+                            : bill.splitBetween.length > 1
+                              ? `they owe you of ${bill.amount.toFixed(2)}`
+                              : "total amount owed"
+                          : bill.paymentDirection === "outgoing"
+                            ? "you need to pay"
+                            : bill.splitType === "custom" 
+                              ? `your custom share of ${bill.amount.toFixed(2)}` 
+                              : bill.splitBetween.length > 1
+                                ? `your share of ${bill.amount.toFixed(2)}`
+                                : "total amount"}
                     </div>
                   </div>
                   <div style={amountSecondaryStyle}>
@@ -725,27 +810,32 @@ export default function Bills() {
                 </div>
                 
                 <div style={billInfoContainerStyle}>
-                  <p style={billInfoStyle}>{t("Due: {date}", { date: formatISODate(bill.dueDate, { month: 'short', day: 'numeric', year: 'numeric' }) })}</p>
+                  <p style={billInfoStyle}>Due: {formatISODate(bill.dueDate, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                   <p style={billInfoStyle}>
-                    {bill.paymentDirection === "incoming" 
-                      ? t("Paid by") 
-                      : bill.paymentDirection === "outgoing"
-                        ? t("Pay to")
-                        : t("Paid by")}: {
-                    bill.paymentDirection === "outgoing" 
-                      ? bill.splitBetween[0]
-                      : bill.payments && Object.entries(bill.payments).filter(([_, paid]) => paid).length > 0
-                        ? Object.entries(bill.payments).filter(([_, paid]) => paid).map(([person]) => person).join(", ")
-                        : t("None")
+                    {bill.paymentDirection === "personal"
+                      ? "Pay to"
+                      : bill.paymentDirection === "incoming"
+                        ? "Paid by"
+                        : bill.paymentDirection === "outgoing"
+                          ? "Pay to"
+                          : "Paid by"}: {
+                      bill.paymentDirection === "outgoing"
+                        ? bill.splitBetween[0]
+                        : bill.paymentDirection === "personal"
+                          ? (bill.receiver || "None")
+                          : bill.payments && Object.entries(bill.payments).filter(([_, paid]) => paid).length > 0
+                            ? Object.entries(bill.payments).filter(([_, paid]) => paid).map(([person]) => person).join(", ")
+                            : "None"
                     }
                   </p>
                 </div>
                 
                 {((bill.paymentDirection === "none" && bill.splitBetween.length > 1) || 
                   bill.paymentDirection === "incoming" || 
-                  bill.paymentDirection === "outgoing") && (
+                  bill.paymentDirection === "outgoing" ||
+                  bill.paymentDirection === "personal") && (
                   <div style={paymentStatusStyle}>
-                    <p style={paymentLabelStyle}>{t("Payment Status:")}</p>
+                    <p style={paymentLabelStyle}>Payment Status:</p>
                     <div style={paymentChipsContainer}>
                       {bill.paymentDirection === "outgoing" ? (
                         <button
@@ -941,6 +1031,14 @@ const formSectionTitleStyle = {
   marginTop: "0.3rem",
 };
 
+const receiverPayerLabelStyle = {
+  fontSize: "1.05rem",
+  fontWeight: 700,
+  color: "var(--habita-text)",
+  marginBottom: "0.5rem",
+  marginTop: "0.2rem",
+};
+
 const paymentDirectionStyle = {
   display: "flex",
   flexDirection: "column",
@@ -1013,6 +1111,8 @@ const personNameStyle = {
   fontSize: "0.9rem",
   fontWeight: 600,
   color: "var(--habita-text)",
+  wordBreak: "break-word",
+  overflowWrap: "anywhere",
 };
 
 const amountInputContainerStyle = {
