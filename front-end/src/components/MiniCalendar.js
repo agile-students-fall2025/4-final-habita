@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useUser } from "../context/UserContext";
 
 export default function MiniCalendar({
   monthDate = new Date(),
@@ -10,6 +11,7 @@ export default function MiniCalendar({
   titlePrefix,
   indicatorMode = "count",
 }) {
+  const { translate: t } = useUser();
   const { weeks, monthLabel } = useMemo(() => buildMonthGrid(monthDate), [monthDate]);
   // Get today's local ISO 'YYYY-MM-DD' (no timezone shift)
   const todayISO = (() => {
@@ -85,7 +87,7 @@ export default function MiniCalendar({
                 ...(cell.inMonth ? {} : outOfMonthStyle),
                 ...(isToday ? todayStyle : {}),
               }}
-              aria-label={`${iso}${hasEvents ? `, ${events.length} items` : ""}`}
+              aria-label={`${iso}${hasEvents ? `, ${events.length} ${t("items")}` : ""}`}
             >
               <span style={dayNumberStyle}>{cell.day}</span>
               {indicatorMode === "types" ? (

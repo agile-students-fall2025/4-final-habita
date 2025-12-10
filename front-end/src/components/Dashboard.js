@@ -10,7 +10,7 @@ function Dashboard({ children }) {
   const { tasks } = useTasks();
   const { stats } = useBills();
   const { threads } = useChat();
-  const { user } = useUser();
+  const { user, translate: t } = useUser();
   const myName = user?.name || user?.username || "";
   const location = useLocation();
   const isChat = location.pathname === "/chat";
@@ -100,7 +100,7 @@ function Dashboard({ children }) {
             color: "var(--habita-text)",
           }}
         >
-          Tasks open: {openForMe} ・ Unpaid bills: {stats.unpaid}
+          {t("dashboard.summary", { open: openForMe, unpaid: stats.unpaid })}
         </div>
       )}
       <div style={{ flex: 1, overflowY: "auto" }}>{children || <Outlet />}</div>

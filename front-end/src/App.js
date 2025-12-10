@@ -18,6 +18,28 @@ import { ChatProvider } from "./context/ChatContext";
 import { HouseholdProvider } from "./context/HouseholdContext";
 import RequireAuth from "./components/RequireAuth";
 
+// Debug imports (remove after diagnosing)
+// eslint-disable-next-line no-console
+console.log('App imports:', {
+  Dashboard: typeof Dashboard,
+  Home: typeof Home,
+  Tasks: typeof Tasks,
+  Bills: typeof Bills,
+  Chat: typeof Chat,
+  Profile: typeof Profile,
+  Calendar: typeof Calendar,
+  Login: typeof Login,
+  Register: typeof Register,
+  EditProfile: typeof EditProfile,
+  HouseholdManagement: typeof HouseholdManagement,
+  TasksProvider: typeof TasksProvider,
+  UserProvider: typeof UserProvider,
+  BillsProvider: typeof BillsProvider,
+  ChatProvider: typeof ChatProvider,
+  HouseholdProvider: typeof HouseholdProvider,
+  RequireAuth: typeof RequireAuth,
+});
+
 
 function App() {
   return (

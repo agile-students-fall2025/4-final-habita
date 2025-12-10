@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { translations, languageOptions } from "../i18n";
 
 const avatarOptions = ["🌿", "🎧", "🚀", "🐾", "🌈", "🍜"];
 
@@ -11,6 +12,8 @@ const blankUser = {
 
 const AUTH_USER_KEY = "habita:auth:user";
 const AUTH_TOKEN_KEY = "habita:auth:token";
+const LANGUAGE_STORAGE_KEY = "habita:language";
+const DEFAULT_LANGUAGE = "en";
 
 const themes = {
   light: {
@@ -65,6 +68,17 @@ export function UserProvider({ children }) {
       // eslint-disable-next-line no-console
       console.warn("Failed to load stored token", err);
       return null;
+    }
+  });
+  const [language, setLanguageState] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_LANGUAGE;
+    try {
+      const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+      return translations[stored] ? stored : DEFAULT_LANGUAGE;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to load stored language", err);
+      return DEFAULT_LANGUAGE;
     }
   });
   const [darkMode, setDarkMode] = useState(() => {
@@ -134,6 +148,12 @@ export function UserProvider({ children }) {
       );
     }
   }, [palette, darkMode]);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("lang", language);
+    }
+  }, [language]);
 
   const updateUser = useCallback(
     (updates) => {
@@ -236,6 +256,29 @@ export function UserProvider({ children }) {
     setDarkMode(Boolean(value));
   };
 
+  const setLanguagePreference = useCallback(
+    (nextLanguage) => {
+      const normalized = translations[nextLanguage] ? nextLanguage : DEFAULT_LANGUAGE;
+      setLanguageState(normalized);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(LANGUAGE_STORAGE_KEY, normalized);
+      }
+    },
+    []
+  );
+
+  const translate = useCallback(
+    (key, params) => {
+      const dictionary = translations[language] || translations[DEFAULT_LANGUAGE];
+      const template = dictionary[key] || translations[DEFAULT_LANGUAGE][key] || key;
+      if (!params) return template;
+      return template.replace(/\{(\w+)\}/g, (match, token) =>
+        params[token] !== undefined ? params[token] : match
+      );
+    },
+    [language]
+  );
+
   const isAuthenticated = Boolean(authToken);
 
   return (
@@ -254,6 +297,10 @@ export function UserProvider({ children }) {
         toggleDarkMode,
         setDarkMode: setDarkModePreference,
         palette,
+        language,
+        setLanguage: setLanguagePreference,
+        translate,
+        languageOptions,
       }}
     >
       {children}
