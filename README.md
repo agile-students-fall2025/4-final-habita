@@ -1,6 +1,6 @@
 # 🏠 Habita
 
-[![Continuous Integration](https://github.com/agile-students-fall2025/4-final-habita/actions/workflows/ci.yml/badge.svg?branch=master&event=pull_request)](https://github.com/agile-students-fall2025/4-final-habita/actions/workflows/ci.yml)
+[![Continuous Integration](https://github.com/agile-students-fall2025/4-final-habita/actions/workflows/ci.yml/badge.svg)](https://github.com/agile-students-fall2025/4-final-habita/actions/workflows/ci.yml)
 
 **Habita** is an AI-assisted roommate management app designed to make shared living simpler, more organized, and more connected.  
 It helps roommates manage **tasks**, **bills**, and **communication** all in one place, reducing daily friction and improving collaboration at home.
