@@ -113,6 +113,8 @@ npm run build
 - [Product Backlog](https://github.com/agile-students-fall2025/4-final-habita/issues) – Current project tasks and user stories  
 - [Sprint Board](https://github.com/orgs/agile-students-fall2025/projects) – Active Scrum task board
 
+## Deployed Website Link
+[64.225.2.238](64.225.2.238)
 
 ---
 
