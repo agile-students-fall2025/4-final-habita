@@ -3,6 +3,7 @@ const router = express.Router();
 const passport = require('passport');
 const Household = require('../models/Household');
 const User = require('../models/User');
+const { ensureHouseholdChatThread } = require('../services/chatThreadService');
 
 const auth = passport.authenticate('jwt', { session: false });
 
@@ -30,6 +31,7 @@ router.post('/', auth, async (req, res) => {
 
     household.generateInviteCode();
     await household.save();
+    await ensureHouseholdChatThread(household);
 
     req.user.householdId = household._id;
     await req.user.save();
@@ -39,9 +41,9 @@ router.post('/', auth, async (req, res) => {
       data: {
         id: household._id,
         name: household.name,
-        inviteCode: household.inviteCode,
-        inviteCodeExpires: household.inviteCodeExpires,
-        members: household.members
+      inviteCode: household.inviteCode,
+      inviteCodeExpires: household.inviteCodeExpires,
+      members: household.members
       }
     });
   } catch (err) {
@@ -110,6 +112,7 @@ router.post('/join', auth, async (req, res) => {
       role: 'member'
     });
     await household.save();
+    await ensureHouseholdChatThread(household);
 
     // Update user with householdId
     req.user.householdId = household._id;

@@ -157,6 +157,18 @@ export default function Chat() {
     }
   }, [isMobile, activeThreadId, defaultThreadId]);
 
+  // If threads are cleared (e.g., user leaves household), reset selection and view.
+  useEffect(() => {
+    if (threads.length === 0) {
+      setActiveThreadId(null);
+      setViewMode("list");
+      setDraft("");
+      setShowMentions(false);
+      setMentionQuery("");
+      setCurrentAnchor(null);
+    }
+  }, [threads.length]);
+
   const activeThread = activeThreadId ? threadMap[activeThreadId] : null;
   const activePresentation = useMemo(
     () => getThreadPresentation(activeThread, currentUserName),

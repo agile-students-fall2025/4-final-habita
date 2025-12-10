@@ -28,7 +28,8 @@ class ChatStore {
 
   _toKey(contextType, contextId) {
     if (!contextType) return null
-    if (contextType === "house") return "house"
+    const suffix = contextId === undefined || contextId === null ? "" : `-${contextId}`
+    if (contextType === "house") return `house${suffix || "-global"}`
     if (contextId === undefined || contextId === null) return contextType
     return `${contextType}-${contextId}`
   }

@@ -38,6 +38,8 @@ export function ChatProvider({ children }) {
 
   const ensureThread = useCallback(
     async ({ threadId, contextType, contextId, name, participants }) => {
+      if (!token) return null;
+      if (contextType === "house" && !household) return null;
       if (!contextType && !threadId) return null;
       const mergedParticipants =
         Array.isArray(participants) && participants.length > 0
@@ -67,10 +69,15 @@ export function ChatProvider({ children }) {
       });
       return payload.data;
     },
-    [defaultParticipants, buildHeaders]
+    [defaultParticipants, buildHeaders, token, household]
   );
 
   const fetchThreads = useCallback(async () => {
+    if (!token || !household) {
+      setThreads([]);
+      setStatus({ loading: false, error: null });
+      return [];
+    }
     setStatus((prev) => ({ ...prev, loading: true }));
     try {
       const response = await fetch(`${API_BASE}/threads`, {
@@ -93,24 +100,30 @@ export function ChatProvider({ children }) {
       setStatus({ loading: false, error: error.message || "Unable to load chats" });
       return [];
     }
-  }, [defaultParticipants, buildHeaders]);
+  }, [defaultParticipants, buildHeaders, token, household]);
 
   useEffect(() => {
     fetchThreads();
   }, [fetchThreads]);
 
   useEffect(() => {
-    if (!household) return;
+    if (!token || !household) {
+      setThreads([]);
+      setMessagesByThread({});
+      return;
+    }
     ensureThread({
       contextType: "house",
       contextId: household.id || household._id || "house",
       name: household.name || "House",
       participants: defaultParticipants,
     }).catch(() => {});
-  }, [household, ensureThread, defaultParticipants]);
+  }, [household, ensureThread, defaultParticipants, token]);
 
   const loadMessages = useCallback(
     async ({ threadId, contextType, contextId, name, participants }) => {
+      if (!token) return [];
+      if (contextType === "house" && !household) return [];
       const key = makeThreadKey(contextType, contextId, threadId);
       const params = new URLSearchParams();
       if (key === "house") {
@@ -127,13 +140,6 @@ export function ChatProvider({ children }) {
         return [];
       }
       try {
-        await ensureThread({
-          threadId,
-          contextType,
-          contextId,
-          name,
-          participants: participants && participants.length ? participants : defaultParticipants,
-        });
         const response = await fetch(`${API_BASE}/messages?${params.toString()}`, {
           headers: buildHeaders(),
         });
@@ -153,11 +159,13 @@ export function ChatProvider({ children }) {
         return [];
       }
     },
-    [ensureThread, buildHeaders]
+    [ensureThread, buildHeaders, token, household, defaultParticipants]
   );
 
   const sendMessage = useCallback(
     async ({ threadId, contextType, contextId, sender, text, name, participants, metadata }) => {
+      if (!token) return null;
+      if (contextType === "house" && !household) return null;
       const trimmed = text?.trim();
       if (!trimmed) return null;
       const mergedParticipants = Array.isArray(participants) && participants.length > 0
@@ -194,10 +202,11 @@ export function ChatProvider({ children }) {
       );
       return formatted;
     },
-    [defaultParticipants, buildHeaders]
+    [defaultParticipants, buildHeaders, token, household]
   );
 
   const markThreadRead = useCallback(async (threadId) => {
+    if (!token) return null;
     if (!threadId) return null;
     const response = await fetch(`${API_BASE}/threads/${threadId}/read`, {
       method: "PATCH",
@@ -211,7 +220,7 @@ export function ChatProvider({ children }) {
       prev.map((thread) => (thread.id === threadId ? payload.data : thread))
     );
     return payload.data;
-  }, [buildHeaders]);
+  }, [buildHeaders, token]);
 
   const value = useMemo(
     () => ({

@@ -33,6 +33,10 @@ const householdSchema = new mongoose.Schema({
   },
   inviteCodeExpires: {
     type: Date
+  },
+  chatThreadId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ChatThread'
   }
 }, {
   timestamps: true
@@ -60,6 +64,19 @@ householdSchema.methods.isAdmin = function(userId) {
   const member = this.members.find(member => member.userId.toString() === userId.toString());
   return member && member.role === 'admin';
 };
+
+// Cascade delete associated chat thread when a household is removed.
+householdSchema.pre('findOneAndDelete', async function(next) {
+  try {
+    const doc = await this.model.findOne(this.getFilter(), { chatThreadId: 1 }).lean();
+    if (doc?.chatThreadId) {
+      await mongoose.model('ChatThread').deleteOne({ _id: doc.chatThreadId }).catch(() => {});
+    }
+  } catch (err) {
+    return next(err);
+  }
+  return next();
+});
 
 const Household = mongoose.model('Household', householdSchema);
 

@@ -3,6 +3,7 @@ const { body, validationResult } = require("express-validator")
 const User = require("../models/User")
 const Household = require("../models/Household")
 const mongoose = require("mongoose")
+const { ensureHouseholdChatThread } = require("../services/chatThreadService")
 
 const authenticationRouter = () => {
   const router = express.Router()
@@ -65,6 +66,7 @@ const authenticationRouter = () => {
                 existingHousehold.members.push({ userId: user._id, role: "member" })
                 await existingHousehold.save()
               }
+              await ensureHouseholdChatThread(existingHousehold)
               user.householdId = existingHousehold._id
             } else {
               // Provided householdId not found, fall back to creating a new one
@@ -80,6 +82,7 @@ const authenticationRouter = () => {
             })
             household.generateInviteCode?.()
             await household.save()
+            await ensureHouseholdChatThread(household)
             user.householdId = household._id
             householdId = household._id
           }
