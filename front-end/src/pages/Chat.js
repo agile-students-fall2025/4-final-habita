@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import ChatThread from "../components/ChatThread";
 import { useTasks } from "../context/TasksContext";
 import { useBills } from "../context/BillsContext";
@@ -10,35 +10,39 @@ export default function Chat() {
   const { bills } = useBills();
   const { household } = useHousehold();
   const { user } = useUser();
+
   const myName = user?.username || user?.name || "";
 
-  // Stable household thread ID
-  const householdThreadId = household?._id
-    ? `household-${household._id}`
-    : "household-default";
+  // ---- HOUSEHOLD CHAT THREAD ID ----
+  const householdThreadId = useMemo(() => {
+    if (household?._id) return `household-${household._id}`;
+    return "household-unknown";
+  }, [household]);
 
+  // Active chat
   const [activeThreadId, setActiveThreadId] = useState(householdThreadId);
 
-  // Compute active title
-  let activeTitle = "Household Chat";
+  // ---- COMPUTE CHAT TITLE ----
+  const activeTitle = useMemo(() => {
+    if (activeThreadId === householdThreadId) return "Household Chat";
 
-  if (activeThreadId.startsWith("task-")) {
-    const t = tasks.find((x) => `task-${x.id}` === activeThreadId);
-    if (t) activeTitle = `Task: ${t.title}`;
-  } else if (activeThreadId.startsWith("bill-")) {
-    const b = bills.find((x) => `bill-${x.id}` === activeThreadId);
-    if (b) activeTitle = `Bill: ${b.title}`;
-  }
+    if (activeThreadId.startsWith("task-")) {
+      const t = tasks.find((x) => `task-${x.id}` === activeThreadId);
+      return t ? `Task: ${t.title}` : "Task Chat";
+    }
+
+    if (activeThreadId.startsWith("bill-")) {
+      const b = bills.find((x) => `bill-${x.id}` === activeThreadId);
+      return b ? `Bill: ${b.title}` : "Bill Chat";
+    }
+
+    return "Chat";
+  }, [activeThreadId, householdThreadId, tasks, bills]);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100%",
-        width: "100%",
-      }}
-    >
-      {/* LEFT SIDEBAR */}
+    <div style={{ display: "flex", height: "100%", width: "100%" }}>
+      
+      {/* SIDEBAR */}
       <div
         style={{
           width: "280px",
@@ -50,14 +54,14 @@ export default function Chat() {
       >
         <h3 style={{ marginTop: 0 }}>Chats</h3>
 
-        {/* Household */}
+        {/* HOUSEHOLD CHAT BUTTON */}
         <button
           onClick={() => setActiveThreadId(householdThreadId)}
           style={{
             display: "block",
             width: "100%",
             padding: "0.5rem",
-            marginBottom: "0.5rem",
+            marginBottom: "1rem",
             background:
               activeThreadId === householdThreadId
                 ? "var(--habita-accent-light)"
@@ -71,7 +75,7 @@ export default function Chat() {
           🏠 Household Chat
         </button>
 
-        {/* List all task chats */}
+        {/* TASK CHATS */}
         <h4>Tasks</h4>
         {tasks.map((t) => (
           <button
@@ -96,7 +100,7 @@ export default function Chat() {
           </button>
         ))}
 
-        {/* List all bill chats */}
+        {/* BILL CHATS */}
         <h4 style={{ marginTop: "1rem" }}>Bills</h4>
         {bills.map((b) => (
           <button
@@ -122,14 +126,8 @@ export default function Chat() {
         ))}
       </div>
 
-      {/* MAIN CHAT VIEW */}
-      <div
-        style={{
-          flex: 1,
-          padding: "1rem",
-          overflow: "hidden",
-        }}
-      >
+      {/* MAIN CHAT WINDOW */}
+      <div style={{ flex: 1, padding: "1rem", overflow: "hidden" }}>
         <ChatThread
           threadId={activeThreadId}
           title={activeTitle}
