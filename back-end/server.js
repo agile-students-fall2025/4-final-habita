@@ -14,7 +14,7 @@ const start = async () => {
   await connectToDatabase()
 
   // call express's listen function to start listening to the port
-  listener = server.listen(port, function () {
+  listener = server.listen(port, "0.0.0.0",  function () {
     console.log(`Server running on port: ${port}`)
   })
 }
